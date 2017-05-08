@@ -3,8 +3,8 @@
      this xdg mime xml file is for-position-only at present,
      do not install at present! -->
 <mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
-	<mime-type type="application/x-wxDVDBackup">
-		<comment>Video DVD backup utility</comment>
-		<glob pattern="*.none_or_dvd_device"/>
+	<mime-type type="application/x-wxmav">
+		<comment>WX M A/V Player</comment>
+		<glob pattern="*.pls;*.m3u;*.ogg;*.mp3;*.wav;*.flac"/>
 	</mime-type>
 </mime-info>

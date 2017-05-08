@@ -2,7 +2,7 @@
 
 I2PY=img2py
 
-I=wxdvdbackup
+I=wxmav
 O=icons.py
 T=tmp-"${O}"
 X=png

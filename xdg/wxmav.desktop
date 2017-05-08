@@ -1,9 +1,9 @@
 [Desktop Entry]
-Version=0.0.1a
+Version=1.0.0
 Type=Application
-Name=wxDVDBackup
-Comment=Video DVD backup utility
-TryExec=wxDVDBackup
-Exec=wxDVDBackup
-Icon=wxdvdbackup
-Categories=AudioVideo;Utility;
+Name=wxmav
+Comment=M A/V Player (WX)
+TryExec=wxmav
+Exec=wxmav
+Icon=wxmav
+Categories=AudioVideo;Audio;Sound;Video;Multimedia;Utility;
