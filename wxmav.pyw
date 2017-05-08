@@ -444,6 +444,28 @@ def cv_open_r(name):
 def cv_open_w(name):
     return open(name, 'wt')
 
+
+"""
+    about dialog data
+"""
+
+# version globals: r/o
+version_string = _T("1.0.0")
+version_name   = _("Parallel Coils")
+version_mjr    = 1
+version_mjrrev = 0
+version_mnr    = 0
+version_mnrrev = 0
+version = (
+    version_mjr<<24|version_mjrrev<<16|version_mnr<<8|version_mnrrev)
+maintainer_name = _T("Ed Hynan")
+maintainer_addr = _T("<edhynan@gmail.com>")
+copyright_years = _T("2017")
+program_site    = _T("https://github.com/ehy/wxmav")
+program_desc    = _T("(WX) M Audio/Visual Media Player.")
+program_devs    = [maintainer_name]
+
+
 """
 some useful standalones
 """
@@ -2643,6 +2665,9 @@ class TheAppClass(wx.App):
         return True
 
 
+    def get_prog_name(self):
+        return self.prog
+
     def get_config(self):
         try:
             return self.config
@@ -4478,6 +4503,8 @@ The main top-level window class, also suffused with the bulk
 of the program logic
 """
 class TopWnd(wx.Frame):
+    about_info = None
+
     def __init__(self, parent, ID, title, size, pos = (0, 0),
                        cmdargs = None, argplay = False):
         wx.Frame.__init__(self, parent, ID,
@@ -5426,6 +5453,51 @@ class TopWnd(wx.Frame):
         sb.SetStatusWidths([-6, -1])
 
 
+    def do_about_dialog(self):
+        if not self.__class__.about_info:
+            import zlib
+            import base64
+
+            lic = licence_data
+            t = wxadv.AboutDialogInfo()
+
+            t.SetName(wx.GetApp().get_prog_name())
+            t.SetVersion(_T("{vs} {vn}").format(
+                vs = version_string, vn = version_name))
+            t.SetDevelopers(program_devs)
+            t.SetLicence(zlib.decompress(base64.b64decode(lic)))
+            t.SetDescription(program_desc)
+            cpyrt = _T("{year} {name} {addr}").format(
+                year = copyright_years,
+                name = maintainer_name,
+                addr = maintainer_addr)
+            if _ucode_type == 'utf-8':
+                try:
+                    t.SetCopyright(_T("© ") + cpyrt)
+                except:
+                    t.SetCopyright(_T("(C) ") + cpyrt)
+            else:
+                t.SetCopyright(_T("(C) ") + cpyrt)
+            t.SetWebSite(program_site)
+            t.SetIcon(self.icons.GetIcon((64, 64)))
+
+            dw = [
+                _T("Nona Wordsworth"),
+                _T("Rita Manuel")
+                ]
+            t.SetDocWriters(dw)
+            tr = [
+                _T("Saul \"Greek\" Tomey"),
+                _("Translation volunteers welcome!"),
+                _("Contact {email}.").format(email = maintainer_addr)
+                ]
+            t.SetTranslators(tr)
+            t.SetArtists([_T("I. Burns")])
+
+            self.__class__.about_info = t
+
+        wxadv.AboutBox(self.__class__.about_info)
+
     def dialog_set_editor(self):
         dlg = GroupSetEditDialog(self, wx.ID_ANY, data = self.reslist)
 
@@ -5742,7 +5814,7 @@ class TopWnd(wx.Frame):
         elif i == self.mhelp_help:
             pass
         elif i == self.mhelp_about:
-            pass
+            self.do_about_dialog()
 
 
     def on_key(self, event):
