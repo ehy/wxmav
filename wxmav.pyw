@@ -5,12 +5,12 @@
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or
 #  (at your option) any later version.
-#  
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-#  
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
@@ -41,13 +41,13 @@ if os.name == 'posix' and ('DISPLAY' in os.environ):
         "lib_ret" : None,
         "lib_err" : None
     }
-    
+
     try:
         X11hack["lib_ptr"] = ctypes.cdll.LoadLibrary(X11hack["libname"])
         X11hack["lib_fun"] = X11hack["lib_ptr"].XInitThreads
         X11hack["lib_fun"].argtypes = []
         X11hack["lib_fun"].restype = ctypes.c_int # X11 'Status'
-    
+
         try:
             X11hack["lib_ret"] = X11hack["lib_fun"]()
         except Exception as m:
@@ -107,7 +107,7 @@ except ImportError:
         v_urllib = 1
         uri_unquote = urllib.unquote
         uri_unquote_plus = urllib.unquote_plus
-            
+
 import wx
 import wx.media
 try:
@@ -335,7 +335,7 @@ elif not py_v_is_3:
             return s.decode(_ucode_type, 'replace')
         except:
             pass
- 
+
         try:
             return _U(s).decode(_ucode_type, 'replace')
         except:
@@ -374,7 +374,7 @@ elif not py_v_is_3:
             except:
                 pass
         return s
-    
+
 else:
     def _T(s):
         try:
@@ -460,13 +460,13 @@ def mk_colon_time_str(tm, with_ms = False, append_orig = False):
     ss = int(ss % 60)
     hr = int(mn / 60)
     mn = int(mn % 60)
-    
+
     if with_ms:
         r = _T("{hr:02d}:{mn:02d}:{ss:02d}.{ms:03d}").format(
                 hr = hr, mn = mn, ss = ss, ms = int(ms))
     else:
         r = _T("{hr:02d}:{mn:02d}:{ss:02d}").format(
-                hr = hr, mn = mn, ss = ss) 
+                hr = hr, mn = mn, ss = ss)
 
     if append_orig:
         r += _T(" ({}ms)").format(tm)
@@ -498,7 +498,7 @@ else:
                 except:
                     if throw:
                         raise
-    
+
         return None
 
     # minimal substitue for os.walk, just to use cdr_ls_dir
@@ -509,12 +509,12 @@ else:
             self.first = True
             self.nx = None
             self.oklinks = followlinks
-    
+
         def _get_first(self, d):
             cur = cdr_ls_dir(d)
             if cur == None:
                 return None
-    
+
             fl = []
             self.dl = []
             for c in cur:
@@ -524,9 +524,9 @@ else:
                         self.dl.append(c)
                 else:
                     fl.append(c)
-    
+
             return (d, self.dl, fl)
-    
+
         def next(self):
             if self.first:
                 self.first = False
@@ -534,13 +534,13 @@ else:
                 if r == None:
                     raise StopIteration
                 return r
-    
+
             if self.nx != None:
                 try:
                     return self.nx.next()
                 except StopIteration:
                     self.nx = None
-    
+
             while self.dl:
                 d = os.path.join(self.d, _T(self.dl[0]))
                 del self.dl[0]
@@ -549,15 +549,15 @@ else:
                     return self.nx.next()
                 except StopIteration:
                     continue
-    
+
             raise StopIteration
-    
+
         if py_v_is_3:
             def __next__(self): return self.next()
-    
+
         def __iter__(self):
             return self
-    
+
 
 # invoke readlines on fd,
 # optionally strip lines, optionally close fd, optionally filter blanks:
@@ -672,7 +672,7 @@ if have_mutagen:
         caertain that mutagen is available"""
         def __init__(self, fname = None):
             media_tags.__init__(self, fname)
-            
+
             if fname:
                 self.from_file(fname)
 
@@ -710,10 +710,10 @@ if have_mutagen:
 
         def get_tracknum_int(self):
             tn = self.tracknumber
-    
+
             if tn is None:
                 return None
-    
+
             if isinstance(tn, list):
                 if len(tn) == 1:
                     tn = tn[0]
@@ -724,10 +724,10 @@ if have_mutagen:
                         tn = m.group(1)
                     else:
                         tn = None
-    
+
             if tn is None:
                 return None
-    
+
             # not done yet: some tags might not be simple decimal
             # digits, but something like '1/7' or 'screw you' so
             # so try to filter with a regexp, then convert to
@@ -856,11 +856,11 @@ av_ext_default = [
     "ogg", "ogv", "mp3",
     "mp4", "mpg4", "mpeg4", "mp2", "m4v", "m4a",
     "mpg", "mpeg", "mjpeg", "mjpg", "mpa",
-    "webm", "vp8", "vp9", 
+    "webm", "vp8", "vp9",
     "wm", "wmv", "wma", "wav", "aif", "iff",
     "avi", "avc", "flv", "mkv", "mov", "vob",
     "rv", "rm", "qt",
-    "divx", "aac", "ac3", "xvid", 
+    "divx", "aac", "ac3", "xvid",
 ]
 
 av_ext_ok = av_ext_default
@@ -892,7 +892,7 @@ def av_dir_find(name, recurse = False, ext_list = None):
             dl = cdr_ls_dir(name)
             if not dl:
                 return (res, _("directory empty"))
-            res = [os.path.join(curdir, _T(f)) 
+            res = [os.path.join(curdir, _T(f))
                     for f in p_filt(__xck, dl)]
             res.sort()
         except (OSError, IOError) as e:
@@ -942,7 +942,7 @@ class AVGroup:
                 self.desc = self.name
 
         r = AVGroup.write_file(self, out, do_close, put_desc)
-        
+
         self.desc = tdesc
 
         return r
@@ -1091,15 +1091,15 @@ class AVGroupList(AVGroup):
 
         if len(dat) < 2:
             return (ret, filedesc)
-        
+
         l = dat[-1]
         m = re.match(_T(r"Version\s*=\s*([0-9]+)"), _T(l))
         ver = int(m.group(1)) if m else None
-        
+
         l = dat[-2]
         m = re.match(_T(r"NumberOfEntries\s*=\s*([0-9]+)"), _T(l))
         num = int(m.group(1)) if m else 0
-        
+
         try:
             i = 0
             while i < num:
@@ -1135,9 +1135,9 @@ class AVGroupList(AVGroup):
                     if int(m.group(2)) != j:
                         # return partial success on error
                         return (ret, filedesc)
-    
+
                     dat = dat[1:]
-                    
+
                     tag = m.group(1)
 
                     if tag == _T("File"):
@@ -1149,7 +1149,7 @@ class AVGroupList(AVGroup):
                         v = m.group(3)
                         if v:
                             resname = v
-        
+
                     elif tag == _T("Title"):
                         if got_t:
                             # return partial success on error
@@ -1159,13 +1159,13 @@ class AVGroupList(AVGroup):
                         v = m.group(3)
                         if v:
                             desc = v
-        
+
                     elif tag == _T("Length"):
                         if got_l:
                             # return partial success on error
                             return (ret, filedesc)
                         got_l = True
-                    
+
                         v = int(m.group(3))
                         if v >= 0:
                             length = v * 1000 # millisecs
@@ -1185,7 +1185,7 @@ class AVGroupList(AVGroup):
                 if not (got_f and resname):
                     # return partial success on error
                     return (ret, filedesc)
- 
+
                 comment = _T("Length {}").format(length)
                 ret.append(AVItem(comment = comment,
                                   desc = desc,
@@ -1199,7 +1199,7 @@ class AVGroupList(AVGroup):
         except:
             #print("chew_dat_xpls EXCEPTION")
             pass
-        
+
         return (ret, filedesc)
 
     @staticmethod
@@ -1232,7 +1232,7 @@ class AVGroupList(AVGroup):
                 length  = int(m.group(1))
                 comment = _T("Length {}").format(length)
                 desc    = m.group(2)
-            
+
             resname = _T(dat[1])
             dat = dat[2:]
 
@@ -1246,7 +1246,7 @@ class AVGroupList(AVGroup):
                               desc = desc,
                               resname = resname,
                               length = length))
-            
+
         return (ret, filedesc)
 
     @staticmethod
@@ -1430,7 +1430,7 @@ def mk_from_args(*args, **kwargs):
 
         isd = os.path.isdir(fs)
         isf = False if isd else os.path.isfile(fs)
-        
+
         if isd:
             return AVGroupListDir(name = fs, recurse = dir_recurse)
         elif not isf and re.match(ufpat, fs, re.I):
@@ -1449,7 +1449,7 @@ def mk_from_args(*args, **kwargs):
 
 def get_lst_from_args(*args, **kwargs):
     avl = mk_from_args(*args, **kwargs)
-    
+
     res = []
     err = []
     accum = []
@@ -1503,10 +1503,10 @@ def wr_xpls_file(out, group, do_close = True, put_desc = True):
     fd = out if _ck(out) else cv_open_w(out)
 
     dat = p_filt(lambda i: i.resname != None, group.data)
-    
+
     num = len(dat) if dat else 0
     ver = 2
-    
+
     if num < 1:
         return False
 
@@ -1532,7 +1532,7 @@ def wr_xpls_file(out, group, do_close = True, put_desc = True):
             err_sub += 1
             num -= 1
             continue
-        
+
         tit = it.desc or it.resname
         des = _T(tit).replace('\r', ' ').replace('\n', ' ').strip()
         fd.write(_U("Title{:d}={}\n").format(n, _U(des)))
@@ -1580,7 +1580,7 @@ def wr_groups(grlist, in_dir, namebase = _T("group-"), do_exc = False):
                     _T("Failed to write {}").format(fpath))
         else:
             res = g.write_file(fpath)
-        
+
         if res:
             n += 1
         else:
@@ -1604,12 +1604,12 @@ def wr_current_set(grlist, set_dir = None, do_exc = False):
                 shutil.rmtree(od)
             except:
                 return False
-    
+
         try:
             os.makedirs(od)
         except:
             return False
-    
+
         res = False
         try:
             res = wr_groups(grlist, od, do_exc = do_exc)
@@ -1654,7 +1654,7 @@ def rd_current_set(set_dir = None):
         return False
 
     try:
-        res = [os.path.join(sd, f) 
+        res = [os.path.join(sd, f)
                 for f in p_filt(__xck, cdr_ls_dir(sd))]
         res.sort()
     except (OSError, IOError) as e:
@@ -1670,7 +1670,7 @@ def rd_current_set(set_dir = None):
 
 """
     classes for threads --
-    
+
     NOTE: testing suggests that the event delivery is picky, as follows:
     *   wx.PyCommandEvent will not be delivered to the application
         object; wx.PyEvent will
@@ -1781,12 +1781,12 @@ if _in_msw:
     # try to call SetThreadExecutionState directly
     # using the ctypes module
     import ctypes
-    
+
     class MSWScreensaverHelper:
         def __init__(self):
             self.OK = True
             self.errmsg = _("error free thus far")
-            
+
             try:
                 self.dllkrnl = ctypes.windll.kernel32
                 self.apifunc = self.dllkrnl.SetThreadExecutionState
@@ -1806,7 +1806,7 @@ if _in_msw:
 
             if not self.OK:
                 return
-            
+
             self.argtype = ctypes.c_uint32 # MSW typedef DWORD
             self.apifunc.restype  = self.argtype
             self.apifunc.argtypes = [self.argtype]
@@ -1821,7 +1821,7 @@ if _in_msw:
                 return self.do_suspend()
             else:
                 return self.do_resume()
-    
+
         def do_suspend(self):
             res = (self.OK and
                    self.orig_state == None and
@@ -1886,7 +1886,7 @@ elif _in_xws:
         exec_dup_status = 67
         pgrp_err_status = 68
         exec_wtf_status = 69
-    
+
         def __init__(self,
                      cmd = None,
                      arglist = None,
@@ -1899,13 +1899,13 @@ elif _in_xws:
             # (which is needed) so line_rdsize should by larger than
             # any line that can be expected
             self.szlin = line_rdsize
-    
+
             self.mk_pgrp = mk_pgrp
-    
+
             self.xcmd = cmd
             self.xcmdargs = arglist or []
             self.xcmdenv = envplus
-    
+
             if isinstance(fd0, str) or isinstance(fd0, unicode):
                 self.fd0 = os.open(fd0, os.O_RDONLY)
                 self.fd0_opened = True
@@ -1919,20 +1919,20 @@ elif _in_xws:
                 # just try opening and let caller catch anything raised
                 self.fd0 = os.open(fd0, os.O_RDONLY)
                 self.fd0_opened = True
-    
-    
+
+
             # this is orig, object, not result of a fork()
             self.root = True
-    
+
             self.ch_pid = None
             self.error  = ("no error", None, None, None)
-    
-    
+
+
         def close_fd(self, force = False):
             # close only if opened here, or given force
             if self.fd0_opened == False and force == False:
                 return -3
-    
+
             r = -1
             if self.fd0 >= 0:
                 try:
@@ -1942,17 +1942,17 @@ elif _in_xws:
                     r = 0
                 except:
                     r = -2
-    
+
             self.fd0_opened = False
             return r
-    
+
         """
         public: kill (signal) child pid
         """
         def kill(self, sig = 0, kill_pgrp = False):
             if self.ch_pid == None:
                 return -1
-    
+
             try:
                 if kill_pgrp and self.mk_pgrp:
                     os.killpg(self.ch_pid, sig)
@@ -1965,10 +1965,10 @@ elif _in_xws:
                 self.error = ("kill", sig, None, e)
             except:
                 self.error = ("kill", sig, None, "unknown exception")
-    
+
             return -1
-    
-    
+
+
         """
         public: wait on child -- opts may be "nohang" for os.WNOHANG;
         with nohang return -2 means not ready, else negative return
@@ -1978,50 +1978,50 @@ elif _in_xws:
         def waitgrp(self, opts = 0):
             if self.ch_pid == None:
                 return []
-    
+
             grstat = []
-    
+
             while True:
                 st = self.wait(opts, True)
-                
+
                 if st < 0:
                     return grstat
-                
+
                 grstat.append(st)
-    
+
         def wait(self, opts = 0, kill_pgrp = False):
             if self.ch_pid == None:
                 return -1
-    
+
             if opts == "nohang":
                 opts = os.WNOHANG
             elif opts != 0 and opts != os.WNOHANG:
                 return -1
-    
+
             pid = self.ch_pid
             if kill_pgrp and self.mk_pgrp:
                 pid = -pid
-    
+
             while True:
                 try:
                     retpid, stat = os.waitpid(pid, opts)
-    
+
                     # had WNOHANG and nothing ready:
                     if retpid == 0 and stat == 0:
                         return -2
-    
+
                     # not handling WIFSTOPPED; we're not tracing and
                     # opt WUNTRACED is disallowed
                     # likewise WIFCONTINUED as WCONTINUED is disallowed
-    
+
                     if os.WIFSIGNALED(stat) or os.WIFEXITED(stat):
                         if not kill_pgrp:
                             self.ch_pid = None
                             self.close_fd()
                         return stat
-    
+
                     return -1
-    
+
                 except OSError as e:
                     if e.errno  == errno.EINTR:
                         continue
@@ -2034,26 +2034,26 @@ elif _in_xws:
                     self.error = ("wait",
                                   pid, None, "unknown exception")
                     break
-    
+
             return -1
-    
+
         def decode_wait(self, stat):
             if os.WIFSIGNALED(stat):
                 return ("signalled", os.WTERMSIG(stat))
             elif os.WIFEXITED(stat):
                 return ("exited", os.WEXITSTATUS(stat))
-    
+
             return ("unknown", stat)
-    
+
         """
         public: do kill and wait on current child -- -2 means not ready
         """
         def kill_wait(self, sig = 0, opts = 0):
             if self.kill(sig):
                 return -1
-            
+
             return self.wait(opts)
-    
+
         """
         fork() and return tuple (child_pid, read_fd, err_fd(2)),
         """
@@ -2062,17 +2062,17 @@ elif _in_xws:
                 self.error = ("go", None, None,
                               "error: no child command")
                 return (-1, None, None)
-    
+
             # return (pid, pr.stdout, pr.stderr, pr.stdin)
             rlst = [None, None, None]
             wr_fd = self.fd0
-    
+
             try:
                 rfd, wfd1 = os.pipe()
             except OSError as e:
                 self.error = ("go", None, e.errno, e.strerror)
                 return (-1, None, None)
-    
+
             try:
                 efd, wfd2 = os.pipe()
             except OSError as e:
@@ -2080,7 +2080,7 @@ elif _in_xws:
                 os.close(wfd1)
                 self.error = ("go", None, e.errno, e.strerror)
                 return (-1, None, None)
-    
+
             try:
                 pid = os.fork()
             except OSError as e:
@@ -2090,16 +2090,16 @@ elif _in_xws:
                 os.close(wfd2)
                 self.error_tuple = ("go", None, e.errno, e.strerror)
                 return (-1, None, None)
-    
+
             self.ch_pid = pid
             rlst[0] = pid
             rlst[1] = rfd
             rlst[2] = efd
-    
+
             if pid == 0:
                 # for reference in methods
                 self.root = False
-    
+
                 if self.mk_pgrp:
                     # start new group giving parent kill group option
                     mpid = os.getpid()
@@ -2110,14 +2110,14 @@ elif _in_xws:
                         pgrp = os.getpgrp()
                     except OSError as e:
                         os._exit(self.pgrp_err_status)
-        
+
                     # success?
                     if mpid != pgrp:
                         os._exit(self.pgrp_err_status)
-        
+
                 os.close(rfd)
                 os.close(efd)
-            
+
                 try:
                     os.dup2(wr_fd, 0)
                     os.close(wr_fd)
@@ -2127,13 +2127,13 @@ elif _in_xws:
                     os.close(wfd2)
                 except OSError as e:
                     os._exit(self.exec_dup_status)
-    
+
                 is_path = os.path.split(self.xcmd)
                 if len(is_path[0]) > 0:
                     is_path = True
                 else:
                     is_path = False
-        
+
                 try:
                     self._putenv_cntnr(self._mk_sane_env(self.xcmdenv))
                     if is_path:
@@ -2143,13 +2143,13 @@ elif _in_xws:
                     os._exit(self.exec_wtf_status)
                 except OSError as e:
                     os._exit(self.exec_err_status)
-    
+
             else:
                 os.close(wfd1)
                 os.close(wfd2)
-    
+
             return tuple(rlst)
-    
+
         @staticmethod
         def _putenv_cntnr(cntnr):
             try:
@@ -2162,7 +2162,7 @@ elif _in_xws:
                         os.environ[k] = cntnr[k]
             except:
                 pass
-    
+
         @staticmethod
         def _mk_sane_env(cntnr):
             o = []
@@ -2183,25 +2183,25 @@ elif _in_xws:
                         o.append((k, v))
             except:
                 pass
-    
+
             return o
-    
+
     class XWSHelperProcClass:
         def __init__(self, app, procargs = None, go = False):
             self.thd = self.pwr = self.ch_proc = self.linemax = None
             self.quitting = False
-    
+
             self.app = app
-    
+
             self.xhelperargs = procargs or [_T('x-aud-key-srv'),
                                             _T('--xautolock'),
                                             _T('--xscreensaver')]
-    
+
             self.status = None
             if go:
                 self.do_keystart(self.xhelperargs)
-            
- 
+
+
         def go(self):
             if self.status == None:
                 self.do_keystart(self.xhelperargs)
@@ -2215,16 +2215,16 @@ elif _in_xws:
             if self.thd and self.ch_proc:
                 self.quitting = False # prevent posting message
                 self.do_keyend(False, True)
-    
+
             return 0
-    
-    
+
+
         def prdbg(self, *args):
             self.app.prdbg(*args)
-    
+
         def err_msg(self, msg):
             self.app.err_msg(msg)
-    
+
         """
         The remainder of the methods of this class concern the child
         process (under X) that reports media keys
@@ -2232,7 +2232,7 @@ elif _in_xws:
         def do_keystart(self, xcmdargs):
             if self.thd or self.ch_proc:
                 return self.status[3]
-            
+
             pip = os.pipe()
             self.pwr = pip[1]
 
@@ -2240,7 +2240,7 @@ elif _in_xws:
                                    arglist = xcmdargs,
                                    fd0 = pip[0],
                                    mk_pgrp = True)
-            
+
             pid, rfd, efd = self.ch_proc.go()
             if pid < 0:
                 os.close(pip[0])
@@ -2249,21 +2249,21 @@ elif _in_xws:
                 self.status = self.ch_proc.error # error tuple
                 self.ch_proc = None
                 return self.status[3]
-    
+
             self.thd = AChildThread(self.app, wx.NewId(),
                                     self.run_ch_proc,
                                     (self.ch_proc, pip[1], rfd, efd))
-            
+
             self.thd.start()
             os.close(pip[0])
-            
+
             self.status = (None, None, None, "running")
             return self.status[3]
-    
+
         def do_keyend(self, quitting = False, use_signal = True):
             if quitting:
                 self.quitting = True
-    
+
             if self.ch_proc:
                 if use_signal == False and self.pwr != None:
                     try:
@@ -2276,7 +2276,7 @@ elif _in_xws:
                     # group which it sets up at fork()
                     # with setp{grp,gid}
                     self.ch_proc.kill(signal.SIGINT, kill_pgrp = True)
-    
+
         # when top window gets close event that can be vetoed,
         # it calls this, and only self.Destroy() if this
         # returns True, else veto the event and wait until
@@ -2285,65 +2285,65 @@ elif _in_xws:
             if self.thd or self.ch_proc:
                 wx.CallAfter(self.do_keyend, True)
                 return False
-            
+
             return True
-            
+
         def do_screensave(self, on = True):
             if self.pwr == None or self.pwr < 0:
                 return
-            
+
             if on == False:
                 m = "ssaver_off\n".encode('ascii')
                 os.write(self.pwr, m)
             else:
                 m = "ssaver_on\n".encode('ascii')
                 os.write(self.pwr, m)
-    
+
         def do_query(self):
             if self.pwr == None or self.pwr < 0:
                 return
-            
+
             m = "Query\n".encode('ascii')
-            
+
             os.write(self.pwr, m)
-    
+
         def do_wname(self):
             if self.pwr == None or self.pwr < 0:
                 return
-            
+
             m = "WName\n".encode('ascii')
-            
+
             os.write(self.pwr, m)
             self.prdbg("do_wname")
-    
+
         def do_setwname(self, s_title):
             if self.pwr == None or self.pwr < 0 or self.linemax == None:
                 self.prdbg("do_setwname FAIL 1 pwr {} lmax {}".format(
                             self.pwr, self.linemax))
                 return
-            
+
             m = _T("{s}\n").format(s=s_title).encode('utf_8')
-    
+
             if self.linemax <= len(m):
                 return
-    
+
             os.write(self.pwr, "SETWName\n".encode('ascii'))
             self.prdbg("do_setwname SETWName")
-    
+
             wx.MilliSleep(333)
-    
+
             os.write(self.pwr, m)
             self.prdbg(_T("do_setwname '{}'").format(m))
-    
+
         def do_wroot(self):
             if self.pwr == None or self.pwr < 0:
                 return
-            
+
             os.write(self.pwr, "WRoot\n".encode('ascii'))
-    
+
         def do_enter_run(self):
             pass
-    
+
         def do_exit_run(self):
             ch_proc = self.ch_proc
             self.ch_proc = None
@@ -2359,10 +2359,10 @@ elif _in_xws:
                 self.prdbg(_T("PRE JOIN"))
                 while thd.is_alive():
                     thd.join()
-    
+
                 st = thd.get_status()
                 self.prdbg(_T("POST JOIN -- STATUS {}").format(st))
-    
+
             self.status = st
 
             if ch_proc:
@@ -2378,12 +2378,12 @@ elif _in_xws:
                 self.prdbg(
                     _T("POST WAIT -- TERM+STAT '{}' -- "
                        "PROC ERR '{}'").format(st, ch_proc.error))
-    
+
                 ch_proc.close_fd(True)
 
             if pwr != None:
                 os.close(pwr)
-    
+
             if self.quitting:
                 self.prdbg(_T("PRE QUIT EVENT"))
                 wx.PostEvent(self.app.frame, AppDestroyEvent())
@@ -2428,7 +2428,7 @@ elif _in_xws:
             except:
                 e = "unknown"
                 self.prdbg("linemax exception '{}'".format(e))
-            
+
             flist = [fdr1, fdr2]
 
             errbits = select.POLLERR|select.POLLHUP|select.POLLNVAL
@@ -2485,7 +2485,7 @@ elif _in_xws:
                 pass
 
             return 0
-        
+
         def check_linemax(self, s):
             r = re.search(_T(r'^([YN]):([0-9]+)' + '\n*$'), s)
             if r and r.group(1) == _T('Y'):
@@ -2525,7 +2525,7 @@ class TheAppClass(wx.App):
         pth, nam = os.path.split(pth)
 
         self.prog = nam
-        
+
         self.debug   = ("-debug" in self.av)
         self.verbose = ("-verbose" in self.av)
 
@@ -2538,7 +2538,7 @@ class TheAppClass(wx.App):
             return (arg != "-inspection" and
                     arg != "-verbose" and
                     arg != "-debug")
-    
+
         self.av = p_filt(_args_re_filt, self.av)
 
         wx.App.__init__(self)
@@ -2585,7 +2585,7 @@ class TheAppClass(wx.App):
                 X11hack = None
         elif _in_msw:
             self.mshelper = MSWScreensaverHelper()
-        
+
         if self.xhelper:
             # Custom event from child handler threads
             self.Bind(EVT_CHILDPROC_MESSAGE, self.on_chmsg)
@@ -2639,7 +2639,7 @@ class TheAppClass(wx.App):
         if self.xhelper:
             if self.xhelper.go():
                 wx.CallAfter(self.frame.xhelper_ready, True)
-        
+
         return True
 
 
@@ -2702,7 +2702,7 @@ class TheAppClass(wx.App):
         if t == _T('time period'):
             self.frame.on_chmsg(event)
             return
-        
+
         if t == _T('enter run'):
             self.do_enter_run()
             return
@@ -2736,9 +2736,9 @@ class TheAppClass(wx.App):
     def test_exit(self):
         if self.xhelper:
             return self.xhelper.test_exit()
-        
+
         return True
-        
+
     def do_screensave(self, on = True):
         if self.mshelper:
             self.mshelper.do_screensave(on)
@@ -2832,14 +2832,14 @@ class ButtonData:
         # parent is required
         if not self.parent:
             return None
-        
+
         return wx.Button(self.parent,
                          self.ID,
                          self.label,
                          self.pos,
                          self.size,
                          style = self.style)
-        
+
 
 class ButtonPanel(wx.ScrolledWindow):
     def __init__(self, parent, ID,
@@ -2860,13 +2860,13 @@ class ButtonPanel(wx.ScrolledWindow):
         for bd in button_data:
             if not bd.parent:
                 bd.parent = self.panel
-            
+
             btn = bd.mk()
             hdlr = bd.handler or self.null_handler
             btn.Bind(wx.EVT_BUTTON, hdlr, btn, bd.ID)
             szr.Add(btn, 1, sizer_flags, item_margin)
             szr.AddSpacer(spacer_width)
-            
+
             self.id_map.append((bd.ID, btn))
 
         self.Bind(wx.EVT_SIZE, self.on_size)
@@ -2900,9 +2900,9 @@ class MediaPanel(wx.Panel):
         wx.Panel.__init__(self, parent, ID, size = size)
 
         self.medi = None
-        
+
         self.in_msw = _in_msw
-        
+
         self.SetBackgroundColour(wx.Colour(0, 0, 0))
 
         self.handlers = handlers
@@ -2947,17 +2947,17 @@ class MediaPanel(wx.Panel):
                 #backend = wx.media.MEDIABACKEND_QUICKTIME
                 #backend = wx.media.MEDIABACKEND_DIRECTSHOW
                 backend = wx.media.MEDIABACKEND_WMP10
-                
+
             self.medi = wx.media.PreMediaCtrl()
             ok = self.medi.Create(
                 self, wx.ID_ANY,
                 pos = wx.DefaultPosition, size = wx.DefaultSize,
                 style = wx.BORDER_NONE,
                 szBackend = backend)
-            
+
             if not ok:
                 raise NotImplementedError
-            
+
             self.medi.PostCreate(self.medi)
         except NotImplementedError:
             self.medi = wx.media.MediaCtrl(
@@ -2989,7 +2989,7 @@ class MediaPanel(wx.Panel):
         xoff = yoff = 0
         ssz = self.GetSize()
         msz = self.medi.GetBestSize()
-        
+
         # can this happen?
         if ssz.height < 1 or ssz.width < 1:
             return
@@ -3011,7 +3011,7 @@ class MediaPanel(wx.Panel):
 
         sr = float(ssz.width) / float(ssz.height)
         mr = float(msz.width) / float(msz.height)
-        
+
         if mr > sr:
             w = ssz.width
             h = int(float(w) / mr)
@@ -3104,7 +3104,7 @@ class EditTreeCtrlDropTarget(edit_tree_droptarget_base):
     def __init__(self, tree):
         edit_tree_droptarget_base.__init__(self)
         self.tree = tree
-        
+
         self.df = custom_data_fmt(EditTreeCtrlDropTarget.dformat)
         self.cdo = wx.CustomDataObject(self.df)
         self.SetDataObject(self.cdo)
@@ -3149,7 +3149,7 @@ class EditTreeCtrlDropTarget(edit_tree_droptarget_base):
         # To the right of the client area.
         elif flag & wx.TREE_HITTEST_TOLEFT:
             hit_res = 1
-        # To the left of the client area. 
+        # To the left of the client area.
         elif flag & wx.TREE_HITTEST_TORIGHT:
             hit_res = 2
 
@@ -3232,7 +3232,7 @@ class EditTreeCtrlDropTarget(edit_tree_droptarget_base):
             2 if (root == tr.GetItemParent(new_prt)) else 3)
         lvlorig = 1 if (root == orig_prt) else (
             2 if (root == tr.GetItemParent(orig_prt)) else 3)
-    
+
         # each level represents a type, so only accept
         # drop at same level, or target level 1 up from
         # source item meaning append as child
@@ -3349,7 +3349,7 @@ class EditTreeCtrl(wx.TreeCtrl):
         self.Bind(wx.EVT_TREE_SEL_CHANGED, self.sel_changed)
 
         self.SetDropTarget(EditTreeCtrlDropTarget(self))
-        
+
         # unfortunate hack bacause A) wxPython version of
         # wxCustomDataObject.SetData takes a string argument --
         # no objects -- and B) cPickle cannot 'pickle' a
@@ -3532,14 +3532,14 @@ class EditTreeCtrl(wx.TreeCtrl):
             while ID.IsOk():
                 lbl = tr.GetItemText(ID)
                 dat = tr.get_it_dat(ID)
-                
+
                 NI = tr.AppendItem(dst, lbl)
                 tr.set_it_dat(NI, dat)
-        
+
                 self.copy_item_children(ID, NI)
 
                 ID, cookie = tr.GetNextChild(src, cookie)
-        
+
         except:
             return
 
@@ -3663,7 +3663,7 @@ class EditTreeCtrl(wx.TreeCtrl):
                     key = key.decode('ascii')
                 if not (isinstance(key, str) or isinstance(key, int)):
                     key = str(key)
-                
+
             idx = int(key) - 0xFFFF
             if idx >= 0 and idx < len(self.dnd_item_list):
                 return self.dnd_item_list[idx]
@@ -3685,7 +3685,7 @@ class EditTreeCtrl(wx.TreeCtrl):
                     key = key.decode('ascii')
                 if not (isinstance(key, str) or isinstance(key, int)):
                     key = str(key)
-                
+
             idx = int(key) - 0xFFFF
             # cannot simply del from list -- would screw any
             # higher index in use -- so del only if idx is last
@@ -3848,7 +3848,7 @@ class GroupSetEditDialog(wx.Dialog):
             while ID.IsOk():
                 lbl = tr.GetItemText(ID)
                 old = tr.get_it_dat(ID)
-                
+
                 i = copy.deepcopy(old)
                 odn = old.get_res_disp_str(True) or old.resname
                 if s_ne(lbl, tr.no_media) and s_ne(lbl, odn):
@@ -3870,7 +3870,7 @@ class GroupSetEditDialog(wx.Dialog):
                 data.append(i)
 
                 ID, cookie = tr.GetNextChild(grp_ID, cookie)
-        
+
         except Exception as e:
             #print("dialog _get_tree_children: std exc '{}'".format(e))
             pass
@@ -3891,7 +3891,7 @@ class GroupSetEditDialog(wx.Dialog):
             while ID.IsOk():
                 lbl = tr.GetItemText(ID)
                 dat = tr.get_it_dat(ID)
-                
+
                 g = copy.deepcopy(dat)
 
                 if s_ne(lbl, g.desc):
@@ -3905,7 +3905,7 @@ class GroupSetEditDialog(wx.Dialog):
                 data.append(g)
 
                 ID, cookie = tr.GetNextChild(root, cookie)
-        
+
         except Exception as e:
             #print("dialog get_data: std exc '{}'".format(e))
             pass
@@ -3990,7 +3990,7 @@ class x_moz_url_dataobject(wx.CustomDataObject):
 class multi_dataobject(wx.DataObjectComposite):
     def __init__(self):
         wx.DataObjectComposite.__init__(self)
-        
+
         self.moz_url_dataobject  = x_moz_url_dataobject()
         self.uri_list_dataobject = uri_list_dataobject()
         self.file_dataobject     = wx.FileDataObject()
@@ -3998,7 +3998,7 @@ class multi_dataobject(wx.DataObjectComposite):
         # chromium in MSW provides moz_url, but in X
         # it provides 'STRING'
         self.STRING_dataobject   = wx.CustomDataObject("STRING")
-        
+
         self.Add(self.moz_url_dataobject)
         self.Add(self.uri_list_dataobject)
         self.Add(self.file_dataobject)
@@ -4022,7 +4022,7 @@ class multi_dataobject(wx.DataObjectComposite):
             return t.splitlines()
 
         return p_filt(lambda v: v != '\0', r).splitlines()
-        
+
 
     # raw will return what the data object returns, except in the
     # case of CustomDataObject derivatives for which return is
@@ -4075,7 +4075,7 @@ class multi_dataobject(wx.DataObjectComposite):
                 wx.GetApp().prdbg(
                     "multi_dataobject: exception 'unknown'")
                 return ""
-                
+
             return d
 
         return self.GetDataHere(dfmt)
@@ -4088,11 +4088,11 @@ class multi_droptarget(multi_droptarget_base):
 
     def __init__(self, target_obj = None):
         multi_droptarget_base.__init__(self)
- 
+
         self.target = target_obj if target_obj else wx.GetApp()
         self.do = multi_dataobject()
         self.SetDataObject(self.do)
-        
+
         self.debug = wx.GetApp().debug
 
     def prdbg(self, *args):
@@ -4113,12 +4113,12 @@ class multi_droptarget(multi_droptarget_base):
             datid = datf.GetId()
         except:
             pass
-        
+
         self.prdbg(_T("IN OnData -- fmt {}").format(datid))
 
         if datf == self.do.moz_url_dataobject.GetFormat():
             data = self.do.get_d_cooked(datf)
-    
+
             # Firefox sends lines with link URI (i.e., the a->href)
             # first, then the link text on page (e.g., 'click
             # here to download cat video') -- the latter is
@@ -4144,7 +4144,7 @@ class multi_droptarget(multi_droptarget_base):
 
     def OnEnter(self, x, y, d):
         return self.drag_return_type
-    
+
     def OnDragOver(self, x, y, d):
         return self.drag_return_type
 
@@ -4275,11 +4275,11 @@ class BecauseMSWComboPop(wx.ListBox, wxcombo.ComboPopup):
     def Init(self):
         self.w = None
         self.h = None
-    
+
     # Create popup control
     def Create(self, parent):
         st = wx.LB_HSCROLL | wx.LB_SINGLE | wx.LB_NEEDED_SB
-        wx.ListBox.Create(self, 
+        wx.ListBox.Create(self,
                 parent,
                 wx.ID_ANY,
                 style = st,
@@ -4326,7 +4326,7 @@ class BecauseMSWComboPop(wx.ListBox, wxcombo.ComboPopup):
             e.SetInt(idx)
             self.Command(e)
         wx.CallAfter(_l_e, self, c, item)
-    
+
     # Return pointer to the created control
     def GetControl(self):
         return self
@@ -4488,7 +4488,7 @@ class TopWnd(wx.Frame):
         self.tittime = 0
         self.orig_title = None
         self.tmp_title = None
-        
+
         self.in_play = False
         self.in_stop = False
         self.load_ok = False
@@ -4508,7 +4508,7 @@ class TopWnd(wx.Frame):
         self.vol_min = 0
         self.vol_max = 100
         self.vol_cur = 50
-        
+
         # load with proxy has been failing, silently
         self.can_use_proxy = False
 
@@ -4520,7 +4520,7 @@ class TopWnd(wx.Frame):
         # load_media() checks if resource is in URI form ('foo://')
         # and this determination can be useful elsewhere, so:
         self.media_current_is_uri = False
-        
+
         # e.g., length, (w, h) size in tuple (l, wxSize)
         self.media_meta = (0, wx.Size(0, 0))
 
@@ -4586,7 +4586,7 @@ class TopWnd(wx.Frame):
         szr = wx.BoxSizer(wx.VERTICAL)
 
         abdat = []
-        
+
         self.label_fullscreen_on  = _("Fu&llscreen")
         self.label_fullscreen_off = _("Leave Fu&llscreen")
         self.id_fullscreen = wx.NewId()
@@ -4625,7 +4625,7 @@ class TopWnd(wx.Frame):
                        label = _("S&top"),
                        handler = self.on_stop)
         abdat.append(bdat)
-        
+
         self.btn_panel = ButtonPanel(self, wx.ID_ANY,
                                      button_data = abdat)
 
@@ -4650,6 +4650,9 @@ class TopWnd(wx.Frame):
         self.medi_tick = -1
         self.medi_tick_span = 4
 
+        # icons associated with app/window
+        self._do_app_art()
+
         # put {menu,tool,status}bar on frame
         if cfvals:
             self.loop_track    = cfvals["loop_play"]
@@ -4672,7 +4675,7 @@ class TopWnd(wx.Frame):
 
         vszr = wx.BoxSizer(wx.VERTICAL)
         hszr = wx.BoxSizer(wx.HORIZONTAL)
-        
+
         hszr.Add(self.btn_panel, 1, wx.EXPAND, 0)
         hszr.Add(self.vol_panel, 0, wx.EXPAND, 0)
         vszr.Add(self.pos_panel, 1, wx.EXPAND | wx.TOP, 4)
@@ -4857,13 +4860,13 @@ class TopWnd(wx.Frame):
                 obj.set_tb_combos()
                 if pl:
                     obj.cmd_on_play(from_user = False)
-    
+
             if pushundo:
                 self.push_undo(do_copy = False)
             self.cmd_on_stop(from_user = False)
             wx.CallAfter(_daft, self, files, recurse, play)
             return (None, None)
-        
+
         if pushundo:
             self.push_undo(do_copy = True)
         reslist, errs = get_lst_from_args(*files,
@@ -4913,10 +4916,10 @@ class TopWnd(wx.Frame):
     def get_time_str(self, tm = None, defstr = _("stream"), wm = False):
         if tm == None:
             tm = self.medi.Length() if self.medi else 0
-        
+
         if tm == 0:
             return defstr
-        
+
         return mk_colon_time_str(tm, wm)
 
     def get_res_group_len(self):
@@ -5074,10 +5077,25 @@ class TopWnd(wx.Frame):
                 self.cbox_resrc.Append(s)
             self.cbox_resrc.SetSelection(ig)
 
+    def _do_app_art(self):
+        getters = (
+            getwxmav_16Icon,
+            getwxmav_24Icon,
+            getwxmav_32Icon,
+            getwxmav_48Icon,
+            getwxmav_64Icon,
+            )
+
+        self.icons = icons = wx.IconBundle()
+        for fimg in getters:
+            icons.AddIcon(fimg())
+
+        self.SetIcons(icons)
+
     def make_menu_bar(self):
         I = wx.NewId
         mb = wx.MenuBar()
-        
+
         # conventional File menu
         #
         self.mfile = mfile = wx.Menu()
@@ -5119,10 +5137,10 @@ class TopWnd(wx.Frame):
         self.mfile_quit = cur = wx.ID_EXIT
         mfile.Append(cur, _("&Quit"), _("Quit the program"))
         self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
-        
+
         # add file menu
         mb.Append(mfile, _("&File"))
-        
+
         # conventional Edit menu
         #
         self.medit = medit = wx.Menu()
@@ -5165,7 +5183,7 @@ class TopWnd(wx.Frame):
 
         # add edit menu
         mb.Append(medit, _("&Edit"))
-        
+
         # Controls menu
         #
         self.mctrl = mctrl = wx.Menu()
@@ -5232,16 +5250,16 @@ class TopWnd(wx.Frame):
         mctrl.Append(cur, _("F&irst Group"),
                         _("Go to the first group"))
         self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
-        
+
         # add controls menu
         mb.Append(mctrl, _("&Controls"))
-        
+
         # Tools menu
         #
         #self.mtool = mtool = wx.Menu()
         #
         #mb.Append(mtool, _("&Tools"))
-        
+
         # Help menu
         #
         self.mhelp = mhelp = wx.Menu()
@@ -5259,7 +5277,7 @@ class TopWnd(wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # Add Help menu
         mb.Append(mhelp, _("&Help"))
-        
+
         # put menu bar on frame window
         self.SetMenuBar(mb)
 
@@ -5350,44 +5368,44 @@ class TopWnd(wx.Frame):
 
         if _in_gtk:
             sty = 0
-    
+
             self.cbox_group_id = cur = wx.NewId()
             self.cbox_group = wx.Choice(tb, cur, style = sty)
             self.cbox_group.SetSize((240, -1))
             self.cbox_group.SetMinSize((120, -1))
-    
+
             stip = wx.ToolTip(_("Select Group/Playlist"))
             self.cbox_group.SetToolTip(stip)
             self.Bind(wx.EVT_CHOICE, self.on_cbox, id = cur)
-    
+
             self.cbox_resrc_id = cur = wx.NewId()
             self.cbox_resrc = wx.Choice(tb, cur, style = sty)
             self.cbox_resrc.SetSize((200, -1))
             self.cbox_resrc.SetMinSize((100, -1))
             self.cbox_resrc.SetMinClientSize((800, -1))
-    
+
             stip = wx.ToolTip(_("Select Track/Title"))
             self.cbox_resrc.SetToolTip(stip)
             self.Bind(wx.EVT_CHOICE, self.on_cbox, id = cur)
         else:
             sty = wx.CB_DROPDOWN | wx.CB_READONLY
-    
+
             self.cbox_group_id = cur = wx.NewId()
             self.cbox_group = ComboCtrlBecauseMSW(tb, cur, style = sty)
             self.cbox_group.SetPopupControl(BecauseMSWComboPop())
             self.cbox_group.SetSize((240, -1))
             self.cbox_group.SetMinSize((120, -1))
-    
+
             stip = wx.ToolTip(_("Select Group/Playlist"))
             self.cbox_group.SetToolTip(stip)
             self.Bind(wx.EVT_COMBOBOX, self.on_cbox, id = cur)
-    
+
             self.cbox_resrc_id = cur = wx.NewId()
             self.cbox_resrc = ComboCtrlBecauseMSW(tb, cur, style = sty)
             self.cbox_resrc.SetPopupControl(BecauseMSWComboPop())
             self.cbox_resrc.SetSize((200, -1))
             self.cbox_resrc.SetMinSize((100, -1))
-    
+
             stip = wx.ToolTip(_("Select Track/Title"))
             self.cbox_resrc.SetToolTip(stip)
             self.Bind(wx.EVT_COMBOBOX, self.on_cbox, id = cur)
@@ -5444,7 +5462,7 @@ class TopWnd(wx.Frame):
         if check_indice < 0:
             self.cmd_on_stop(from_user = True)
             self.unload_media()
-    
+
             self.reslist = dat
             self.media_indice = 0
         else:
@@ -5483,7 +5501,7 @@ class TopWnd(wx.Frame):
                 )
 
         dlg = self.dialog_savegroup
-        
+
         if dlg.ShowModal() != wx.ID_OK:
             return False
 
@@ -5533,7 +5551,7 @@ class TopWnd(wx.Frame):
                 )
 
         dlg = self.dialog_saveset
-        
+
         if dlg.ShowModal() != wx.ID_OK:
             return False
 
@@ -5568,10 +5586,10 @@ class TopWnd(wx.Frame):
                 )
 
         dlg = self.dialog_file
-        
+
         if dlg.ShowModal() != wx.ID_OK:
             return
-        
+
         reslist, errs = self.do_arg_list(dlg.GetPaths(),
                                          append = append,
                                          recurse = False,
@@ -5588,10 +5606,10 @@ class TopWnd(wx.Frame):
             )
 
         dlg = self.dialog_dirs
-        
+
         if dlg.ShowModal() != wx.ID_OK:
             return
-        
+
         reslist, errs = self.do_arg_list([dlg.GetPath()],
                                          append = append,
                                          recurse = recurse,
@@ -5660,7 +5678,7 @@ class TopWnd(wx.Frame):
 
     def on_menu(self, event):
         i = event.GetId()
-        
+
         if False:
             pass
         # File menu
@@ -5750,12 +5768,12 @@ class TopWnd(wx.Frame):
         obj = self.get_obj_by_id(ID)
         if obj:
             return self.show_wnd_obj(obj, show)
-        
+
         return False
 
     def show_wnd_obj(self, obj, show = True):
         r = False
-        
+
         if not obj in self.hiders.values():
             return False
 
@@ -5772,7 +5790,7 @@ class TopWnd(wx.Frame):
 
     def handle_key_down(self, recobj, event):
         kc = event.GetKeyCode()
-        
+
         ov = ord('v')
         oV = ord('V')
 
@@ -5877,7 +5895,7 @@ class TopWnd(wx.Frame):
         if use_hack:
             if not sz:
                 sz = self.GetSize()
-    
+
             ev = wx.SizeEvent(sz, self.GetId())
             wx.CallAfter(wx.PostEvent, self, ev)
         elif force: #else:
@@ -5932,7 +5950,7 @@ class TopWnd(wx.Frame):
 
         butid = [
             self.id_play, self.id_prev, self.id_next, self.id_stop ]
-        
+
         if self.reslist and self.medi:
             # activate save menus
             self.mfile.Enable(self.mfile_savegrp, True)
@@ -6040,7 +6058,7 @@ class TopWnd(wx.Frame):
                 mi.Enable(False)
 
         self.player_panel.do_idle(event)
-        
+
         if self.force_hack_idle > 0:
             self.force_hack_idle -= 1
             wx.CallAfter(self.force_hack)
@@ -6077,7 +6095,7 @@ class TopWnd(wx.Frame):
 
         if self.adv_track:
             self.cmd_on_next()
-            
+
 
     def on_media_state(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_STATECHANGED"))
@@ -6106,7 +6124,7 @@ class TopWnd(wx.Frame):
             self.seek_and_play_hack = -1
             if seek_pos > 0:
                 self.medi.Seek(seek_pos)
-            self.prdbg(_T("EVT_MEDIA_PLAY - seek_and_play_hack"))    
+            self.prdbg(_T("EVT_MEDIA_PLAY - seek_and_play_hack"))
 
             if self.seek_and_pause_hack > 0:
                 seek_op = self.seek_and_pause_hack
@@ -6174,7 +6192,7 @@ class TopWnd(wx.Frame):
 
     def on_media_stop(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_STOP"))
-        
+
         if not self.in_stop:
             self.prdbg(_T(
                 "on_media_stop: not self.in_stop -- in_play {}").format(
@@ -6187,7 +6205,7 @@ class TopWnd(wx.Frame):
                     self.prdbg(_T("on_media_stop: MSW stop; ticks -2"))
                     self.pause_ticks = -1
             return
-        
+
         # pause duration limit hack invalid now
         self.pause_ticks = -1
 
@@ -6202,7 +6220,7 @@ class TopWnd(wx.Frame):
         self.in_play = False
         self.in_stop = True
         self.set_play_label()
-        
+
         ln = 0 #self.medi.Length()
         self.medi.Seek(ln)
         self.pos_sld.SetValue(ln)
@@ -6247,7 +6265,7 @@ class TopWnd(wx.Frame):
         ln, sz = self.check_set_media_meta()
         if sz.width == 0 or sz.height == 0:
             ln, sz = self.check_set_media_meta(True)
-        
+
         self.prdbg(_T("Media length: {}").format(
                         self.get_time_str(tm = ln, wm = True)))
         self.prdbg(_T("Media size: {}x{} (in_play {})").format(
@@ -6265,7 +6283,7 @@ class TopWnd(wx.Frame):
             wx.CallAfter(call_me)
         elif not self.in_play:
             self.medi.Pause()
- 
+
             self.prdbg(_T("with_media_loaded: call after Play()"))
             wx.CallAfter(self.medi.Play)
             self.force_hack()
@@ -6301,9 +6319,9 @@ class TopWnd(wx.Frame):
             # MS seems to have trouble with 'nul', OTOH gstreamer
             # (GTK) seems to ignore empty string
             dn = _T('') if self.in_msw else os.devnull
-    
+
             ret = bool(self.medi.Load(dn))
-    
+
             self.prdbg(_T("self.medi.Load({}): '{}'").format(ret, dn))
             return ret
         else:
@@ -6357,7 +6375,7 @@ class TopWnd(wx.Frame):
                     t = bool(self.medi.Load(v))
                     if t:
                         failed = False
-                        break 
+                        break
                 except Exception as e:
                     self.prdbg(
                         _T("'{}' on load {} of '{}' due to encoding bug"
@@ -6380,12 +6398,12 @@ class TopWnd(wx.Frame):
             ln = self.medi.Length()
             sz = self.medi.GetBestSize()
             self.media_meta = (ln, sz)
-            
+
             it = self.get_reslist_item()
             if it:
                 it.length = int(ln) if (ln > 0) else -1
                 it.comment = _T("{}x{}").format(sz.width, sz.height)
-            
+
             self.player_panel.set_meta(sz, ln)
             self.player_panel.do_new_size()
             self.force_hack()
@@ -6438,7 +6456,7 @@ class TopWnd(wx.Frame):
             btn.SetLabel(self.label_fullscreen_on)
         else:
             btn.SetLabel(self.label_fullscreen_off)
-        
+
         btn.SetMinSize(btn.GetBestSize())
         self.btn_panel.get_sizer().Layout()
 
@@ -6559,7 +6577,7 @@ class TopWnd(wx.Frame):
         self.set_tb_combos()
 
         st = it.media_state
-        
+
         if st == wx.media.MEDIASTATE_PLAYING:
             self.load_func = lambda: self._seek_and_play(it.media_pos)
         elif st == wx.media.MEDIASTATE_PAUSED:
@@ -6615,7 +6633,7 @@ class TopWnd(wx.Frame):
             val = self.vol_cur
 
         val = max(self.vol_min, min(self.vol_max, val))
- 
+
         if self.medi:
             d = float(self.vol_max - self.vol_min)
             v = float(val - self.vol_min) / d
@@ -6675,10 +6693,10 @@ class TopWnd(wx.Frame):
     def cmd_on_play(self, from_user = False, event = None):
         dn, med, des, com, err, lth = self.get_reslist_item_tup()
         res = _T(des or dn or med)
- 
+
         s0 = _("Playing '{}'").format(res) if med else _(
                 "No file or URL resource to play!")
- 
+
         self.set_statusbar(s0, 0)
         self.set_statusbar(_T("  "), 1)
 
@@ -6726,7 +6744,7 @@ class TopWnd(wx.Frame):
             self.set_statusbar(s0, 0)
             self.set_statusbar(s1, 1)
             return
-        
+
         # the remainder is a play pause toggle, reached if the media
         # was already loaded
         b = False
@@ -6770,11 +6788,11 @@ class TopWnd(wx.Frame):
     def cmd_on_pause(self, from_user = False, event = None):
         if not self.load_ok:
             return
-        
+
         st = self.medi.GetState()
         if st == wx.media.MEDIASTATE_PLAYING:
             self.medi.Pause()
-        
+
         self.set_play_label()
 
         self.force_hack()
@@ -6782,7 +6800,7 @@ class TopWnd(wx.Frame):
 
         # try to keep focus on media control
         self.focus_medi_opt()
-        
+
     def on_prev(self, event):
         self.cmd_on_prev(from_user = True, event = event)
 
@@ -6790,15 +6808,15 @@ class TopWnd(wx.Frame):
         l = self.get_reslist_len()
         if not l:
             return False
-            
+
         ixnew = max(0, self.media_indice - 1)
-        
+
         if ixnew == self.media_indice:
             return False
-        
+
         self.media_indice = ixnew
         self.set_tb_combos()
-        
+
         st = self.medi.GetState()
         if (st == wx.media.MEDIASTATE_PLAYING or
             st == wx.media.MEDIASTATE_PAUSED):
@@ -6832,15 +6850,15 @@ class TopWnd(wx.Frame):
         l = self.get_reslist_len()
         if not l:
             return False
-            
+
         ixnew = min(l - 1, self.media_indice + 1)
-        
+
         if ixnew == self.media_indice:
             return False
-        
+
         self.media_indice = ixnew
         self.set_tb_combos()
-        
+
         st = self.medi.GetState()
         if (st == wx.media.MEDIASTATE_PLAYING or
             st == wx.media.MEDIASTATE_PAUSED):
@@ -6848,7 +6866,7 @@ class TopWnd(wx.Frame):
         else:
             self.unload_media()
             wx.CallAfter(self.cmd_on_play)
-        
+
         return True
 
     def cmd_last_grp(self):
@@ -6891,7 +6909,7 @@ class TopWnd(wx.Frame):
         def _sub_unload_and_play(obj):
             obj.load_ok = False
             obj.cmd_on_play()
-            
+
         wx.CallAfter(_sub_unload_and_play, self)
 
     def on_stop(self, event):
@@ -6904,7 +6922,7 @@ class TopWnd(wx.Frame):
         self.force_hack()
         # try to keep focus on media control
         self.focus_medi_opt()
-        
+
         st = self.medi.GetState()
         if st != wx.media.MEDIASTATE_STOPPED:
             self.medi.Stop()
@@ -6919,7 +6937,7 @@ class TopWnd(wx.Frame):
             return
 
         self.tittime = 2
-        
+
         t = self.GetTitle()
         self.orig_title = t
 
@@ -6958,7 +6976,7 @@ class TopWnd(wx.Frame):
         if t <= 0:
             self.do_mouse_tick_check()
             t = self.medi_tick
-        
+
         if t < 0:
             return
 
@@ -7010,7 +7028,7 @@ class TopWnd(wx.Frame):
             elif self.tittime == 1:
                 self.SetTitle(self.orig_title)
                 self.prdbg(_T("do_timep {}").format(self.tittime))
-    
+
             self.tittime -= 1
 
     def get_config(self):
@@ -7037,7 +7055,7 @@ class TopWnd(wx.Frame):
             "auto_advance"   : True,  # on track end advance to next
             "res_restart"    : True   # on start resume last state
         }
-        
+
         for k in vmap.keys():
             v = vmap[k]
             if isinstance(v, bool):
@@ -7060,8 +7078,9 @@ class TopWnd(wx.Frame):
 
         grp, gi = self.get_res_group_with_index(self.media_indice)
         config.WriteInt("resource_index", self.media_indice)
-        config.WriteInt("group_index", self.reslist.index(grp))
-        gdesc = grp.desc if grp.has_unique_desc() else ""
+        gi = self.reslist.index(grp) if grp else 0
+        config.WriteInt("group_index", gi)
+        gdesc = grp.desc if (grp and grp.has_unique_desc()) else ""
         config.Write("group_desc", gdesc)
         config.WriteInt("volume", self.vol_cur)
         st = self.medi.GetState()
@@ -7113,7 +7132,7 @@ class TopWnd(wx.Frame):
                 _("Do you really want to quit?"),
                 _("Confirm Quit"),
                 wx.YES_NO | wx.ICON_QUESTION, self)
-    
+
             if rs != wx.YES:
                 event.Veto(True)
                 self.prdbg(_T("DID Veto 1"))
@@ -7170,7 +7189,7 @@ class TopWnd(wx.Frame):
 
     def on_ms_hotkey(self, event):
         kid = event.GetId()
-        
+
         if kid == self.hotk_id_play:
             self.do_command_button(self.id_play)
         elif kid == self.hotk_id_pause:
@@ -7184,7 +7203,7 @@ class TopWnd(wx.Frame):
 
     def on_chmsg(self, event):
         t, dat = event.get_content()
-        
+
         if t != _T('1'):
             self.prdbg(_T("MSG NOT STDOUT '{}'").format(
                                                 _T(dat.rstrip())))
@@ -7195,9 +7214,9 @@ class TopWnd(wx.Frame):
         if dat[0:l] != p:
             self.prdbg(_T("CHILD STDOUT '{}'").format(_T(dat.rstrip())))
             return
-        
+
         c = dat[l:].rstrip()
-        
+
         # might not get pause, if play is a toggle -- see handlers
         if c == _T("Play"):
             self.do_command_button(self.id_play)
@@ -7211,17 +7230,161 @@ class TopWnd(wx.Frame):
             self.do_command_button(self.id_play)
 
 
-if __name__ == '__main__':
-    # http://wiki.wxpython.org/MakingSampleApps:
-    if "-inspection" in sys.argv:
-        import wx.lib.inspection
-    
-        wx.lib.inspection.InspectionTool().Show()
 
-    app = TheAppClass(ac = len(sys.argv), av = sys.argv)
+# The program licence, encoded as:
+# CHUNK = 64
+# buf = base64.b64encode(zlib.compress(f_in.read(), 9))
+# while buf:
+#   f_out.write(buf[:CHUNK] + "\n")
+#   buf = buf[CHUNK:]
+licence_data = """
+eNqdXFtz4zayfg7q/AiUX8au4ijx5OwlcSpVsi2PtWvLjiTPxG9LSZDFHYrUEqQ9
++venv24ABHWZ5GxqsxObZKPR6MvXF8x332n65+PoSX8cjAbj/p1+fLq8G15p+ncw
+mgzUd/wC/fPJVDYrC/0h0f9oCqPPf/rpXCl9VW62VfayqvXp1Rn98u8/JfxI31TG
+6Em5rN/SyuibsikWaU0EEj0s5j3FNP/yk56a9SY3+jFP5ybRkyarjf7xxx8SfVna
+Gm/f97X+4cP5+fn78x9/+JvWT5O+0oNXU21L4iKzemOqdVbXZqHrUs+JHZ0WC73I
+bF1ls4bI0bszWnqNh5mxSpdLXa/oyzybm8IavSjnzdoUdaLpfT1fpcVLVrzorAb5
+oqx1muflm1n0FImD5fFYmXQ9yw0JQE9XxlOyellWek2ca+t3jn8XxmYvhXBYp1/o
+l2/pVm/LplJLEtOiXOOJXfH7xDyzQJure1pfbonvoq5SS/zVtBYflilMleb6sZnR
+0urObYTYzYraFAtZ6qVJq5R+NryU/tZSeKY8z+/f0ytr8Gkbeg2Lhu3QEniXN0pi
+IR6tbizpRg+SyKzqsqY9a+lmk5PwsTjLh8/AdLVEtVryzkYSLHg3abHVJX1T6U1V
+vlTpWr+tSlBu6lVZWZLSmvSA3lSNleMjlk4n5dq4z45pZGdz85LUhcQ32yov7Lts
+VqXVVh/ZWVbY2qSL3pnWz2Wj52nBm91qYYZF7zi2dIJl2YPWfF6ZQr+RYDcm/QJp
+sFQ9JwkegaPKLE1VYTskAXeACXRSbSpan3b4QOQPc2b3dC8+07SGVqhV+ionHGlH
+ZDtiMnv86VOnO9ULq4JieyI1eKWldbYEaf2W2dVZEpaivcxN9goiTTUH6QWdTMUC
+ezFka7XyH5LS0o/Rp3jHaWpHG+lzUj5NPM6FSxApdGHehF8v9wtRIk/uS1G+BbqL
+EjQtKJOcLZ/OtMSntZnXYjrs4SyfSmEiWVYGkppDi6yQJ2HMsoUiZYV7gjBNwabu
+FhFKYBwqbb/IoxKnUsFwK96gvNVTU/mmswqZtM3TmonPTVWntGF6Y0MPs1mWZ3Xm
+/BAoi0TVwRONJZmAIyf+dbnIllBfFsUNPTBfU3jpxL9xkJxt5iudepGTrFYGZqfo
+pzrjHbPP0EtDhHidhvzAS+b0j7QjI1IFCQd+pZUCyxVmpKGrPbEy/nZHnemTLRtY
+ElQtUi96qiLNIzp9UonAh12RStA7a68MFFXgg5iqKAz9V1YpfzSwYXNIS0jv65Wu
+3+hMa7OxP+vT8zOOSxImu1IntVSnH85IfmTnTk2iyPS2ykiokJHlh7l5ITPniGc5
+GruQl8QnTDS/5zDExxivx1z3c0sSwlmYFCfG7pP8rdsKqMJYaEOi8GyNXuGdwikW
+uPFRuIHi2po+s+EoxJ0WJX1fIQpteUneXSfY0EEMl3sxhpnP2A/T79cGq5jcSjDY
+pNbSI6CDN6Oct7CxBhG77siImTevHKxAPqZjxZKOJCvSPKE1ZEsIMiQICu1rjqVV
+uWjmwgYHEZwuaScIkGvOcfQ4hYiWcvHoHb2waWqOMKIuN3icbxNeJHZPYKleEaSg
+0E1rUbiHLGsKIbx7Fxw3eFwjzpLewbeyB3ktswWvv4B3rGTHFMC8OiAyknGmIvQQ
+ObGJrFhkr9miAVO6nLEjkUUCniGLL7Qh3ZyztXEcWrVk6E8KQ6am6NhzTpN0AupC
+x8zKwxJfpwuAGT3PTeo4JBG4DYn5zQKGWohqOtV65+AGvDz9GnIP76UMzHoeg21w
+/sFyOT6VtEPxmqAJQ6EdJK37crquRNvmggaWJdBeT/2Pw77fAMf0dDoY3090f3St
+rx5G18Pp8GE00TcPY/rx8Xk4+pjo6+FkOh5ePuERv3j/cD28GV718Qsw/0OPkdMh
+qOTUkYVNOxAc81ZWX5xnADKkY7MqhWgQezcA0qyvUIrW7azKHMHFplsHbdeEQEnq
+rd9YqCbEH5Ghx8mH4UVPxH7yKPydEHo2JLhEMWYJ7HNYiPYA7tnvkU6e8FZmqVgz
+r+ypqbWhOKdNxluOnoAG6BKr2SudGOkXUxHm2w3n6dvPYtMZ80I7p2XlXSc2p84d
+ynpTVqwGDCYS5RgIOQR2AP8eq4z1LjfE5gV8B/bPJ6Zyss0mfYHITm/JM5IjWJKI
+k/ABFmTwPs8bgHcsUTbQdYK07nGh/Mnok3j1EyDPAVy5swx2celiQaCAzcTqE4od
+J2QofXLvrwIQSidXAKtjdtHZJINJAM8WIYt2OHW4EBfLqKypbcYmTxGUqHtVSeEt
+l6pqij3RO6fskY5ZJA6xMTXyo+QGynX8iYrAelkAbi95QZwtxwB2o1nNEVHvKZry
+K5+SGzQbQK+CsxLyWGBuZgifs+OifR7g+KynPgvA0UHJqgZwG7QsVvFxJ2xyURqJ
+BOc9ATHp9s8krB6rOTLvbIxjcLwxuAZszgq2kDVFgYaAGBkfuXnT4l8F0WyyeVM2
+NpfVyeewLyfdpd9sYOgUYGgTjBEck/FbqrU053ncJuZ5mq1JKsS0j/wX+osxG5gE
+NMChOyWfWR+xgH+QHnc8oWR+2Hw6s6agVRDLaG+BtMI7DCLb/DACAl3RkSLwVrxj
+c+uoNC/pdAW3tW/TUYVTkkyHwavDMeRqV1tLxpE7vRZj9umarCQAb+uopA4nlhvn
+YbDnAI8i/IWg+9Vn5h40s+Z8aDXH4TumKLuqDiuM95jOsynxbPRGw3FxLewedcWJ
+i6WipzHQZNfedYTOwesDoWTiNneu0hnZ7QG9JNUgwL02RpREdmFNFMd/Vlw4Ss/a
+JGCeNlYyiIAZl1ku4XNOsmXB0h5h3k7lmIaFX2Wb9jkmy1t8jlDwHmiBbMspnrzV
+Ez5me3ywbkIAgWwkLxKOsyyX2pJPB5k3Cs78lAFYVYewzr+zEuqwrx0X6A6WafB3
+DLvLJZKgDqIiH5G6VVJIweszQhRbY1YtAhUo0DEk4EO/bH9+5qF7EL0P9AXpFeNK
+QrULqc1wdoDyVJUiDJGfcZsnR0sONsoJRZTQUX5IJ1UhpHovDIuA6vHnEUEGiVnh
+GEKNqVpQpK3gLTgxJO4yOPkKh0JACQot+lQUZUPeBUVAF4TZKDoeTx/0eCkTcL84
+nvucAtNS/pJ4BBb0w1mB8BE+OGsLFlxdY4uPYL1ovJc2HxdT2DUYF0ZNnvv4BXKa
+k91Sv2bmbccnMpUW4Z0Ovs4Nu6ufEWA7Ibu2Jl/6mqM/A+KNSSDWcUgPmiDClypB
+0RF5Ik6s44H8bvYRwn+arJISjFDcIdY7I+Tu6yb87lqKClyTc9Ek6Cuv2ZoHJ6Mq
+Axag5ymlgdoaV3hhASGd5E8EDB01zYTjEmoPM/CR2rIgalzKBTSqGCG2uAMvW0PW
+Bz3DAtbhvTXJ+BV5WA1LiG1QThaIh000QR2La9XtPksKbYF9NqUdh8T1jtTuLI2i
+c1OHD9SO0tl0HUmFvmbXwzmmuBhJTTLbCSpqN6iwY40BpwtaQsMnhe4r74VUVwJS
+AG7LIZLnCQjwYJhyiK8oibujVzjayi3jQWbD0ULKIfQLTj5lW5V5SasFBQM+f/pI
+vyFMS3FsSh8mUZsAnHL9vQ4O08mJgxGAUVT/Y6BqaxWXjug1ye4qdDQIBTCzUgig
+9y40ndKKE4d2KU5vlPlqKkl/feFMakMoYeQHhR0lUGVFcC5HNcOnU/YgFKA9Dwuk
+Fpl0ctbwdOnLC6TkybqcR/YBqRwipHaxFjtI/uU3kMgZfk71a5k3KOovKeu1dVlR
+YuV8ers/wb6tF5pV3v9F3InbZJ1GlnIwyv34bai+u4Vd7pFCSjD18OfDGWJUOfs3
+aiq+Bk6nN29q9jdAZAfir5p4iztnHj5oRlHHQBQ5A5TMnE1JSYMk0OKn/pxi8gZw
+hfQ3nAZ+lxuOdZXUlDkQrskyCEG9RzAHkwKg2iQkcTbvrTYqKnwDCUqs6W6HD9gd
+3pyoleu0ykj/G18YaouECDqCxi5IhElAZPs7S4M9MeRO9GuaZ0KOZJaTd665/ib7
+2pq04kZNm1YwQGKHsE0cIHcIqkA7SwrQhTT0GBi5DpfPEBD9TOWxthNcrK8JR2GR
+PVPYlXgUo3cPp3MODPwkAP+5Mzguf9nJf3EG82PalRUQgXiKKGdlfOoCMx+QxP6d
+PtSRLQOjcPUszYmXQvyZgzGubSvlgSWXDwsgUXhKStv2yh2+jICgh+8DfzHW+mPj
+5f0GgJoGrUNaTnKppLyjJ83MR4eZSJ+gC5BLp0G2bJ2KVMSEF24LynGsQ+TES2jG
+uUptNzMjeXJH9IaThphpqcgF05fVFa8uS/p+zB5f9HtapEGulLVZC2V2eWM5M0mt
+LeeZL4iRCaRQfLPMikxqrciz3Pvih6tsIx1lBGzl4xeYy1ydjGEPKuR5nsbAod0R
+7fKWDv4VQge2U3Zj+MSNB7PJ3n5ic+EWH6KGq8ehm8fNwVDqCaA2/uwUabuUCx1l
+ktGMMxCFczprLWGd/psRwJo0mtHpqewQHH8hNTa5QBMLN37mdqgoRlWStNqtrQm6
+cZEJjre7f2RKJNWmYNzCPIellIPtqbNQLjR3pUdBfrmHFiLqgFiRBaBb4+pkrOjE
+nyLqvLQbyGB0nLpWNGvDRuY9GNX6rzTgOrlmcLlDYE/7PNxmMMrE6EHDON+qQ7Cy
+4yXRpAA+bl5WkW/PXMdcipzrDSVN0VBJRGSnXBQJA10Drf+3xQzQIikESbmG8j8u
+ogt+jVFLB0so0VRor/m6QSGXEygX6r07j6AKupkoMJFWbGrFGOeN0WB5dPnjq8N/
+oq8kOsi9orRBGKhdMEMUyXCQnb7nAbZUsEMvYEBobgoF5yo1KxaGb7Pz8SJCeIQW
+1QRD/81PLmRVO34TGGPT4WNCegNf7BmgfBCNLvrfssnFs+RZSskjw72/yNH59C7O
+NqGSm3onB7MZipK+Oc2q48Yt2NmG7QMUs4qjh/mCFF/Ktt1WrivpkQs/cjCoB9V2
+t/chszfIeFOflVXcpFtls6yWUn2evoXuvUsU9/cjdCi4lOhNz7bSGON6RQdg7xTv
+T12B8WiR/UyKO2g4zoPWyPqpK+p2zrhmAIs2NSqOfszo/9PYE44D+2pHiDspjht1
++GtP+ih1tjYOoHwL6v/BjjtDDTsG5JQfKbK3Ru/SlG8kuycyKSJG3K0lRg1+zxdZ
+N/uiGu1sc6QZ6kconHvKKDK4yuWyqbhf1Rk4cTlYW1R/p0Oy6ZyrcwCs1ySKFbe4
+eqprSW5CRVASZbb0/3OcU2uBrqUUuWPex05G9reeHi4lsHM5hUw0dAYQBChr/3ez
+eOFanoCUKDuVnrMiJIqIY/xLS3eevn+Aeo0+lW7zOnOzha5fTebaGHuWqEgLGQyz
+HFkRoDunbv4FmxKuCPkxIqF02S/ceuozH6cx6kdmUjukH5bYsZFE2m1iywgXKH5i
+3RAaj38rIxdu/gmfxzX90qFxi6kdUi+brZuczNRIs0gaGBRDXhyubL2+its20bSe
+obPk8nv0mQv9e4cI6O0V84jtubb//mRS6k83TM+UTS5ATmZEdVVuKU3YvueRgsi4
+I5zgVyHnJ7C35DGcMjTYXItlQWFhjhENLtuHnyiNZFRB+5AtsufhxMKNfEIZiCsv
+3hkJCeBZClFxnOPXZnCG6KhXCFqhHMSH/A32BcNFTZ+9ghT958rkQNKSDGOSrhCj
+NIzyJPQyCRjjvMlT8rRZNW/Wlr22eLhZmrcu3MTko0lUJUVJ30/xL0VtiZ3JVTdA
+WYgKqXhZdFCHnZLbpqnYgx2oudHJNC4+809i9dH0iW3HKlDoJ1XduuoZl+v8oJ6r
+1UnhIKu3rhukuJotb150F1+lLqPB7iIOfZfPTdJg0y+Vo+jHMNsEu3PEAvqTUF9V
+GVQfnkRC/EbGM7z2b7gkD4Fpfc/naEqMWoeRHPWCuQ4ya/E6bpmQir+hhV9xDxLT
+fXssmYXy2s6uy+UkPI3o/HlZSMHbsuPkuZZ5lLOlBJb4owtXRG02od3LQ1TfL8pC
+DmBB0WfBk6U8aqXtinUGYJDDe6dYEHj1/LXOyDEp4ydhXsK5QRcJxRGvyowx4XTH
+amI15ZE4MIpVUN3nAac3lyTOSAzmVQxgZvajlURVW+/XHZFE/L3nm2u7dYrv3dTr
+jsfKbDQ+gfaBHw7lxKiC03LZKXSl1f7Ztu1sxXm6+OgWjuzNEsErcuplO3zspwHs
+0dPFQuoOUAI67heD1zcr7qB3thgNvVBck16cEkcctpLIaGZadz/tXAeQck7BIGBN
+qYBqBSGuo7FuAbNASCykOTVPJbpGvphAfkkWjBaJZYcesUh2TlrpC4yu/TgrF9uD
+5eSfejwJc3QUHZLy0xeVec24eytHjqHmV7mEYZU7+yMj6YIBgGJhTvQnbW+CvcU0
+2HigmBThMzh34t1usorH1n2ZycJw3RdyPQIcEu7E6AJ9sDCkYjm7eBk44iXCBKW0
+OUgReQSSwbUjhqNCfRX1RhwhnXFDm4Zf9G8UzXpmqnY+1OfGXM1Zcra+8+5eIiGu
+Mhqoc5H2BM4bg1qVp3CStFkch2w/o9EWz6MCahdQ+yEx3yH0TJWVnxroLOUPuB3T
+gzqoA+qwt/e2oSFC2B4SwU6TbBtmWEqP8/0nyE0Pc3PoToaMLv3Q8+DRz6BG1sFY
+YW/+hGfhxP/GU6jW9e86FrwDqkXTuEcMEzPd+KDcDD3ge5tJO2gYokDoR8Zu7g8k
+v7PcMXu94Csc5drAyKzieBCKjDZMPLtrGghiLHeuYZDlkcovWl4wMv5SpjlbN9te
+9erVTmABuZxGxnnp+7YIwL/yN3w692aEUrkuQ86Omz8y27AgB+PCSPjkRfxJvm2v
+Oo0e9Of+eNwfTZ/5/M97+nJw1X+aDPT0dqAfxw8fx/17PZz4qdhrfTMeDPTDjb66
+7Y8/DhK8Nx7gjZgWZmQjAvTWA/88+H06GE3142B8P5xOidrls+4/PhLx/uXdQN/1
+P5M0B79fDR6n+vPtYKQeQP7zkPiZTPv4YDjSn8fD6XD0kQliEHc8/Hg71bcPd9eD
+MU/rfk+r84f6sT+eDgcTRXx8Gl53N3XSnxDbJ/rzcHr78DQNzGNz/dGz/udwdJ3o
+wZAJDX5/HA8mtH9FtIf3xPGAHg5HV3dP1zwIfEkURg9TkhPtjPicPrBo/LueOjFD
+9NX9YEzyG037l8O7IS2JyeGb4XRES/B8cV84v3q669MmnsaPD5MB6jcQIREhgY+H
+k3/q/kQ5wf721A+ESLpE474/uuKD2jlIbFc/PzwhatC+767xgvIvQFADfT24GVxN
+h5/oeOlNWmbydD9w8p5MWUB3d3o0uCJ+++NnPRmMPw2vIAc1Hjz2hyR+zEiPx6Dy
+MBLf8qGHwyMtGXyCDjyN7rDb8eC3J9rPAU0Ajf5H0jYIMzp39XlIi+OEdg8/4U/o
+QXv4z6RGD/q+/yyD2c9OPYjNMLnd1QpSilY7+5cPkMEl8TNktogRCARHdN2/738c
+TBIVlICXdsPkiZ48Dq6G+A96TqpHZ30nUiEr+u0Jp0i/cER0n44TW4MeuiODDULX
+Rl5HaO1duzxt197RP+jF3cMEykaLTPuaOaY/Lwd4ezwYkbzYnPpXV09jMi28gS+I
+m8kTGdtwxIeisF+25uH42tsTy1nf9Id3T+M9HaOVH0iEIMm6Fg7EK9nkLGEd0MMb
+Wurq1p2e7ljts76lo7gc0Gv9609DeB5ZR5EtTIZOJg+OgpMjOza+fEr74/cPDPBj
+9h+v3MqYVJ+zUamwTjn+0y+f4XBHBHZclLPQYBcZFxRY83JDwdmhoXaOMrrf5qb0
+XLB84fsftlaUg0iZrLEh/khq5zJupAwoJnBNeoUUQ0CPzLlzDMpq1Y0FEgPDhR0M
+JnWKm9FV0NAs9uVDfyPOl2TrOnUtpxYahWHeMm6WAr9wKmTTJbYGjsPXa/8yz/dx
+jwlPXI8FncFwWVRuoMjMIAGEV7N1PSsC79bBtHbYmEd4QIpp2BUXUhjY+W4/Y/iT
+AAdOCM8XrmylNyVnQDyKw5N8vNFGmg58uxFxnYTkhiB/gTz5ez8xEAngHYE1dKiE
+9Ixyj6WmkJ/KMFHKWsBT4b8yre5l6l8wifArrcAkEPUZ9Pwq63JeGl0g6pz3Rbjd
+2DllQb/t5TCZoKwPj3seumncTmbbDm4M03rHgVJ7kUKukftF7tpmGFM57U5Jn+3j
+595hAcStWJeGrTDVUzs5e9BFZkXHmci4CCU0PrjDCfkAfxFuYLhWIZd3c54Y9COd
+BLRBYjdOk3D/RJieGNYTFS4YHUnk+Kj4Fi/yLOu2jsJ6rNftIEVnTuQ4YTceEbUx
+W1leIJ8lXf8WBObvd+/0J//1fX6lcCmRSwTxjAjKaOKBebRArlkCLRuMqlVlQRuS
++4AE/snxZbnUPTvjGp3x1MS7R3+rJIUcqzDRm2dfxJkqnn6k99g5WblS0Rl0JQsy
+bpzqY0EI+1Wgvdfvv/6U7JgzrFnrri3vfT6nXMLdIO1fTh7uCHvcPce4+YJ1wqmD
+rrek4P/iu6tv73qtWez6gzb2cDAwOdaBYHfcA1NwN6lC9cgnZBfxcvN3MSM9GVxZ
+bTdI87jL1c58e/6Yh/C1019/77Zzt6STRR69ffaw5MaK64W063Hj2KLGuUV5Ax03
+7gdTlsb1hejq00HW3E0mqdOz/c+MWpdE8v2cOPjCZY21KRoSmFnb9+/hyTmVtk0m
+fd1w49/dIXGb5dE8XEbmV2Ap5ZY+O/X33sMwsvt6baozLTe5K2WRwOfS6Shknh2t
+Zlyja0tz7QWck/aeiscf2VIVuChv5b7mrZtTTzFFQUZ7ITNU/A3UVG5bPJfbcrEt
+jLdxxMTZNiwk00EtA2wiQCjOBbvFidC/Ij1/h/YYTwySOVq50Gu1m1PBGIw9CyU1
+Wuwf4EbfpvMvpmIX+IsMkuDqN2nJdEumVha/JvqcsFqV5fz3kAC0yIMEf1+HzfwN
+r0+kQa6ue8TthiqL6xu1FQ7oT3y+XNtQ0T3Y8FcOhCZbFfuiFC3aqkSHGt6G/2KJ
+UKJRfjqc72fC7Uus4uajcEJAg2e74hWjuroNUynKEfclJHEKb35I1F/qXhCg8/dn
+DvxdF+rw33WxX9r8P3d/dKk=
+"""
 
-    app.MainLoop()
 
+from wx.lib.embeddedimage import PyEmbeddedImage
 #----------------------------------------------------------------------
 wxmav_16 = PyEmbeddedImage(
 """
@@ -7242,6 +7405,10 @@ FaygYQs1WRYhoMCRMmCjDHZZIT4xjwLJnLn9bYphII306b1hRKi/kk+kmIhMJcW/wYTFRQZ0
 7v/RfyEmW/wNCi4jLhj6TdwAAAAASUVORK5CYII=
 """
 )
+getwxmav_16Data = wxmav_16.GetData
+getwxmav_16Image = wxmav_16.GetImage
+getwxmav_16Bitmap = wxmav_16.GetBitmap
+getwxmav_16Icon = wxmav_16.GetIcon
 
 #----------------------------------------------------------------------
 wxmav_24 = PyEmbeddedImage(
@@ -7272,6 +7439,10 @@ hIw5ZKgWCVkzg1wSMOR0mHK6mJmaapK/hzIWZH/ZHQBQLn4lSv1taVn4v0L9nwSYETmlKM2I
 PAlyDRPpXwBWW/ifn2GhwQAAAABJRU5ErkJggg==
 """
 )
+getwxmav_24Data = wxmav_24.GetData
+getwxmav_24Image = wxmav_24.GetImage
+getwxmav_24Bitmap = wxmav_24.GetBitmap
+getwxmav_24Icon = wxmav_24.GetIcon
 
 #----------------------------------------------------------------------
 wxmav_32 = PyEmbeddedImage(
@@ -7312,6 +7483,10 @@ ZEaWGXyXlk7dUeU25ab/Jsv/FJaU56/1j95Hxv8JfOwEpC/vzRqewvDHEdwDT/of0l3tgKL8
 jBQAAAAASUVORK5CYII=
 """
 )
+getwxmav_32Data = wxmav_32.GetData
+getwxmav_32Image = wxmav_32.GetImage
+getwxmav_32Bitmap = wxmav_32.GetBitmap
+getwxmav_32Icon = wxmav_32.GetIcon
 
 #----------------------------------------------------------------------
 wxmav_48 = PyEmbeddedImage(
@@ -7372,6 +7547,10 @@ TEFEEymJdBEWk0v2mA4ApqJzuMMaPCEV3oAmnJELtpEgwnQUL3lpKMzMKQyqMuynTQl2Y65+
 zHpaXxBYVhf6L4MrE7SANK6VAAAAAElFTkSuQmCC
 """
 )
+getwxmav_48Data = wxmav_48.GetData
+getwxmav_48Image = wxmav_48.GetImage
+getwxmav_48Bitmap = wxmav_48.GetBitmap
+getwxmav_48Icon = wxmav_48.GetIcon
 
 #----------------------------------------------------------------------
 wxmav_64 = PyEmbeddedImage(
@@ -7452,4 +7631,20 @@ AEi+9+V1xOy9ENtnCqRjtg2/eeuK/KfTXOJzBVxqAS41PlfApRbgUuNzBVxqAS41PlfApRbg
 UiOlAL6IFPizAuMqnPNM+H9/kssOo3BO/AAAAABJRU5ErkJggg==
 """
 )
+getwxmav_64Data = wxmav_64.GetData
+getwxmav_64Image = wxmav_64.GetImage
+getwxmav_64Bitmap = wxmav_64.GetBitmap
+getwxmav_64Icon = wxmav_64.GetIcon
+
+
+if __name__ == '__main__':
+    # http://wiki.wxpython.org/MakingSampleApps:
+    if "-inspection" in sys.argv:
+        import wx.lib.inspection
+
+        wx.lib.inspection.InspectionTool().Show()
+
+    app = TheAppClass(ac = len(sys.argv), av = sys.argv)
+
+    app.MainLoop()
 

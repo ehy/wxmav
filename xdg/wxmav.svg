@@ -16,9 +16,9 @@
    version="1.1"
    inkscape:version="0.92.1 r"
    sodipodi:docname="wxmav.svg"
-   inkscape:export-filename="/home/evh/code/active-proj/cprec/xdg/wxdvdbackup-128.png"
-   inkscape:export-xdpi="360"
-   inkscape:export-ydpi="360">
+   inkscape:export-filename="/home/evh/code/active-proj/wxmav/xdg/wxmav-128.png"
+   inkscape:export-xdpi="384"
+   inkscape:export-ydpi="384">
   <defs
      id="defs4">
     <linearGradient
@@ -102,6 +102,21 @@
        x2="26"
        y2="-16"
        gradientUnits="userSpaceOnUse" />
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Color Shift"
+       id="filter3933">
+      <feColorMatrix
+         type="hueRotate"
+         values="310"
+         result="color1"
+         id="feColorMatrix3929" />
+      <feColorMatrix
+         type="saturate"
+         values="0.9"
+         result="color2"
+         id="feColorMatrix3931" />
+    </filter>
   </defs>
   <sodipodi:namedview
      id="base"
@@ -111,7 +126,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="15.625"
-     inkscape:cx="17.559625"
+     inkscape:cx="6.519625"
      inkscape:cy="15.974406"
      inkscape:document-units="px"
      inkscape:current-layer="layer2"
@@ -155,7 +170,7 @@
      id="layer2"
      inkscape:label="L1">
     <rect
-       style="fill:url(#linearGradient3818);fill-opacity:1;stroke:url(#linearGradient3836);stroke-width:1.23300000000000010;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       style="fill:url(#linearGradient3818);fill-opacity:1;stroke:url(#linearGradient3836);stroke-width:1.233;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0;filter:url(#filter3933)"
        id="rect4975"
        width="30.929506"
        height="30.801508"
