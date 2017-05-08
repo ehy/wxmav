@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!-- NOTE NOTE (and) NOTE!:
+     this xdg mime xml file is for-position-only at present,
+     do not install at present! -->
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+	<mime-type type="application/x-wxDVDBackup">
+		<comment>Video DVD backup utility</comment>
+		<glob pattern="*.none_or_dvd_device"/>
+	</mime-type>
+</mime-info>

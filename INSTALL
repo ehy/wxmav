@@ -1,0 +1,274 @@
+If using the common configure script is unfamiliar, read the standard
+instructions beginning at "Basic Installation" below.
+
+Peculiarities of this package:
+
+- Two included programs, cprec and dd-dvd, both depend on a library
+  called 'libdvdread' but do not depend on libdvdread to be configured,
+  built,  and installed.  That is because the library is, by default,
+  loaded at runtime.  If dd-dvd is used when libdvdread is not present
+  or cannot be found, it will print a message and fail.  Likewise with
+  cprec if given a -d <number> argument, which specifies DVD backup.
+  Without -d, cprec copies like cp -R, but does not treat DVD video
+  in any special way and therefore might fail.
+
+  If wanted, the programs can be configured to implicitly link
+  libdvdread at build-time by giving the configure script the
+  --with-libdvdread option, and a specific installation of the library
+  can be specified with --with-libdvdread=/path/to/libdvdread. In the
+  latter case you are expected to provide necessary compiler and link
+  editor options.  On some systems, such as OpenSolaris or OpenIndiana,
+  it will be necessary to link in a static libdvdread archive using
+  --with-libdvdread=/path/to/libdvdread.a because a needed procedure
+  is not available in the dynamic library build.  (To date this has
+  not been a problem on GNU/Linux or the *BSD systems.)
+
+  A specific installation of (dynamic) libdvdread may be specified at
+  runtime using the -L option with cprec and dd-dvd, provided the
+  configure option --with-libdvdread is not used; see the manual page.
+
+- Version 0.2.1 of the cprec package includes a graphical front-end
+  that should be easier to use than the command line programs cprec
+  and dd-dvd alone.  The front-end, called wxDVDBackup, covers the
+  whole process of making a DVD video backup, optionally including
+  write to blank, and provides a number of options.
+
+  The wxDVDBackup program is written in python, requiring python 2.7
+  or greater (but not python 3.x), and uses wxPython -- the python
+  module providing wxWidgets.  wxPython should be available from
+  the package systems of most Unix-like systems.  wxDVDBackup also
+  requires that certain DVD tool programs be available: growisofs,
+  dvd+rw-mediainfo, and dvd+rw-format from one package, and also
+  mkisofs or genisoimage.
+
+  By default the front-end wxDVDBackup is installed without checking
+  for the prerequisites (other than python).  If the front-end is
+  not wanted, use the configure option --disable-wxpy-frontend.
+  Installation of the front-end will also attempt to install icons
+  and menu items using xdg-icon-resource and xdg-desktop-menu, if
+  they are available.  Installation will *not* fail if they are not.
+  If the XDG item installation is not wanted (but the front-end is),
+  use the configure option --disable-wxpy-frontend-xdg.
+
+- As of autoconf version 2.60 (the configure script) configure uses
+  defaults for installation paths as preferred by the GNU project.
+  These defaults might or might not be suitable on non-GNU systems.
+  In particular, the manual pages cprec(1) and dd-dvd(1) might seem to
+  be missing on BSD systems, Open{Solaris,Indiana}, and so on.  That
+  is because the autoconf manpage install path is /usr/local/share/man.
+  Non GNU systems probably do not include that path in the default
+  man-system configuration.  For installation on GNU/Linux or similar
+  the default will probably suit you.  On {Open,Net,Free}BSD and
+  Open{Solaris,Indiana} --mandir=/usr/local/man will work (if you use
+  the default --prefix).
+
+- The programs uses symbols (of functions) in libdvdread that some
+  versions of that library attempt to keep private in the shared build.
+  ``Attempt'' because on most systems these programs have been tested
+  on the symbols are not actually rendered private and can be used.
+  One exception is OpenIndiana using the SunStudio tools, and surely
+  there are others.  If the configure script notes 'UDFFindFile' and
+  fails, make sure the build of libdvdread includes a static version
+  and configure with --with-libdvdread=/path/to/libdvdread.a, or hack
+  the libdvdread package to make the private symbols visible.  (Note
+  that the 'private' functions seem stable.)
+
+- The included program cprec is compiled with a default for the dvd
+  device node.  This is '/dev/dvd' unless something else is set.  The
+  configure script does not include an option to set this value, but
+  it can be set with a CFLAGS argument.  For example:
+
+    % ./configure CFLAGS="$CFLAGS -DDEFAULT_DVD_NODE=\\\"/dev/<your  node  here>\\\""
+
+  The example above assumes CFLAGS is already present in your working
+  environment and should be used.  Otherwise, you might prefer this:
+
+    % ./configure CFLAGS="-O -DDEFAULT_DVD_NODE=\\\"/dev/<your  node  here>\\\""
+
+  See ./configure --help for the usual build variables that can be set
+  as arguments on the configure command line.
+
+The standard autoconf instructions follow:
+
+Basic Installation
+==================
+
+   These are generic installation instructions.
+
+   The `configure' shell script attempts to guess correct values for
+various system-dependent variables used during compilation.  It uses
+those values to create a `Makefile' in each directory of the package.
+It may also create one or more `.h' files containing system-dependent
+definitions.  Finally, it creates a shell script `config.status' that
+you can run in the future to recreate the current configuration, a file
+`config.cache' that saves the results of its tests to speed up
+reconfiguring, and a file `config.log' containing compiler output
+(useful mainly for debugging `configure').
+
+   If you need to do unusual things to compile the package, please try
+to figure out how `configure' could check whether to do them, and mail
+diffs or instructions to the address given in the `README' so they can
+be considered for the next release.  If at some point `config.cache'
+contains results you don't want to keep, you may remove or edit it.
+
+   The file `configure.in' is used to create `configure' by a program
+called `autoconf'.  You only need `configure.in' if you want to change
+it or regenerate `configure' using a newer version of `autoconf'.
+
+The simplest way to compile this package is:
+
+  1. `cd' to the directory containing the package's source code and type
+     `./configure' to configure the package for your system.  If you're
+     using `csh' on an old version of System V, you might need to type
+     `sh ./configure' instead to prevent `csh' from trying to execute
+     `configure' itself.
+
+     Running `configure' takes awhile.  While running, it prints some
+     messages telling which features it is checking for.
+
+  2. Type `make' to compile the package.
+
+  3. Optionally, type `make check' to run any self-tests that come with
+     the package.
+
+  4. Type `make install' to install the programs and any data files and
+     documentation.
+
+  5. You can remove the program binaries and object files from the
+     source code directory by typing `make clean'.  To also remove the
+     files that `configure' created (so you can compile the package for
+     a different kind of computer), type `make distclean'.  There is
+     also a `make maintainer-clean' target, but that is intended mainly
+     for the package's developers.  If you use it, you may have to get
+     all sorts of other programs in order to regenerate files that came
+     with the distribution.
+
+Compilers and Options
+=====================
+
+   Some systems require unusual options for compilation or linking that
+the `configure' script does not know about.  You can give `configure'
+initial values for variables by setting them in the environment.  Using
+a Bourne-compatible shell, you can do that on the command line like
+this:
+     CC=c89 CFLAGS=-O2 LIBS=-lposix ./configure
+
+Or on systems that have the `env' program, you can do it like this:
+     env CPPFLAGS=-I/usr/local/include LDFLAGS=-s ./configure
+
+Compiling For Multiple Architectures
+====================================
+
+   You can compile the package for more than one kind of computer at the
+same time, by placing the object files for each architecture in their
+own directory.  To do this, you must use a version of `make' that
+supports the `VPATH' variable, such as GNU `make'.  `cd' to the
+directory where you want the object files and executables to go and run
+the `configure' script.  `configure' automatically checks for the
+source code in the directory that `configure' is in and in `..'.
+
+   If you have to use a `make' that does not supports the `VPATH'
+variable, you have to compile the package for one architecture at a time
+in the source code directory.  After you have installed the package for
+one architecture, use `make distclean' before reconfiguring for another
+architecture.
+
+Installation Names
+==================
+
+   By default, `make install' will install the package's files in
+`/usr/local/bin', `/usr/local/man', etc.  You can specify an
+installation prefix other than `/usr/local' by giving `configure' the
+option `--prefix=PATH'.
+
+   You can specify separate installation prefixes for
+architecture-specific files and architecture-independent files.  If you
+give `configure' the option `--exec-prefix=PATH', the package will use
+PATH as the prefix for installing programs and libraries.
+Documentation and other data files will still use the regular prefix.
+
+   In addition, if you use an unusual directory layout you can give
+options like `--bindir=PATH' to specify different values for particular
+kinds of files.  Run `configure --help' for a list of the directories
+you can set and what kinds of files go in them.
+
+   If the package supports it, you can cause programs to be installed
+with an extra prefix or suffix on their names by giving `configure' the
+option `--program-prefix=PREFIX' or `--program-suffix=SUFFIX'.
+
+Optional Features
+=================
+
+   Some packages pay attention to `--enable-FEATURE' options to
+`configure', where FEATURE indicates an optional part of the package.
+They may also pay attention to `--with-PACKAGE' options, where PACKAGE
+is something like `gnu-as' or `x' (for the X Window System).  The
+`README' should mention any `--enable-' and `--with-' options that the
+package recognizes.
+
+   For packages that use the X Window System, `configure' can usually
+find the X include and library files automatically, but if it doesn't,
+you can use the `configure' options `--x-includes=DIR' and
+`--x-libraries=DIR' to specify their locations.
+
+Specifying the System Type
+==========================
+
+   There may be some features `configure' can not figure out
+automatically, but needs to determine by the type of host the package
+will run on.  Usually `configure' can figure that out, but if it prints
+a message saying it can not guess the host type, give it the
+`--host=TYPE' option.  TYPE can either be a short name for the system
+type, such as `sun4', or a canonical name with three fields:
+     CPU-COMPANY-SYSTEM
+
+See the file `config.sub' for the possible values of each field.  If
+`config.sub' isn't included in this package, then this package doesn't
+need to know the host type.
+
+   If you are building compiler tools for cross-compiling, you can also
+use the `--target=TYPE' option to select the type of system they will
+produce code for and the `--build=TYPE' option to select the type of
+system on which you are compiling the package.
+
+Sharing Defaults
+================
+
+   If you want to set default values for `configure' scripts to share,
+you can create a site shell script called `config.site' that gives
+default values for variables like `CC', `cache_file', and `prefix'.
+`configure' looks for `PREFIX/share/config.site' if it exists, then
+`PREFIX/etc/config.site' if it exists.  Or, you can set the
+`CONFIG_SITE' environment variable to the location of the site script.
+A warning: not all `configure' scripts look for a site script.
+
+Operation Controls
+==================
+
+   `configure' recognizes the following options to control how it
+operates.
+
+`--cache-file=FILE'
+     Use and save the results of the tests in FILE instead of
+     `./config.cache'.  Set FILE to `/dev/null' to disable caching, for
+     debugging `configure'.
+
+`--help'
+     Print a summary of the options to `configure', and exit.
+
+`--quiet'
+`--silent'
+`-q'
+     Do not print messages saying which checks are being made.  To
+     suppress all normal output, redirect it to `/dev/null' (any error
+     messages will still be shown).
+
+`--srcdir=DIR'
+     Look for the package's source code in directory DIR.  Usually
+     `configure' can determine that directory automatically.
+
+`--version'
+     Print the version of Autoconf used to generate the `configure'
+     script, and exit.
+
+`configure' also accepts some other, not widely useful, options.

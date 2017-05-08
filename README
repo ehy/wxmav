@@ -1,0 +1,24 @@
+This package contains two command line tool programs -- the namesake
+'cprec' and dd-dvd (the latter can be disabled by configure
+option --disable-dd-dvd) -- and a graphical front-end wxDVDBackup.
+These tools are helpers for making a backup of DVD video.
+
+The cprec and dd-dvd tools should be useful to those accustomed to
+working at the command line and developing their own procedures
+for accomplishing a task.  Manual pages cprec(1) and dd-dvd(1)
+are installed.
+
+The front-end wxDVDBackup should be easy and convenient to use,
+particularly for those willing to spend a few moments examining the
+interface.  There are several detailed ``tool-tips''.
+
+Both cprec and dd-dvd depend on a library called libdvdread, but
+libdvdread is not a prerequisite to build and install the programs,
+because by default the programs attempt to load libdvdread and its
+symbols at runtime. See INSTALL.
+
+The front-end wxDVDBackup is written in python and uses wxPython,
+plus some other useful tools. See INSTALL.
+
+Author: Ed Hynan <email in cprec(1) and dd-dvd(1)>.
+

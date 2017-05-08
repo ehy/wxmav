@@ -1,0 +1,16 @@
+!*.h *.c *.cpp *.cc *.cxx .gitignore *.sh *.nsi *.pot Makefile README*
+autom4*
+uninstall/*
+*.pot
+*.bak
+bak
+*.geany
+*.o
+*_dbg
+*.exe
+*.mo
+.depend
+depend
+*-working
+.exrc
+.nexrc

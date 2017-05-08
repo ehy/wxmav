@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=0.0.1a
+Type=Application
+Name=wxDVDBackup
+Comment=Video DVD backup utility
+TryExec=wxDVDBackup
+Exec=wxDVDBackup
+Icon=wxdvdbackup
+Categories=AudioVideo;Utility;

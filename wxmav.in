@@ -1,0 +1,45 @@
+#! /bin/sh
+#
+# Small Bourne shell wrapper to exec Python program code
+# as installed by auto{conf,make}
+# Copyright (C) 2017 Ed Hynan
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301, USA.
+#
+
+PROG=${0##*/}
+PROGBN=${PROG%.*}
+
+PYINTERP=@PYTHON@
+inst_py_dir=@pythondir@
+
+e2 () { printf '%s: %s\n' "$PROG" "$*" 1>&2; }
+fail () { e2 "$*"; exit 1; }
+
+bin_file=""
+for X in "pyo" "pyc" "py" ; do
+    TF="$inst_py_dir/${PROGBN}.${X}"
+    if test -f "$TF" ; then
+        bin_file="$TF"
+        break
+    fi
+done
+
+test X"$bin_file" = X && fail \
+    cannot find "${PROGBN}" program code in \""$inst_py_dir"\"
+
+exec $PYINTERP "$bin_file" ${1+"$@"}
+fail return from exec $PYINTERP \!
