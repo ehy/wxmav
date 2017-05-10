@@ -2569,8 +2569,8 @@ class TheAppClass(wx.App):
         wx.Log.DontCreateOnDemand()
 
         if self.reslist:
-            wr_current_set(self.reslist,
-                           self.get_data_dir_curset())
+            dset = self.get_data_dir_curset()
+            wr_current_set(self.reslist, dset)
 
         if self.mshelper:
             self.mshelper.do_resume()
@@ -2612,6 +2612,7 @@ class TheAppClass(wx.App):
             # Custom event from child handler threads
             self.Bind(EVT_CHILDPROC_MESSAGE, self.on_chmsg)
 
+        #self.SetAppName(self.prog)
         self.std_paths = wx.StandardPaths.Get()
 
         config = self.get_config()
@@ -2648,10 +2649,9 @@ class TheAppClass(wx.App):
             h = 600
         size = wx.Size(w, h)
 
-        self.SetAppName(_("(WX) M A/V (Player)"))
         self.frame = TopWnd(
             None, wx.ID_ANY,
-            self.GetAppName(),
+            _("(WX) M A/V (Player)"),
             size = size, pos = pos,
             cmdargs = acmd, argplay = argplay)
 
@@ -5233,7 +5233,7 @@ class TopWnd(wx.Frame):
             else:
                 ico = getwxmav_24Icon()
 
-        nam = wx.GetApp().GetAppName()
+        nam = self.GetTitle()
         t = _T(tip).strip()
         if t:
             t = _T("{}\n\n{}").format(_T(nam), t)
