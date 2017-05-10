@@ -5201,7 +5201,7 @@ class TopWnd(wx.Frame):
         return tob
 
     def del_taskbar_object(self):
-        tob = self.get_taskbar_object(False)
+        tob = self.get_taskbar_object(make_if_needed = False)
         if tob:
             tob.RemoveIcon()
             tob.Destroy()
@@ -5214,7 +5214,7 @@ class TopWnd(wx.Frame):
         if set_on == True:
             do = True
         elif set_on == False:
-            do = True
+            do = False
 
         if do:
             return self.get_taskbar_object(make_if_needed = True)
@@ -5222,16 +5222,16 @@ class TopWnd(wx.Frame):
             return self.del_taskbar_object()
 
     def set_taskbar_tooltip(self, tip = "", ico = None):
-        try:
-            tob = self.taskbar_obj
-        except AttributeError:
-            return
+        tob = self.get_taskbar_object(make_if_needed = False)
 
         if tob == None:
             return
 
         if ico == None:
-            ico = getwxmav_32Icon()
+            if _in_msw:
+                ico = getwxmav_16Icon()
+            else:
+                ico = getwxmav_24Icon()
 
         nam = wx.GetApp().GetAppName()
         t = _T(tip).strip()
