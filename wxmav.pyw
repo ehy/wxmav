@@ -2648,9 +2648,10 @@ class TheAppClass(wx.App):
             h = 600
         size = wx.Size(w, h)
 
+        self.SetAppName(_("(WX) M A/V (Player)"))
         self.frame = TopWnd(
             None, wx.ID_ANY,
-            _("Mini Media Player"),
+            self.GetAppName(),
             size = size, pos = pos,
             cmdargs = acmd, argplay = argplay)
 
@@ -2955,8 +2956,6 @@ class MediaPanel(wx.Panel):
         # and furthermore Quicktime for MSW seems to be dead since
         # ~2009
         try:
-            if py_v_is_3:
-                raise NotImplementedError
             backend = ""
             if True and self.in_msw:
                 # [original comment:]
@@ -2973,7 +2972,11 @@ class MediaPanel(wx.Panel):
                 #backend = wx.media.MEDIABACKEND_DIRECTSHOW
                 backend = wx.media.MEDIABACKEND_WMP10
 
-            self.medi = wx.media.PreMediaCtrl()
+            if phoenix:
+                self.medi = wx.media.MediaCtrl()
+            else:
+                self.medi = wx.media.PreMediaCtrl()
+
             ok = self.medi.Create(
                 self, wx.ID_ANY,
                 pos = wx.DefaultPosition, size = wx.DefaultSize,
@@ -2983,7 +2986,8 @@ class MediaPanel(wx.Panel):
             if not ok:
                 raise NotImplementedError
 
-            self.medi.PostCreate(self.medi)
+            if not phoenix:
+                self.medi.PostCreate(self.medi)
         except NotImplementedError:
             self.medi = wx.media.MediaCtrl(
                 self, wx.ID_ANY,
@@ -4287,11 +4291,16 @@ class UndoRedoManager:
 # wxComboBox or wxChoice, but on MSW the dropdown does not
 # resize for long strings (GTK does, and is fine) -- hence
 # this additional program bloat:
-class BecauseMSWComboPop(wx.ListBox, wxcombo.ComboPopup):
+class BecauseMSWComboPop(wxcombo.ComboPopup):
     def __init__(self):
         self.Init()
-        self.PostCreate(wx.PreListBox())
         wxcombo.ComboPopup.__init__(self)
+        if phoenix:
+            self.lbox = wx.ListBox()
+        else:
+            self.lbox = wx.PreListBox()
+            self.lbox.PostCreate(self.lbox)
+
         self.cctrl = None
         self.w = None
         self.h = None
@@ -4304,12 +4313,12 @@ class BecauseMSWComboPop(wx.ListBox, wxcombo.ComboPopup):
     # Create popup control
     def Create(self, parent):
         st = wx.LB_HSCROLL | wx.LB_SINGLE | wx.LB_NEEDED_SB
-        wx.ListBox.Create(self,
+        self.lbox.Create(
                 parent,
                 wx.ID_ANY,
                 style = st,
                 pos = (0, 0),
-                size = wx.DefaultSize)
+                size = (-1, 33))
 
         self.Bind(wx.EVT_MOTION, self.on_motion)
         self.Bind(wx.EVT_LEFT_DOWN, self.on_ldown)
@@ -4318,18 +4327,21 @@ class BecauseMSWComboPop(wx.ListBox, wxcombo.ComboPopup):
 
         return True
 
+    def Bind(self, *a, **ka):
+        return self.lbox.Bind(*a, **ka)
+
     def on_motion(self, evt):
-        item = self.HitTest(evt.GetPosition())
+        item = self.lbox.HitTest(evt.GetPosition())
         if item >= 0:
-            self.Select(item)
+            self.lbox.Select(item)
 
     def on_ldown(self, evt):
-        item = self.HitTest(evt.GetPosition())
+        item = self.lbox.HitTest(evt.GetPosition())
+
+        self.Dismiss()
 
         if item < 0:
             return
-
-        self.Dismiss()
 
         # GetComboCtrl returns swig object under wxPython
         # so 'c = self.GetComboCtrl()' is no good --
@@ -4347,68 +4359,74 @@ class BecauseMSWComboPop(wx.ListBox, wxcombo.ComboPopup):
             e = wx.CommandEvent(etype, self.GetId())
             # The following two Set*() ensure that event.IsSelection()
             # returns true, and event.GetSelection() returns the index
-            e.SetExtraLong(idx)
+            e.SetExtraLong(idx + 1)
             e.SetInt(idx)
             self.Command(e)
         wx.CallAfter(_l_e, self, c, item)
 
     # Return pointer to the created control
     def GetControl(self):
-        return self
+        return self.lbox
+
+    # Return Id of the created control
+    def GetId(self):
+        return self.lbox.GetId()
+
+    # Relay Command to the created control
+    def Command(self, *a):
+        return self.lbox.Command(*a)
 
     def Append(self, txt):
         txt = _WX(txt)
-        dc = wx.ClientDC(self)
-        dw, dh = dc.GetTextExtent(txt)
-        sz, sy = dc.GetLogicalScale()
+        r = self.lbox.Append(txt)
+        a = self.lbox.GetStrings()
+        mtx = '\r\n'.join(a)
+        dc = wx.ClientDC(self.lbox)
 
-        sb_wid = 28 # FIXME want scrollbar width
-
-        dw += sb_wid
-        dw *= sz
-        dh *= sy
-
-        if self.w == None:
-            self.w = dw
-        if self.h == None:
-            self.h = dh + sb_wid * sy
+        if phoenix:
+            self.w, self.h = dc.GetMultiLineTextExtent(mtx)
         else:
-            self.h += dh
+            self.w, self.h, lh = dc.GetMultiLineTextExtent(mtx)
 
-        self.w = max(dw, self.w)
+        self.w += 28 # FIXME want scrollbar width
+        self.h += 28
 
-        return wx.ListBox.Append(self, txt)
+        return r
 
     def Select(self, n):
-        if n < 0 or n >= self.GetCount():
+        if n < 0 or n >= self.lbox.GetCount():
             return
 
-        self.SetSelection(n)
-        return self.GetSelection()
+        self.lbox.SetSelection(n)
+        return self.lbox.GetSelection()
 
     # Translate string into a list selection
     def SetStringValue(self, s): # const wxString& s)
-        n = self.FindString(s)
-        if n != wx.NOT_FOUND:
-            self.Select(n)
-        return n
+        self.lbox.SetStringSelection(s)
 
     # Get list selection as a string
     def GetStringValue(self):
-        n = self.GetSelection()
-        if n != None and n >= 0:
-            return self.GetString(n);
-        return wx.EmptyString
+        r = self.lbox.GetStringSelection()
+        if not r:
+            r = wx.EmptyString
+        return r
+
+    # Get list selection
+    def GetSelection(self):
+        return self.lbox.GetSelection()
 
     def Clear(self):
-        wx.ListBox.Clear(self)
+        self.lbox.Clear()
+        # TODO: SetSize() is ineffective, find something else
+        #self.lbox.SetSize((69, 33))
+        #self.lbox.SetVirtualSize((69, 33))
         self.w = None
         self.h = None
 
     # Called immediately after the popup is shown
     def OnPopup(self):
         wxcombo.ComboPopup.OnPopup(self)
-        self.SetFocus()
+        self.lbox.SetFocus()
 
     # Called when popup is dismissed
     def OnDismiss(self):
@@ -4434,14 +4452,15 @@ class BecauseMSWComboPop(wx.ListBox, wxcombo.ComboPopup):
         if self.w != None:
             minWidth = max(minWidth, self.w)
 
-        # These height adjustments are not working under MSW, in
-        # particular setting prefHeight causes a large list to
-        # appear in bad places like off the top of screen -- also
-        # max height does not seem to reduce uneeded height that
-        # had been set previously.
-        # Probably safest to accept defaults.
-        if False and self.h != None:
-            maxHeight = min(self.h, maxHeight)
+        # These height adjustments *must not* increase the
+        # values passed to this call, which causes the list to
+        # appear in bad places like off the top of screen
+        if True or not _in_gtk:
+            mxy = wx.SystemSettings.GetMetric(wx.SYS_SCREEN_Y)-28
+            mxy = int(min(maxHeight, mxy))
+            if self.h != None:
+                maxHeight = int(min(self.h, mxy))
+                prefHeight = int(min(mxy, self.h))
 
         return wxcombo.ComboPopup.GetAdjustedSize(self,
                         minWidth, prefHeight, maxHeight)
@@ -4465,8 +4484,9 @@ class ComboCtrlBecauseMSW(wxcombo.ComboCtrl):
         # Tack on a reference to self, had some problem
         # getting a reference to this in the popup class
         ctrl.cctrl = self
+        self.ctrl = ctrl
 
-        ctrl.Bind(wx.EVT_LISTBOX, self.on_dbox)
+        self.Bind(wx.EVT_LISTBOX, self.on_dbox)
 
     def on_dbox(self, event):
         if not event.IsSelection():
@@ -4475,28 +4495,51 @@ class ComboCtrlBecauseMSW(wxcombo.ComboCtrl):
         def _s_v_c(self, idx):
             etype = wx.EVT_COMBOBOX.evtType[0]
             e = wx.CommandEvent(etype, self.GetId())
-            e.SetExtraLong(idx)
+            e.SetExtraLong(idx + 1)
             e.SetInt(idx)
             self.Command(e)
         wx.CallAfter(_s_v_c, self, event.GetSelection())
 
     def Append(self, item):
-        self.GetControl().Append(item)
+        self.ctrl.Append(item)
 
     def SetSelection(self, item):
-        c = self.GetControl()
+        c = self.ctrl
         c.Select(item)
-        self.SetValue(c.GetString(item))
+        self.SetValue(c.GetStringValue())
 
     def GetSelection(self):
-        return self.GetControl().GetSelection()
+        return self.ctrl.GetSelection()
 
     def Clear(self):
-        self.GetControl().Clear()
+        self.ctrl.Clear()
 
     def GetControl(self):
         return self.GetPopupControl().GetControl()
 
+
+"""
+Object for the taskbar, system tray, whatever it's called
+"""
+class TaskBarObject(wxadv.TaskBarIcon):
+    def __init__(self, topwnd):
+        wxadv.TaskBarIcon.__init__(self)
+        self.wnd = topwnd
+
+        self.Bind(wx.EVT_MENU, self.wnd.on_menu)
+
+        #nb = wx.SystemSettings.GetMetric(wx.SYS_MOUSE_BUTTONS)
+        # the call to get number of buttons returns -1
+        # on GTK -- not helpful -- so onlyc handle left
+        # button if gtk or msw, to avoid Apple
+        if _in_gtk or _in_msw:
+            self.Bind(wxadv.EVT_TASKBAR_LEFT_DOWN, self.on_ldown)
+
+    def CreatePopupMenu(self):
+        return self.wnd.make_taskbar_menu()
+
+    def on_ldown(self, event):
+        self.wnd.do_taskbar_click(event)
 
 """
 The main top-level window class, also suffused with the bulk
@@ -4687,6 +4730,7 @@ class TopWnd(wx.Frame):
         self.make_menu_bar()
         self.make_status_bar()
         self.make_tool_bar()
+        self._do_taskbar_object()
 
         self.id_svol = wx.NewId()
         self.vol_panel = SliderPanel(self, wx.ID_ANY,
@@ -5069,7 +5113,10 @@ class TopWnd(wx.Frame):
 
     def set_statusbar(self, txt, pane):
         sb = self.GetStatusBar()
-        sb.SetStatusText(_WX(txt), pane)
+        t = _WX(txt)
+        sb.SetStatusText(t, pane)
+        if pane == 0:
+            self.set_taskbar_tooltip(t)
 
     def set_tb_combos(self, do_group = True, do_resrc = True):
         ix = self.media_indice
@@ -5118,6 +5165,55 @@ class TopWnd(wx.Frame):
             icons.AddIcon(fimg())
 
         self.SetIcons(icons)
+
+    def _do_taskbar_object(self):
+        try:
+            if self.taskbar_obj:
+                return self.taskbar_obj
+        except AttributeError:
+            pass
+
+        self.taskbar_obj = TaskBarObject(self)
+        self.set_taskbar_tooltip()
+
+        return self.taskbar_obj
+
+    def get_taskbar_object(self, make_if_needed = False):
+        try:
+            tob = self.taskbar_obj
+        except AttributeError:
+            tob = None
+
+        if tob == None and make_if_needed:
+            return self._do_taskbar_object()
+
+        return tob
+
+    def del_taskbar_object(self):
+        tob = self.get_taskbar_object(False)
+        if tob:
+            tob.RemoveIcon()
+            tob.Destroy()
+            self.taskbar_obj = None
+
+    def set_taskbar_tooltip(self, tip = "", ico = None):
+        try:
+            tob = self.taskbar_obj
+        except AttributeError:
+            return
+
+        if ico == None:
+            ico = getwxmav_32Icon()
+
+        nam = wx.GetApp().GetAppName()
+        t = _T(tip).strip()
+        if t:
+            t = _T("{}\n\n{}").format(_T(nam), t)
+        else:
+            t = _T(nam)
+
+        tob.SetIcon(ico, t)
+
 
     def make_menu_bar(self):
         I = wx.NewId
@@ -5308,6 +5404,57 @@ class TopWnd(wx.Frame):
         # put menu bar on frame window
         self.SetMenuBar(mb)
 
+
+    def make_taskbar_menu(self):
+        def _get_mi(m, mid):
+            if phoenix:
+                r, mn = m.FindItem(mid)
+                return r
+            return m.FindItemById(mid)
+
+        cl = (self.mctrl_loop,
+              self.mctrl_advance)
+        ml = (self.mctrl_play,
+              self.mctrl_pause,
+              self.mctrl_stop,
+              self.mctrl_next,
+              self.mctrl_previous,
+              self.mctrl_next_grp,
+              self.mctrl_previous_grp,
+              self.mctrl_last_grp,
+              self.mctrl_first_grp)
+
+        mctrl = wx.Menu()
+
+        # Controls menu
+        for cur in cl:
+            mit = _get_mi(self.mctrl, cur)
+            mctrl.Append(cur, mit.GetItemLabel(), wx.EmptyString,
+                         wx.ITEM_CHECK)
+            mctrl.Check(cur, mit.IsChecked())
+            mctrl.Enable(cur, mit.IsEnabled())
+
+        mctrl.AppendSeparator()
+
+        for cur in ml:
+            mit = _get_mi(self.mctrl, cur)
+            mctrl.Append(cur, mit.GetItemLabel(), wx.EmptyString)
+            mctrl.Enable(cur, mit.IsEnabled())
+            if (cur == self.mctrl_previous or
+                cur == self.mctrl_previous_grp):
+                mctrl.AppendSeparator()
+
+        mctrl.AppendSeparator()
+
+        # quit, from file menu
+        cur = self.mfile_quit
+        mit = _get_mi(self.mfile, cur)
+        mctrl.Append(cur, mit.GetItemLabel(), wx.EmptyString)
+        mctrl.Enable(cur, mit.IsEnabled())
+
+        return mctrl
+
+
     def make_tool_bar(self):
         sty = (wx.TB_DOCKABLE | wx.TB_HORIZONTAL |
                wx.NO_BORDER | wx.TB_FLAT)
@@ -5393,6 +5540,9 @@ class TopWnd(wx.Frame):
         #                wx.NullBitmap, wx.ITEM_NORMAL,
         #                lbl, hlp)
 
+        # In GTK the wxChoice is far better than this app's
+        # 'ComboCtrlBecauseMSW' which exists just because
+        # MSW Choice and ComboBox suck WRT dropdown size
         if _in_gtk:
             sty = 0
 
@@ -6173,6 +6323,10 @@ class TopWnd(wx.Frame):
         self.prdbg(_T("Media event: EVT_MEDIA_STATECHANGED"))
 
         ln, sz = self.check_set_media_meta()
+        if ln == 0:
+            ln, sz = self.check_set_media_meta(True)
+            if ln < 1:
+                wx.CallAfter(self.check_set_media_meta, True)
 
         if self.getdbg():
             ln = self.get_time_str(tm = ln, wm = True)
@@ -6227,8 +6381,10 @@ class TopWnd(wx.Frame):
                 return
 
         ln, sz = self.check_set_media_meta()
-        if sz.width == 0 or sz.height == 0:
+        if sz.width == 0 or sz.height == 0 or ln == 0:
             ln, sz = self.check_set_media_meta(True)
+            if ln < 1:
+                wx.CallAfter(self.check_set_media_meta, True)
 
         self.set_statusbar(_("Playing '{}'").format(nm), 0)
         self.set_statusbar(self.get_time_str(tm = ln), 1)
@@ -6240,6 +6396,13 @@ class TopWnd(wx.Frame):
     def on_media_pause(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_PAUSE"))
         self.set_play_label()
+
+        ln, sz = self.check_set_media_meta()
+        if sz.width == 0 or sz.height == 0 or ln == 0:
+            ln, sz = self.check_set_media_meta(True)
+            if ln < 1:
+                wx.CallAfter(self.check_set_media_meta, True)
+        self.slider_setup()
 
         dn, med, des, com, err, lth = self.get_reslist_item_tup()
 
@@ -6305,7 +6468,9 @@ class TopWnd(wx.Frame):
         call_me = self.load_func
         self.load_func = None
 
-        ln, sz = self.check_set_media_meta(True)
+        ln, sz = self.check_set_media_meta()
+        if sz.width == 0 or sz.height == 0 or ln == 0:
+            ln, sz = self.check_set_media_meta(True)
         dn, med, des, com, err, lth = self.get_reslist_item_tup()
 
         nm = _T(des or dn or med)
@@ -6321,21 +6486,13 @@ class TopWnd(wx.Frame):
                         self.pause_seek_pos))
 
             self._seek_and_play(whence = self.pause_seek_pos)
-            #XXX remove
-            #self.medi.Seek(self.pause_seek_pos)
-            ## TODO: self._seek_and_play(whence = self.pause_seek_pos)
-            ## should be best unconditionally; try and test
-            #if True or self.in_gtk:
-            #    # double the Seek(); have seen it fail called herein
-            #else:
-            #    wx.CallAfter(self.cmd_on_play, from_user = False)
         else:
             self.pause_ticks = -1
             wx.CallAfter(self.with_media_loaded, call_me = call_me)
 
     def with_media_loaded(self, event = None, call_me = None):
         ln, sz = self.check_set_media_meta()
-        if sz.width == 0 or sz.height == 0:
+        if sz.width == 0 or sz.height == 0 or ln == 0:
             ln, sz = self.check_set_media_meta(True)
 
         self.prdbg(_T("Media length: {}").format(
@@ -6459,16 +6616,26 @@ class TopWnd(wx.Frame):
             ret = not failed
 
         self.load_ok = ret
+        if self.load_ok:
+            wx.CallAfter(self.check_set_media_meta, True)
+
         return ret
 
-    def check_set_media_meta(self, do_set = False):
+    def check_set_media_meta(self, do_set = False, only_len = False):
         if not (self.medi and self.load_ok):
+            self.prdbg(_T("check_set_media_meta: load_ok=={}").format(
+                self.load_ok))
             return (0, wx.Size(0, 0))
 
         if do_set:
-            self.medi.SetInitialSize()
-            ln = self.medi.Length()
-            sz = self.medi.GetBestSize()
+            if not only_len:
+                self.medi.SetInitialSize()
+                ln = self.medi.Length()
+                sz = self.medi.GetBestSize()
+            else:
+                ln = self.medi.Length()
+                sz = self.media_meta[1]
+
             self.media_meta = (ln, sz)
 
             it = self.get_reslist_item()
@@ -6477,8 +6644,9 @@ class TopWnd(wx.Frame):
                 it.comment = _T("{}x{}").format(sz.width, sz.height)
 
             self.player_panel.set_meta(sz, ln)
-            self.player_panel.do_new_size()
-            self.force_hack()
+            if not only_len:
+                self.player_panel.do_new_size()
+                self.force_hack()
 
         return self.media_meta
 
@@ -6735,6 +6903,18 @@ class TopWnd(wx.Frame):
             self.vol_sld.SetValue(v)
             self.do_volume(v)
 
+
+    def do_taskbar_click(self, event = None):
+        ismin = self.IsIconized()
+        ismax = self.IsMaximized()
+
+        if ismin:
+            self.Iconize(False)
+
+        if ismax:
+            self.Maximize(False)
+
+        self.Raise()
 
     def do_command_button(self, button_id):
         btn = self.get_obj_by_id(button_id)
@@ -7069,12 +7249,29 @@ class TopWnd(wx.Frame):
 
     def do_timep(self, timer):
         if self.pos_seek_paused <= 0:
-            bounded = self.media_meta[0]
+            # unfortunately, it proves necessary to call
+            # check_set_media_meta(True) and slider_setup()
+            # repeatedly at this interval due to the fact that
+            # the backend must estimate media length for some
+            # formats (think vbr mp3), and it cannot reliably be
+            # determined when the backend is ready to provide
+            # a non-zero value (much less an accurate value, as
+            # the media.Length() changes over the course of
+            # playing as it converges on accuracy); note also
+            # that the test for zero Length() is the only means
+            # of detecting whether a stream is bounded or not,
+            # so false 0 values are really intolerable -- sadly,
+            # for the most part in most formats these repeated
+            # calls are a waste
+            ln, sz = self.check_set_media_meta(True, True)
+            self.slider_setup()
+
+            bounded = (not ln < 1)
             if self.medi and self.load_ok:
                 ms = self.medi.Tell()
                 if bounded:
-                    cur = float(self.pos_mul) * ms + 0.5
-                    self.pos_sld.SetValue(int(cur))
+                    cur = int(float(self.pos_mul) * ms + 0.5)
+                    self.pos_sld.SetValue(cur)
                 elif self.in_play:
                     self.set_statusbar(self.get_time_str(tm = ms), 1)
             self.focus_medi_opt()
@@ -7215,6 +7412,7 @@ class TopWnd(wx.Frame):
             self.register_ms_hotkeys(False)
 
             if wx.GetApp().test_exit():
+                self.del_taskbar_object()
                 self.main_timer.Stop()
                 self.Show(False)
                 self.Destroy()
@@ -7232,6 +7430,7 @@ class TopWnd(wx.Frame):
 
     def on_destroy(self, event):
         self.prdbg(_T("CLOSE in on_destroy"))
+        self.del_taskbar_object()
         self.Close(True)
 
     def on_fullscreen(self, event):

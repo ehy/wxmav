@@ -5,12 +5,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
@@ -979,16 +979,16 @@ _child_xscreensaver(void)
     if ( try_xscreensaver != True || _child_xscreensaver_pid != 0 ) {
         return -1;
     }
-    
+
     _child_xscreensaver_pid = fork();
-    
+
     if ( _child_xscreensaver_pid > 0 ) {
         /* parent: sleep briefly and wait nohang as a quick check */
         pid_t p;
 
         sleep(1);
         p = waitpid(_child_xscreensaver_pid, &i, WNOHANG);
-        
+
         /* if child exited already, don't check status, it's error */
         if ( p ) {
             _child_xscreensaver_pid = -1;
@@ -1055,7 +1055,7 @@ _xscreensaver(Bool disable)
             /* give up -- leave pid for retry */
             return -1;
         }
-    
+
         p = waitpid(_child_xscreensaver_pid, &st, 0);
         if ( ! p ) {
             /* gone already */
@@ -1182,7 +1182,7 @@ ssave_disable(Display *dpy)
 
 /*
  * put struct pollfd array on heap, plus
- * counts -- 
+ * counts --
  * UPDATE THIS if fd usage changes!
  *
  * currently polled:
@@ -1390,7 +1390,14 @@ main(int argc, char **argv)
         ADD_POLL_WR(client_out);
         DO_POLL_NOW(c, 0);
 
-        if ( got_common_signal || (poll_fds[3].revents & POLLHUP) ) {
+        if ( got_common_signal ) {
+            break;
+        }
+
+        if ( (poll_fds[0].revents & POLLHUP) ||
+             (poll_fds[0].revents & POLLERR) ||
+             (poll_fds[3].revents & POLLHUP) ||
+             (poll_fds[3].revents & POLLERR) ) {
             break;
         }
 
@@ -1414,7 +1421,14 @@ main(int argc, char **argv)
         ADD_POLL_WR(key_str == NULL ? -1 : client_out);
         DO_POLL_NOW(c, -1);
 
-        if ( got_common_signal || (poll_fds[3].revents & POLLHUP) ) {
+        if ( got_common_signal ) {
+            break;
+        }
+
+        if ( (poll_fds[0].revents & POLLHUP) ||
+             (poll_fds[0].revents & POLLERR) ||
+             (poll_fds[3].revents & POLLHUP) ||
+             (poll_fds[3].revents & POLLERR) ) {
             break;
         }
 
