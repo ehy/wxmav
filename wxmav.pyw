@@ -6401,11 +6401,11 @@ class TopWnd(wx.Frame):
                 if seek_op == 1 and seek_pos > 0:
                     self.medi.Pause()
                     wx.CallAfter(self.cmd_on_pause, from_user = True)
-                    self.prdbg(_T("HACK: PAUSED"))
+                    self.prdbg(_T("HACK: PAUSED pos {}").format(
+                                                seek_pos))
                 elif seek_op == 2 or seek_pos <= 0:
                     self.in_stop = True
                     self.in_play = False
-                    #self.medi.Stop() #XXX review this
                     wx.CallAfter(self.cmd_on_stop, from_user = True)
                     self.prdbg(_T("HACK: STOPPED"))
 
@@ -6560,8 +6560,6 @@ class TopWnd(wx.Frame):
         cur = tel if (pos == None) else pos
         self.pos_sld.SetRange(0, rng)
         self.pos_sld.SetValue(cur)
-        self.prdbg(_T("SLIDER SETUP, POS {}, RANGE {}").format(
-                    cur, rng))
 
         if ln > 0:
             self.set_statusbar(self.get_time_str(tm = ln), 1)
@@ -7387,8 +7385,9 @@ class TopWnd(wx.Frame):
         config.Write("group_desc", gdesc)
         config.WriteInt("volume", self.vol_cur)
         st = self.medi.GetState()
+        cur = self.medi.Length()
         if (st == wx.media.MEDIASTATE_PLAYING or
-            st == wx.media.MEDIASTATE_PAUSED):
+            st == wx.media.MEDIASTATE_PAUSED) and cur > 0:
             cur = int(float(self.pos_mul) * self.medi.Tell() + 0.5)
         else:
             cur = -1
