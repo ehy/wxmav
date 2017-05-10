@@ -5386,11 +5386,11 @@ class TopWnd(wx.Frame):
         # Help menu
         #
         self.mhelp = mhelp = wx.Menu()
-        # usual help menu
+        # usual help menu -- TODO uncomment when help is ready
         self.mhelp_help = cur = wx.ID_HELP
-        mhelp.Append(cur, _("&Help"),
-                        _("Show help."))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
+        #mhelp.Append(cur, _("&Help"),
+        #                _("Show help."))
+        #self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # separator
         mhelp.AppendSeparator()
         # usual about menu
@@ -5408,8 +5408,7 @@ class TopWnd(wx.Frame):
     def make_taskbar_menu(self):
         def _get_mi(m, mid):
             if phoenix:
-                r, mn = m.FindItem(mid)
-                return r
+                return m.FindItem(mid)[0]
             return m.FindItemById(mid)
 
         cl = (self.mctrl_loop,
@@ -5424,35 +5423,35 @@ class TopWnd(wx.Frame):
               self.mctrl_last_grp,
               self.mctrl_first_grp)
 
-        mctrl = wx.Menu()
+        mtico = wx.Menu()
 
         # Controls menu
         for cur in cl:
             mit = _get_mi(self.mctrl, cur)
-            mctrl.Append(cur, mit.GetItemLabel(), wx.EmptyString,
+            mtico.Append(cur, mit.GetItemLabel(), wx.EmptyString,
                          wx.ITEM_CHECK)
-            mctrl.Check(cur, mit.IsChecked())
-            mctrl.Enable(cur, mit.IsEnabled())
+            mtico.Check(cur, mit.IsChecked())
+            mtico.Enable(cur, mit.IsEnabled())
 
-        mctrl.AppendSeparator()
+        mtico.AppendSeparator()
 
         for cur in ml:
             mit = _get_mi(self.mctrl, cur)
-            mctrl.Append(cur, mit.GetItemLabel(), wx.EmptyString)
-            mctrl.Enable(cur, mit.IsEnabled())
+            mtico.Append(cur, mit.GetItemLabel(), wx.EmptyString)
+            mtico.Enable(cur, mit.IsEnabled())
             if (cur == self.mctrl_previous or
                 cur == self.mctrl_previous_grp):
-                mctrl.AppendSeparator()
+                mtico.AppendSeparator()
 
-        mctrl.AppendSeparator()
+        mtico.AppendSeparator()
 
         # quit, from file menu
         cur = self.mfile_quit
         mit = _get_mi(self.mfile, cur)
-        mctrl.Append(cur, mit.GetItemLabel(), wx.EmptyString)
-        mctrl.Enable(cur, mit.IsEnabled())
+        mtico.Append(cur, mit.GetItemLabel(), wx.EmptyString)
+        mtico.Enable(cur, mit.IsEnabled())
 
-        return mctrl
+        return mtico
 
 
     def make_tool_bar(self):
