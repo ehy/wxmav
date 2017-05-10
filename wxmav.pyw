@@ -4579,8 +4579,19 @@ class TopWnd(wx.Frame):
         self.vol_max = 100
         self.vol_cur = 50
 
+        # options vars:
+        # show the tray/taskbar icon?
+        self.opt_tray_icon = True
         # load with proxy has been failing, silently
         self.can_use_proxy = False
+        self.proxies = {}
+        t = ((_T("https"), _T("HTTPS_PROXY")),
+             (_T("http"), _T("HTTP_PROXY")))
+        for p, v in t:
+            try:
+                self.proxies[p] = os.environ[v]
+            except:
+                self.proxies[p] = None
 
         # indice into current set of file/stream groups
         self.group_indice = 0
@@ -4730,7 +4741,7 @@ class TopWnd(wx.Frame):
         self.make_menu_bar()
         self.make_status_bar()
         self.make_tool_bar()
-        self._do_taskbar_object()
+        self.set_taskbar_object()
 
         self.id_svol = wx.NewId()
         self.vol_panel = SliderPanel(self, wx.ID_ANY,
@@ -5195,11 +5206,28 @@ class TopWnd(wx.Frame):
             tob.RemoveIcon()
             tob.Destroy()
             self.taskbar_obj = None
+            return self.taskbar_obj
+        return None
+
+    def set_taskbar_object(self, set_on = None):
+        do = self.opt_tray_icon
+        if set_on == True:
+            do = True
+        elif set_on == False:
+            do = True
+
+        if do:
+            return self.get_taskbar_object(make_if_needed = True)
+        else:
+            return self.del_taskbar_object()
 
     def set_taskbar_tooltip(self, tip = "", ico = None):
         try:
             tob = self.taskbar_obj
         except AttributeError:
+            return
+
+        if tob == None:
             return
 
         if ico == None:
@@ -5226,21 +5254,17 @@ class TopWnd(wx.Frame):
         # open local file
         self.mfile_openfile = cur = wx.ID_OPEN
         mfile.Append(cur, _("&Open Files"), _("Open a local files"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # open local directory
         self.mfile_opendir = cur = I()
         mfile.Append(cur, _("Open &Directory"),
                           _("Open a local directory"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # open local directory recursively
         self.mfile_opendir_recurse = cur = I()
         mfile.Append(cur, _("&Recursively Open Directory"),
                     _("Open a local directory and its subdirectories"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # open URL
         self.mfile_openurl = cur = I()
         mfile.Append(cur, _("Open &URL"), _("Open a URL"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # separator
         mfile.AppendSeparator()
         ## saves
@@ -5248,18 +5272,15 @@ class TopWnd(wx.Frame):
         self.mfile_savegrp = cur = wx.ID_SAVE
         mfile.Append(cur, _("Save Current Media &Group"),
                           _("Save current media group in a playlist"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # Save all groups as a set in a directory
         self.mfile_saveset = cur = I()
         mfile.Append(cur, _("Save Whole &Media Set"),
                           _("Save all media groups in a directory"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # separator
         mfile.AppendSeparator()
         # quit item
         self.mfile_quit = cur = wx.ID_EXIT
         mfile.Append(cur, _("&Quit"), _("Quit the program"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
 
         # add file menu
         mb.Append(mfile, _("&File"))
@@ -5271,18 +5292,15 @@ class TopWnd(wx.Frame):
         # undo change
         self.medit_undo = cur = wx.ID_UNDO
         medit.Append(cur, _("&Undo"), _("Undo last change"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # redo change
         self.medit_redo = cur = wx.ID_REDO
         medit.Append(cur, _("&Redo"), _("Redo last change"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # separator
         medit.AppendSeparator()
         ## set editor dialog
         self.medit_editor = cur = I()
         medit.Append(cur, _("Use Media Set &Editor"),
                           _("Run media group set editor dialog"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         ## set items apply title tags
         self.medit_grtags = cur = I()
         if have_tagsmod:
@@ -5297,12 +5315,10 @@ class TopWnd(wx.Frame):
         self.medit_delegrp = cur = wx.ID_DELETE
         medit.Append(cur, _("&Delete Current Group"),
                           _("Delete current media group/playlist"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # Delete all groups as a set
         self.medit_deleset = cur = I()
         medit.Append(cur, _("Delete &Whole Media Set"),
                           _("Delete all media groups/playlists"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
 
         # add edit menu
         mb.Append(medit, _("&Edit"))
@@ -5316,63 +5332,52 @@ class TopWnd(wx.Frame):
                         _("Play current source in a loop"),
                         wx.ITEM_CHECK)
         mctrl.Check(self.mctrl_loop, self.loop_track)
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # auto advance to next track and play
         self.mctrl_advance = cur = I()
         mctrl.Append(cur, _("Ad&vance to next"),
                         _("Auto play next track after current"),
                         wx.ITEM_CHECK)
         mctrl.Check(self.mctrl_advance, self.adv_track)
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # separator
         mctrl.AppendSeparator()
         # play
         self.mctrl_play = cur = I()
         mctrl.Append(cur, _("&Play"), _("Play current source"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # pause
         self.mctrl_pause = cur = I()
         mctrl.Append(cur, _("P&ause"), _("Pause current source"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # stop
         self.mctrl_stop = cur = I()
         mctrl.Append(cur, _("S&top"), _("Stop current source"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # separator
         mctrl.AppendSeparator()
         # next
         self.mctrl_next = cur = I()
         mctrl.Append(cur, _("&Next Track"), _("Go to next track"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # previous
         self.mctrl_previous = cur = I()
         mctrl.Append(cur, _("P&revious Track"),
                         _("Go to previous track"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # separator
         mctrl.AppendSeparator()
         # next group
         self.mctrl_next_grp = cur = wx.ID_DOWN
         mctrl.Append(cur, _("Next &Group"),
                         _("Go to next group"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # previous group
         self.mctrl_previous_grp = cur = wx.ID_UP
         mctrl.Append(cur, _("Previous Gro&up"),
                         _("Go to previous group"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # separator
         mctrl.AppendSeparator()
         # last group
         self.mctrl_last_grp = cur = I()
         mctrl.Append(cur, _("&Last Group"),
                         _("Go to the last group"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # first group
         self.mctrl_first_grp = cur = I()
         mctrl.Append(cur, _("F&irst Group"),
                         _("Go to the first group"))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
 
         # add controls menu
         mb.Append(mctrl, _("&Controls"))
@@ -5383,6 +5388,25 @@ class TopWnd(wx.Frame):
         #
         #mb.Append(mtool, _("&Tools"))
 
+        # Options menu
+        #
+        self.mopts = mopts = wx.Menu()
+        # show taskbar/tray icon?
+        self.mopts_trayicon = cur = I()
+        mopts.Append(cur, _("Use &Tray Icon"),
+                        _("Show or hide the system tray icon and menu"),
+                        wx.ITEM_CHECK)
+        mopts.Check(self.mopts_trayicon, self.opt_tray_icon)
+        # use proxe for media URI? self.can_use_proxy
+        self.mopts_proxy = cur = I()
+        mopts.Append(cur, _("Use &URL Proxy"),
+                    _("Use a proxy per protocol if available for URLs"),
+                        wx.ITEM_CHECK)
+        mopts.Check(self.mopts_proxy, self.can_use_proxy)
+
+        # add options menu
+        mb.Append(mopts, _("&Options"))
+
         # Help menu
         #
         self.mhelp = mhelp = wx.Menu()
@@ -5390,19 +5414,20 @@ class TopWnd(wx.Frame):
         self.mhelp_help = cur = wx.ID_HELP
         #mhelp.Append(cur, _("&Help"),
         #                _("Show help."))
-        #self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # separator
         mhelp.AppendSeparator()
         # usual about menu
         self.mhelp_about = cur = wx.ID_ABOUT
         mhelp.Append(cur, _("&About"),
                         _("Show about dialog."))
-        self.Bind(wx.EVT_MENU, self.on_menu, id = cur)
         # Add Help menu
         mb.Append(mhelp, _("&Help"))
 
         # put menu bar on frame window
         self.SetMenuBar(mb)
+
+        # bondage
+        self.Bind(wx.EVT_MENU, self.on_menu)
 
 
     def make_taskbar_menu(self):
@@ -5959,6 +5984,14 @@ class TopWnd(wx.Frame):
             self.cmd_first_grp()
         elif i == self.mctrl_last_grp:
             self.cmd_last_grp()
+        # Options menu
+        elif i == self.mopts_trayicon:
+            t = self.mopts.IsChecked(self.mopts_trayicon)
+            self.opt_tray_icon = t
+            self.set_taskbar_object()
+        elif i == self.mopts_proxy:
+            t = self.mopts.IsChecked(self.mopts_proxy)
+            self.can_use_proxy = t
         # Help menu
         elif i == self.mhelp_help:
             pass
@@ -6574,10 +6607,7 @@ class TopWnd(wx.Frame):
             # TODO: user specified proxy(s) for protocol set(s)
             prx = None
             try:
-                if r.group(1) == _T("https"):
-                    prx = os.environ[_T("HTTPS_PROXY")]
-                elif r.group(1) == _T("http"):
-                    prx = os.environ[_T("HTTP_PROXY")]
+                prx = self.proxies[r.group(1).lower()]
             except:
                 prx = None
 
@@ -7312,6 +7342,11 @@ class TopWnd(wx.Frame):
         if not config:
             return
 
+        self.can_use_proxy = config.ReadBool(
+                             "use_proxy", self.can_use_proxy)
+        self.opt_tray_icon = config.ReadBool(
+                             "use_trayicon", self.opt_tray_icon)
+
         vmap = {
             "resource_index" : 0,     # self.media_indice
             "group_index"    : 0,     # group index in self.reslist
@@ -7364,6 +7399,10 @@ class TopWnd(wx.Frame):
         config.WriteBool("loop_play", cur)
         cur = self.mctrl.IsChecked(self.mctrl_advance)
         config.WriteBool("auto_advance", cur)
+        cur = self.mopts.IsChecked(self.mopts_trayicon)
+        config.WriteBool("use_trayicon", cur)
+        cur = self.mopts.IsChecked(self.mopts_proxy)
+        config.WriteBool("use_proxy", cur)
 
         mn = 0
         if self.IsIconized():
