@@ -17,15 +17,24 @@
  * MA 02110-1301, USA.
  */
 
-/* TODO: "config.h" here */
-/* use -lXext for this: */
-#if ! defined(HAVE_XEXT) && 1
-#define HAVE_XEXT 1
+#ifdef HAVE_CONFIG_H
+#   include "config.h"
+#endif
+
+#if HAVE_X11_EXTENSIONS_DPMS_H && ! defined(HAVE_XEXT)
+#   define HAVE_XEXT 1
+#endif
+#if HAVE_X11_EXTENSIONS_SCRNSAVER_H && ! defined(HAVE_XSSAVEREXT)
+#   define HAVE_XSSAVEREXT 1
+#endif
+
+#if ! HAVE_XEXT
+#   warning "Building without DPMI functionality in libXext"
 #endif
 
 /* use -lXss for this: */
-#if ! defined(HAVE_XSSAVEREXT) && 1
-#define HAVE_XSSAVEREXT 1
+#if ! HAVE_XSSAVEREXT
+#   warning "Building without X screen saver functionality in libXss"
 #endif
 
 #include <errno.h>
@@ -44,18 +53,11 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
-#if 1
-#define USING_XF86_KEYS 1
 #include <X11/XF86keysym.h>
-#else
-/* TODO (by others!): e.g.
-#include <X11/{ap_,DEC,HP,Sun,Foo}keysym.h>
-**> and related code <** */
-#endif
-#if HAVE_XEXT
+#if HAVE_XEXT && HAVE_X11_EXTENSIONS_DPMS_H
 #include <X11/extensions/dpms.h>
 #endif
-#if HAVE_XSSAVEREXT
+#if HAVE_XSSAVEREXT && HAVE_X11_EXTENSIONS_SCRNSAVER_H
 #include <X11/extensions/scrnsaver.h>
 #endif
 
@@ -112,9 +114,13 @@
  */
 #define MAX_LINEIN_SIZE    WANTED_RW_SIZE
 
-#define PROGRAM_VERSION "1.0"
+# if defined(HAVE_CONFIG_H) && defined(VERSION)
+#   define PROGRAM_VERSION VERSION
+#else
+#   define PROGRAM_VERSION "1.0"
+#endif
 #ifndef PROGRAM_DEFNAME
-#    define PROGRAM_DEFNAME "x-aud-key-srv"
+#    define PROGRAM_DEFNAME "x-key-ss-helper"
 #endif /* PROGRAM_DEFNAME */
 
 const char *prog = PROGRAM_DEFNAME;
@@ -1222,6 +1228,25 @@ init_poll_data(void)
     }
     poll_fds_idx = 0;
 }
+/* check poll data for POLLHUP or POLLERR in revents;
+ * return zero if not found, else array index + 1
+ */
+int
+check_poll_data_error(void)
+{
+    size_t i;
+    for ( i = 0; i < A_SIZE(poll_fds); i++ ) {
+        if ( poll_fds[i].fd < 0 ) {
+            continue;
+        }
+        if ( (poll_fds[i].revents & POLLHUP) ||
+             (poll_fds[i].revents & POLLERR) ) {
+            return (int)i + 1;
+        }
+    }
+    return 0;
+}
+
 
 int
 main(int argc, char **argv)
@@ -1235,8 +1260,10 @@ main(int argc, char **argv)
     int               (*orig_err)(Display *, XErrorEvent *);
     static const char opt_str[] = "asd:n:w:hv";
 
+#   if HAVE_SETLOCALE
     /* all IO in ascii */
     setlocale(LC_ALL, "C");
+#   endif
 
 #    if ! _DEBUG
     /* this program does not (intentionally) use the inherited
@@ -1390,14 +1417,7 @@ main(int argc, char **argv)
         ADD_POLL_WR(client_out);
         DO_POLL_NOW(c, 0);
 
-        if ( got_common_signal ) {
-            break;
-        }
-
-        if ( (poll_fds[0].revents & POLLHUP) ||
-             (poll_fds[0].revents & POLLERR) ||
-             (poll_fds[3].revents & POLLHUP) ||
-             (poll_fds[3].revents & POLLERR) ) {
+        if ( got_common_signal || check_poll_data_error() ) {
             break;
         }
 
@@ -1421,14 +1441,7 @@ main(int argc, char **argv)
         ADD_POLL_WR(key_str == NULL ? -1 : client_out);
         DO_POLL_NOW(c, -1);
 
-        if ( got_common_signal ) {
-            break;
-        }
-
-        if ( (poll_fds[0].revents & POLLHUP) ||
-             (poll_fds[0].revents & POLLERR) ||
-             (poll_fds[3].revents & POLLHUP) ||
-             (poll_fds[3].revents & POLLERR) ) {
+        if ( got_common_signal || check_poll_data_error() ) {
             break;
         }
 

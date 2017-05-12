@@ -41,5 +41,8 @@ done
 test X"$bin_file" = X && fail \
     cannot find "${PROGBN}" program code in \""$inst_py_dir"\"
 
+WXMAV_XHELPERPATH=@XHELPERPATH@
+export WXMAV_XHELPERPATH
+
 exec $PYINTERP "$bin_file" ${1+"$@"}
 fail return from exec $PYINTERP \!

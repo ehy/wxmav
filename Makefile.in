@@ -89,56 +89,38 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = cprec$(EXEEXT) $(am__EXEEXT_1)
-@NEED_GETOPT_C_TRUE@am__append_1 = gngetopt.h getopt.c
-@NEED_GETOPT_LONG_C_TRUE@am__append_2 = getopt1.c
-@WITH_DD_DVD_TRUE@am__append_3 = dd-dvd
-@NEED_GETOPT_C_TRUE@@WITH_DD_DVD_TRUE@am__append_4 = gngetopt.h getopt.c
-@NEED_GETOPT_LONG_C_TRUE@@WITH_DD_DVD_TRUE@am__append_5 = getopt1.c
-@WITH_DD_DVD_TRUE@am__append_6 = dd-dvd.1
+@WITH_X_HELPER_TRUE@libexec_PROGRAMS = wxmav-x-helper$(EXEEXT)
+@NEED_GETOPT_C_TRUE@@WITH_X_HELPER_TRUE@am__append_1 = gngetopt.h getopt.c
+@NEED_GETOPT_LONG_C_TRUE@@WITH_X_HELPER_TRUE@am__append_2 = getopt1.c
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 DIST_COMMON = $(srcdir)/Makefile.am $(top_srcdir)/configure \
-	$(am__configure_deps) $(am__python_PYTHON_DIST) \
-	$(am__DIST_COMMON)
+	$(am__configure_deps) $(python_PYTHON) $(am__DIST_COMMON)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-@WITH_DD_DVD_TRUE@am__EXEEXT_1 = dd-dvd$(EXEEXT)
-am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" \
-	"$(DESTDIR)$(pythondir)" "$(DESTDIR)$(man1dir)"
-PROGRAMS = $(bin_PROGRAMS)
-am__cprec_SOURCES_DIST = cprec.c cprec.h apue_ftw.c apue_ftw.h cpf.c \
-	cpf.h vd_cpf.c vd_cpf.h ino.c ino.h block_hash.c block_hash.h \
-	meta_set.h meta_set.c path_set.h path_set.c walk.h walk.c \
-	dl_drd.h dl_drd.c cprec.1 xmalloc.c xmalloc.h hdr_cfg.h \
-	system.h aclocal.m4 gngetopt.h getopt.c getopt1.c
-@NEED_GETOPT_C_TRUE@am__objects_1 = getopt.$(OBJEXT)
-@NEED_GETOPT_LONG_C_TRUE@am__objects_2 = getopt1.$(OBJEXT)
-am_cprec_OBJECTS = cprec.$(OBJEXT) apue_ftw.$(OBJEXT) cpf.$(OBJEXT) \
-	vd_cpf.$(OBJEXT) ino.$(OBJEXT) block_hash.$(OBJEXT) \
-	meta_set.$(OBJEXT) path_set.$(OBJEXT) walk.$(OBJEXT) \
-	dl_drd.$(OBJEXT) xmalloc.$(OBJEXT) $(am__objects_1) \
-	$(am__objects_2)
-cprec_OBJECTS = $(am_cprec_OBJECTS)
-cprec_DEPENDENCIES = lib_misc/lib_misc.a
-am__dd_dvd_SOURCES_DIST = dd-dvd.cc dl_drd.h dl_drd.c vd_cpf.c \
-	vd_cpf.h dd-dvd.1 gngetopt.h getopt.c getopt1.c
-@NEED_GETOPT_C_TRUE@@WITH_DD_DVD_TRUE@am__objects_3 =  \
-@NEED_GETOPT_C_TRUE@@WITH_DD_DVD_TRUE@	getopt.$(OBJEXT)
-@NEED_GETOPT_LONG_C_TRUE@@WITH_DD_DVD_TRUE@am__objects_4 =  \
-@NEED_GETOPT_LONG_C_TRUE@@WITH_DD_DVD_TRUE@	getopt1.$(OBJEXT)
-@WITH_DD_DVD_TRUE@am_dd_dvd_OBJECTS = dd-dvd.$(OBJEXT) \
-@WITH_DD_DVD_TRUE@	dl_drd.$(OBJEXT) vd_cpf.$(OBJEXT) \
-@WITH_DD_DVD_TRUE@	$(am__objects_3) $(am__objects_4)
-dd_dvd_OBJECTS = $(am_dd_dvd_OBJECTS)
-@WITH_DD_DVD_TRUE@dd_dvd_DEPENDENCIES = lib_misc/lib_misc.a
+am__installdirs = "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" \
+	"$(DESTDIR)$(pythondir)"
+PROGRAMS = $(libexec_PROGRAMS)
+am__wxmav_x_helper_SOURCES_DIST = x-aud-key-srv.c aclocal.m4 \
+	gngetopt.h getopt.c getopt1.c
+@NEED_GETOPT_C_TRUE@@WITH_X_HELPER_TRUE@am__objects_1 =  \
+@NEED_GETOPT_C_TRUE@@WITH_X_HELPER_TRUE@	getopt.$(OBJEXT)
+@NEED_GETOPT_LONG_C_TRUE@@WITH_X_HELPER_TRUE@am__objects_2 = getopt1.$(OBJEXT)
+@WITH_X_HELPER_TRUE@am_wxmav_x_helper_OBJECTS =  \
+@WITH_X_HELPER_TRUE@	x-aud-key-srv.$(OBJEXT) $(am__objects_1) \
+@WITH_X_HELPER_TRUE@	$(am__objects_2)
+wxmav_x_helper_OBJECTS = $(am_wxmav_x_helper_OBJECTS)
+am__DEPENDENCIES_1 =
+@WITH_X_HELPER_TRUE@wxmav_x_helper_DEPENDENCIES =  \
+@WITH_X_HELPER_TRUE@	$(am__DEPENDENCIES_1) \
+@WITH_X_HELPER_TRUE@	$(am__DEPENDENCIES_1)
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -195,50 +177,17 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
-AM_V_CXX = $(am__v_CXX_@AM_V@)
-am__v_CXX_ = $(am__v_CXX_@AM_DEFAULT_V@)
-am__v_CXX_0 = @echo "  CXX     " $@;
-am__v_CXX_1 = 
-CXXLD = $(CXX)
-CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
-	-o $@
-AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
-am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
-am__v_CXXLD_0 = @echo "  CXXLD   " $@;
-am__v_CXXLD_1 = 
-SOURCES = $(cprec_SOURCES) $(dd_dvd_SOURCES)
-DIST_SOURCES = $(am__cprec_SOURCES_DIST) $(am__dd_dvd_SOURCES_DIST)
-RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
-	ctags-recursive dvi-recursive html-recursive info-recursive \
-	install-data-recursive install-dvi-recursive \
-	install-exec-recursive install-html-recursive \
-	install-info-recursive install-pdf-recursive \
-	install-ps-recursive install-recursive installcheck-recursive \
-	installdirs-recursive pdf-recursive ps-recursive \
-	tags-recursive uninstall-recursive
+SOURCES = $(wxmav_x_helper_SOURCES)
+DIST_SOURCES = $(am__wxmav_x_helper_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
-am__python_PYTHON_DIST = wxDVDBackup.py
 am__py_compile = PYTHON=$(PYTHON) $(SHELL) $(py_compile)
 am__pep3147_tweak = \
   sed -e 's|\.py$$||' -e 's|[^/]*$$|__pycache__/&.*.py|'
 py_compile = $(top_srcdir)/py-compile
-man1dir = $(mandir)/man1
-NROFF = nroff
-MANS = $(man_MANS)
-RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
-  distclean-recursive maintainer-clean-recursive
-am__recursive_targets = \
-  $(RECURSIVE_TARGETS) \
-  $(RECURSIVE_CLEAN_TARGETS) \
-  $(am__extra_recursive_targets)
-AM_RECURSIVE_TARGETS = $(am__recursive_targets:-recursive=) TAGS CTAGS \
-	cscope distdir dist dist-all distcheck
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) \
 	$(LISP)config.h.in
 # Read a list of newline-separated strings from the standard input,
@@ -260,7 +209,7 @@ am__define_uniq_tagged_files = \
 ETAGS = etags
 CTAGS = ctags
 CSCOPE = cscope
-DIST_SUBDIRS = $(SUBDIRS)
+AM_RECURSIVE_TARGETS = cscope
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in AUTHORS \
 	COPYING ChangeLog INSTALL NEWS README compile config.guess \
 	config.sub depcomp install-sh missing mkinstalldirs py-compile
@@ -274,31 +223,6 @@ am__remove_distdir = \
       || { sleep 5 && rm -rf "$(distdir)"; }; \
   else :; fi
 am__post_remove_distdir = $(am__remove_distdir)
-am__relativize = \
-  dir0=`pwd`; \
-  sed_first='s,^\([^/]*\)/.*$$,\1,'; \
-  sed_rest='s,^[^/]*/*,,'; \
-  sed_last='s,^.*/\([^/]*\)$$,\1,'; \
-  sed_butlast='s,/*[^/]*$$,,'; \
-  while test -n "$$dir1"; do \
-    first=`echo "$$dir1" | sed -e "$$sed_first"`; \
-    if test "$$first" != "."; then \
-      if test "$$first" = ".."; then \
-        dir2=`echo "$$dir0" | sed -e "$$sed_last"`/"$$dir2"; \
-        dir0=`echo "$$dir0" | sed -e "$$sed_butlast"`; \
-      else \
-        first2=`echo "$$dir2" | sed -e "$$sed_first"`; \
-        if test "$$first2" = "$$first"; then \
-          dir2=`echo "$$dir2" | sed -e "$$sed_rest"`; \
-        else \
-          dir2="../$$dir2"; \
-        fi; \
-        dir0="$$dir0"/"$$first"; \
-      fi; \
-    fi; \
-    dir1=`echo "$$dir1" | sed -e "$$sed_rest"`; \
-  done; \
-  reldir="$$dir2"
 DIST_ARCHIVES = $(distdir).tar.gz
 GZIP_ENV = --best
 DIST_TARGETS = dist-gzip
@@ -307,7 +231,6 @@ am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
   | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
 distcleancheck_listfiles = find . -type f -print
 ACLOCAL = @ACLOCAL@
-ALLOCA = @ALLOCA@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 AUTOCONF = @AUTOCONF@
@@ -319,8 +242,6 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CXX = @CXX@
-CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -359,14 +280,21 @@ PYTHON_PREFIX = @PYTHON_PREFIX@
 PYTHON_VERSION = @PYTHON_VERSION@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
+STORE_XDG_DATA_DIRS = @STORE_XDG_DATA_DIRS@
 STRIP = @STRIP@
 VERSION = @VERSION@
+XHELPERNAME = @XHELPERNAME@
+XHELPERSOURCE = @XHELPERSOURCE@
+XMKMF = @XMKMF@
+X_CFLAGS = @X_CFLAGS@
+X_EXTRA_LIBS = @X_EXTRA_LIBS@
+X_LIBS = @X_LIBS@
+X_PRE_LIBS = @X_PRE_LIBS@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
-ac_ct_CXX = @ac_ct_CXX@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
@@ -411,32 +339,26 @@ pythondir = @pythondir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 srcdir = @srcdir@
-subdirs = @subdirs@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-cprec_SOURCES = cprec.c cprec.h apue_ftw.c apue_ftw.h cpf.c cpf.h \
-	vd_cpf.c vd_cpf.h ino.c ino.h block_hash.c block_hash.h \
-	meta_set.h meta_set.c path_set.h path_set.c walk.h walk.c \
-	dl_drd.h dl_drd.c cprec.1 xmalloc.c xmalloc.h hdr_cfg.h \
-	system.h aclocal.m4 $(am__append_1) $(am__append_2)
-@WITH_DD_DVD_TRUE@dd_dvd_SOURCES = dd-dvd.cc dl_drd.h dl_drd.c \
-@WITH_DD_DVD_TRUE@	vd_cpf.c vd_cpf.h dd-dvd.1 $(am__append_4) \
-@WITH_DD_DVD_TRUE@	$(am__append_5)
-@WITH_DD_DVD_TRUE@dd_dvd_LDADD = lib_misc/lib_misc.a
 
-#  uncomment the following if cprec requires the math library
-#cprec_LDADD=-lm
-cprec_LDADD = lib_misc/lib_misc.a
+# As above, *_SOURCES requires literals
+@WITH_X_HELPER_TRUE@wxmav_x_helper_SOURCES = x-aud-key-srv.c \
+@WITH_X_HELPER_TRUE@	aclocal.m4 $(am__append_1) $(am__append_2)
 
-# commented see below
-#EXTRA_DIST=cprec.lsm.in cprec.spec.in cprec.texinfo
-SUBDIRS = lib_misc wxdvdbackuppkg
-AM_CPPFLAGS = -I$(srcdir)/lib_misc
+# Note: do not append *_CFLAGS or *_LDFLAGS here, because it was
+# necessary to append CFGLAGS and LDFLAGS in the configure script
+# for AC_CHECK_LIB on x libs; so, these become redundant
+#wxmav_x_helper_CFLAGS = @X_CFLAGS@
+#wxmav_x_helper_LDFLAGS = @X_LIBS@
+@WITH_X_HELPER_TRUE@wxmav_x_helper_LDADD = $(X_PRE_LIBS) $(X_EXTRA_LIBS)
 
-# Version 0.2.1: wxPython front end -- requires dd-dvd
+# if WITH_X_HELPER
+
+# Python stuff{ed} remains:
 pyprog_sub = sed \
 			-e 's,[@]PYTHON[@],$(PYTHON),g' \
 			-e 's,[@]PYTHON_VERSION[@],$(PYTHON_VERSION),g' \
@@ -448,52 +370,28 @@ pyprog_sub = sed \
 			-e 's,[@]pyexecdir[@],$(pyexecdir),g' \
 			-e 's,[@]pkgpyexecdir[@],$(pkgpyexecdir),g' \
 			-e 's,[@]PACKAGE[@],$(PACKAGE),g' \
-			-e 's,[@]VERSION[@],$(VERSION),g'
+			-e 's,[@]VERSION[@],$(VERSION),g' \
+			-e 's,[@]XHELPERPATH[@],$(libexecdir)/$(XHELPERNAME),g'
 
-
-#if HAVE_PYTHON
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@python_PYTHON = wxDVDBackup.py
-#pkgpython_PYTHON = wxdvdbackuppkg/*.py
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@bin_SCRIPTS = wxDVDBackup
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@CLEANFILES = $(bin_SCRIPTS)
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@EXTRA_DIST = wxDVDBackup.in xdg/*
+python_PYTHON = wxmav.py
+bin_SCRIPTS = wxmav
+CLEANFILES = $(bin_SCRIPTS)
+EXTRA_DIST = wxmav.in  xdg/*
 
 #install-data-local:
 #	echo HOOK INVOKED: install-data-local
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@XDG_INST_ICON = xdg-icon-resource
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@XDG_INST_MENU = xdg-desktop-menu
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@XDG_INST_MIME = xdg-mime
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@XICOARGS = install --noupdate --novendor --size
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@XICOARGSU = uninstall --noupdate --size
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@XICOSIZE = 16 24 32 48 64 96 128
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@XDGRESNAME = wxdvdbackup
-
-# if WITH_FRONTEND_XDG
-
-# if HAVE_PYTHON
-#endif
-# if WITH_FRONTEND
-# if WITH_DD_DVD
-
-#  if you write a self-test script named `chk', uncomment the
-#  following and add `chk' to the EXTRA_DIST list
-#TESTS=chk
-
-#  build and install the .info pages
-# EH: 1-13: disable .info until time to write it;
-# note that presently cprec.info seems absent
-# from any *clean target -- must fix that if
-# this is re-enabled.
-#info_TEXINFOS = cprec.texinfo
-#cprec_TEXINFOS = gpl.texinfo
-
-#  install the man pages
-man_MANS = cprec.1 $(am__append_6)
+@WITH_FRONTEND_XDG_TRUE@XDG_INST_ICON = xdg-icon-resource
+@WITH_FRONTEND_XDG_TRUE@XDG_INST_MENU = xdg-desktop-menu
+@WITH_FRONTEND_XDG_TRUE@XDG_INST_MIME = xdg-mime
+@WITH_FRONTEND_XDG_TRUE@XICOARGS = install --noupdate --novendor --size
+@WITH_FRONTEND_XDG_TRUE@XICOARGSU = uninstall --noupdate --size
+@WITH_FRONTEND_XDG_TRUE@XICOSIZE = 16 24 32 48 64 96 128
+@WITH_FRONTEND_XDG_TRUE@XDGRESNAME = wxmav
 all: config.h
-	$(MAKE) $(AM_MAKEFLAGS) all-recursive
+	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .cc .o .obj
+.SUFFIXES: .c .o .obj
 am--refresh: Makefile
 	@:
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
@@ -542,12 +440,12 @@ $(srcdir)/config.h.in:  $(am__configure_deps)
 
 distclean-hdr:
 	-rm -f config.h stamp-h1
-install-binPROGRAMS: $(bin_PROGRAMS)
+install-libexecPROGRAMS: $(libexec_PROGRAMS)
 	@$(NORMAL_INSTALL)
-	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
+	@list='$(libexec_PROGRAMS)'; test -n "$(libexecdir)" || list=; \
 	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(bindir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(bindir)" || exit 1; \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(libexecdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(libexecdir)" || exit 1; \
 	fi; \
 	for p in $$list; do echo "$$p $$p"; done | \
 	sed 's/$(EXEEXT)$$//' | \
@@ -566,32 +464,28 @@ install-binPROGRAMS: $(bin_PROGRAMS)
 	while read type dir files; do \
 	    if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
 	    test -z "$$files" || { \
-	      echo " $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(bindir)$$dir'"; \
-	      $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
+	      echo " $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files '$(DESTDIR)$(libexecdir)$$dir'"; \
+	      $(INSTALL_PROGRAM_ENV) $(INSTALL_PROGRAM) $$files "$(DESTDIR)$(libexecdir)$$dir" || exit $$?; \
 	    } \
 	; done
 
-uninstall-binPROGRAMS:
+uninstall-libexecPROGRAMS:
 	@$(NORMAL_UNINSTALL)
-	@list='$(bin_PROGRAMS)'; test -n "$(bindir)" || list=; \
+	@list='$(libexec_PROGRAMS)'; test -n "$(libexecdir)" || list=; \
 	files=`for p in $$list; do echo "$$p"; done | \
 	  sed -e 'h;s,^.*/,,;s/$(EXEEXT)$$//;$(transform)' \
 	      -e 's/$$/$(EXEEXT)/' \
 	`; \
 	test -n "$$list" || exit 0; \
-	echo " ( cd '$(DESTDIR)$(bindir)' && rm -f" $$files ")"; \
-	cd "$(DESTDIR)$(bindir)" && rm -f $$files
+	echo " ( cd '$(DESTDIR)$(libexecdir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(libexecdir)" && rm -f $$files
 
-clean-binPROGRAMS:
-	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
+clean-libexecPROGRAMS:
+	-test -z "$(libexec_PROGRAMS)" || rm -f $(libexec_PROGRAMS)
 
-cprec$(EXEEXT): $(cprec_OBJECTS) $(cprec_DEPENDENCIES) $(EXTRA_cprec_DEPENDENCIES) 
-	@rm -f cprec$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(cprec_OBJECTS) $(cprec_LDADD) $(LIBS)
-
-dd-dvd$(EXEEXT): $(dd_dvd_OBJECTS) $(dd_dvd_DEPENDENCIES) $(EXTRA_dd_dvd_DEPENDENCIES) 
-	@rm -f dd-dvd$(EXEEXT)
-	$(AM_V_CXXLD)$(CXXLINK) $(dd_dvd_OBJECTS) $(dd_dvd_LDADD) $(LIBS)
+wxmav-x-helper$(EXEEXT): $(wxmav_x_helper_OBJECTS) $(wxmav_x_helper_DEPENDENCIES) $(EXTRA_wxmav_x_helper_DEPENDENCIES) 
+	@rm -f wxmav-x-helper$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(wxmav_x_helper_OBJECTS) $(wxmav_x_helper_LDADD) $(LIBS)
 install-binSCRIPTS: $(bin_SCRIPTS)
 	@$(NORMAL_INSTALL)
 	@list='$(bin_SCRIPTS)'; test -n "$(bindir)" || list=; \
@@ -634,20 +528,9 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/apue_ftw.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/block_hash.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cpf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cprec.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dd-dvd.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dl_drd.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getopt.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getopt1.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ino.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/meta_set.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/path_set.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vd_cpf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/walk.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xmalloc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/x-aud-key-srv.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -662,20 +545,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
-
-.cc.o:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ $<
-
-.cc.obj:
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 install-pythonPYTHON: $(python_PYTHON)
 	@$(NORMAL_INSTALL)
 	@list='$(python_PYTHON)'; dlist=; list2=; test -n "$(pythondir)" || list=; \
@@ -724,105 +593,15 @@ uninstall-pythonPYTHON:
 	  $(am__uninstall_files_from_dir) || st=$$?; \
 	done; \
 	exit $$st
-install-man1: $(man_MANS)
-	@$(NORMAL_INSTALL)
-	@list1=''; \
-	list2='$(man_MANS)'; \
-	test -n "$(man1dir)" \
-	  && test -n "`echo $$list1$$list2`" \
-	  || exit 0; \
-	echo " $(MKDIR_P) '$(DESTDIR)$(man1dir)'"; \
-	$(MKDIR_P) "$(DESTDIR)$(man1dir)" || exit 1; \
-	{ for i in $$list1; do echo "$$i"; done;  \
-	if test -n "$$list2"; then \
-	  for i in $$list2; do echo "$$i"; done \
-	    | sed -n '/\.1[a-z]*$$/p'; \
-	fi; \
-	} | while read p; do \
-	  if test -f $$p; then d=; else d="$(srcdir)/"; fi; \
-	  echo "$$d$$p"; echo "$$p"; \
-	done | \
-	sed -e 'n;s,.*/,,;p;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,' | \
-	sed 'N;N;s,\n, ,g' | { \
-	list=; while read file base inst; do \
-	  if test "$$base" = "$$inst"; then list="$$list $$file"; else \
-	    echo " $(INSTALL_DATA) '$$file' '$(DESTDIR)$(man1dir)/$$inst'"; \
-	    $(INSTALL_DATA) "$$file" "$(DESTDIR)$(man1dir)/$$inst" || exit $$?; \
-	  fi; \
-	done; \
-	for i in $$list; do echo "$$i"; done | $(am__base_list) | \
-	while read files; do \
-	  test -z "$$files" || { \
-	    echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(man1dir)'"; \
-	    $(INSTALL_DATA) $$files "$(DESTDIR)$(man1dir)" || exit $$?; }; \
-	done; }
-
-uninstall-man1:
-	@$(NORMAL_UNINSTALL)
-	@list=''; test -n "$(man1dir)" || exit 0; \
-	files=`{ for i in $$list; do echo "$$i"; done; \
-	l2='$(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
-	  sed -n '/\.1[a-z]*$$/p'; \
-	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
-	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
-	dir='$(DESTDIR)$(man1dir)'; $(am__uninstall_files_from_dir)
-
-# This directory's subdirectories are mostly independent; you can cd
-# into them and run 'make' without going through this Makefile.
-# To change the values of 'make' variables: instead of editing Makefiles,
-# (1) if the variable is set in 'config.status', edit 'config.status'
-#     (which will cause the Makefiles to be regenerated when you run 'make');
-# (2) otherwise, pass the desired values on the 'make' command line.
-$(am__recursive_targets):
-	@fail=; \
-	if $(am__make_keepgoing); then \
-	  failcom='fail=yes'; \
-	else \
-	  failcom='exit 1'; \
-	fi; \
-	dot_seen=no; \
-	target=`echo $@ | sed s/-recursive//`; \
-	case "$@" in \
-	  distclean-* | maintainer-clean-*) list='$(DIST_SUBDIRS)' ;; \
-	  *) list='$(SUBDIRS)' ;; \
-	esac; \
-	for subdir in $$list; do \
-	  echo "Making $$target in $$subdir"; \
-	  if test "$$subdir" = "."; then \
-	    dot_seen=yes; \
-	    local_target="$$target-am"; \
-	  else \
-	    local_target="$$target"; \
-	  fi; \
-	  ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
-	  || eval $$failcom; \
-	done; \
-	if test "$$dot_seen" = "no"; then \
-	  $(MAKE) $(AM_MAKEFLAGS) "$$target-am" || exit 1; \
-	fi; test -z "$$fail"
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
-tags: tags-recursive
+tags: tags-am
 TAGS: tags
 
 tags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
 	set x; \
 	here=`pwd`; \
-	if ($(ETAGS) --etags-include --version) >/dev/null 2>&1; then \
-	  include_option=--etags-include; \
-	  empty_fix=.; \
-	else \
-	  include_option=--include; \
-	  empty_fix=; \
-	fi; \
-	list='$(SUBDIRS)'; for subdir in $$list; do \
-	  if test "$$subdir" = .; then :; else \
-	    test ! -f $$subdir/TAGS || \
-	      set "$$@" "$$include_option=$$here/$$subdir/TAGS"; \
-	  fi; \
-	done; \
 	$(am__define_uniq_tagged_files); \
 	shift; \
 	if test -z "$(ETAGS_ARGS)$$*$$unique"; then :; else \
@@ -835,7 +614,7 @@ tags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
 	      $$unique; \
 	  fi; \
 	fi
-ctags: ctags-recursive
+ctags: ctags-am
 
 CTAGS: ctags
 ctags-am: $(TAGS_DEPENDENCIES) $(am__tagged_files)
@@ -854,7 +633,7 @@ cscope: cscope.files
 clean-cscope:
 	-rm -f cscope.files
 cscope.files: clean-cscope cscopelist
-cscopelist: cscopelist-recursive
+cscopelist: cscopelist-am
 
 cscopelist-am: $(am__tagged_files)
 	list='$(am__tagged_files)'; \
@@ -904,31 +683,6 @@ distdir: $(DISTFILES)
 	    test -f "$(distdir)/$$file" \
 	    || cp -p $$d/$$file "$(distdir)/$$file" \
 	    || exit 1; \
-	  fi; \
-	done
-	@list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
-	  if test "$$subdir" = .; then :; else \
-	    $(am__make_dryrun) \
-	      || test -d "$(distdir)/$$subdir" \
-	      || $(MKDIR_P) "$(distdir)/$$subdir" \
-	      || exit 1; \
-	    dir1=$$subdir; dir2="$(distdir)/$$subdir"; \
-	    $(am__relativize); \
-	    new_distdir=$$reldir; \
-	    dir1=$$subdir; dir2="$(top_distdir)"; \
-	    $(am__relativize); \
-	    new_top_distdir=$$reldir; \
-	    echo " (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) top_distdir="$$new_top_distdir" distdir="$$new_distdir" \\"; \
-	    echo "     am__remove_distdir=: am__skip_length_check=: am__skip_mode_fix=: distdir)"; \
-	    ($(am__cd) $$subdir && \
-	      $(MAKE) $(AM_MAKEFLAGS) \
-	        top_distdir="$$new_top_distdir" \
-	        distdir="$$new_distdir" \
-		am__remove_distdir=: \
-		am__skip_length_check=: \
-		am__skip_mode_fix=: \
-	        distdir) \
-	      || exit 1; \
 	  fi; \
 	done
 	-test -n "$(am__skip_mode_fix)" \
@@ -1063,22 +817,21 @@ distcleancheck: distclean
 	       $(distcleancheck_listfiles) ; \
 	       exit 1; } >&2
 check-am: all-am
-check: check-recursive
-all-am: Makefile $(PROGRAMS) $(SCRIPTS) $(MANS) config.h
-installdirs: installdirs-recursive
-installdirs-am:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pythondir)" "$(DESTDIR)$(man1dir)"; do \
+check: check-am
+all-am: Makefile $(PROGRAMS) $(SCRIPTS) config.h
+installdirs:
+	for dir in "$(DESTDIR)$(libexecdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pythondir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
-install: install-recursive
-install-exec: install-exec-recursive
-install-data: install-data-recursive
-uninstall: uninstall-recursive
+install: install-am
+install-exec: install-exec-am
+install-data: install-data-am
+uninstall: uninstall-am
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
 
-installcheck: installcheck-recursive
+installcheck: installcheck-am
 install-strip:
 	if test -z '$(STRIP)'; then \
 	  $(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
@@ -1101,149 +854,154 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-@WITH_DD_DVD_FALSE@uninstall-local:
-@WITH_FRONTEND_FALSE@uninstall-local:
 @WITH_FRONTEND_XDG_FALSE@uninstall-local:
-@WITH_DD_DVD_FALSE@install-data-hook:
-@WITH_FRONTEND_FALSE@install-data-hook:
 @WITH_FRONTEND_XDG_FALSE@install-data-hook:
-clean: clean-recursive
+clean: clean-am
 
-clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
+clean-am: clean-generic clean-libexecPROGRAMS mostlyclean-am
 
-distclean: distclean-recursive
+distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-tags
 
-dvi: dvi-recursive
+dvi: dvi-am
 
 dvi-am:
 
-html: html-recursive
+html: html-am
 
 html-am:
 
-info: info-recursive
+info: info-am
 
 info-am:
 
-install-data-am: install-man install-pythonPYTHON
+install-data-am: install-pythonPYTHON
 	@$(NORMAL_INSTALL)
 	$(MAKE) $(AM_MAKEFLAGS) install-data-hook
-install-dvi: install-dvi-recursive
+install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-binPROGRAMS install-binSCRIPTS
+install-exec-am: install-binSCRIPTS install-libexecPROGRAMS
 
-install-html: install-html-recursive
+install-html: install-html-am
 
 install-html-am:
 
-install-info: install-info-recursive
+install-info: install-info-am
 
 install-info-am:
 
-install-man: install-man1
+install-man:
 
-install-pdf: install-pdf-recursive
+install-pdf: install-pdf-am
 
 install-pdf-am:
 
-install-ps: install-ps-recursive
+install-ps: install-ps-am
 
 install-ps-am:
 
 installcheck-am:
 
-maintainer-clean: maintainer-clean-recursive
+maintainer-clean: maintainer-clean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
 	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
-mostlyclean: mostlyclean-recursive
+mostlyclean: mostlyclean-am
 
 mostlyclean-am: mostlyclean-compile mostlyclean-generic
 
-pdf: pdf-recursive
+pdf: pdf-am
 
 pdf-am:
 
-ps: ps-recursive
+ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
-	uninstall-local uninstall-man uninstall-pythonPYTHON
+uninstall-am: uninstall-binSCRIPTS uninstall-libexecPROGRAMS \
+	uninstall-local uninstall-pythonPYTHON
 
-uninstall-man: uninstall-man1
+.MAKE: all install-am install-data-am install-strip
 
-.MAKE: $(am__recursive_targets) all install-am install-data-am \
-	install-strip
-
-.PHONY: $(am__recursive_targets) CTAGS GTAGS TAGS all all-am \
-	am--refresh check check-am clean clean-binPROGRAMS \
-	clean-cscope clean-generic cscope cscopelist-am ctags ctags-am \
-	dist dist-all dist-bzip2 dist-gzip dist-lzip dist-shar \
-	dist-tarZ dist-xz dist-zip distcheck distclean \
-	distclean-compile distclean-generic distclean-hdr \
-	distclean-tags distcleancheck distdir distuninstallcheck dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-binPROGRAMS install-binSCRIPTS install-data \
+.PHONY: CTAGS GTAGS TAGS all all-am am--refresh check check-am clean \
+	clean-cscope clean-generic clean-libexecPROGRAMS cscope \
+	cscopelist-am ctags ctags-am dist dist-all dist-bzip2 \
+	dist-gzip dist-lzip dist-shar dist-tarZ dist-xz dist-zip \
+	distcheck distclean distclean-compile distclean-generic \
+	distclean-hdr distclean-tags distcleancheck distdir \
+	distuninstallcheck dvi dvi-am html html-am info info-am \
+	install install-am install-binSCRIPTS install-data \
 	install-data-am install-data-hook install-dvi install-dvi-am \
 	install-exec install-exec-am install-html install-html-am \
-	install-info install-info-am install-man install-man1 \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-pythonPYTHON install-strip installcheck \
-	installcheck-am installdirs installdirs-am maintainer-clean \
+	install-info install-info-am install-libexecPROGRAMS \
+	install-man install-pdf install-pdf-am install-ps \
+	install-ps-am install-pythonPYTHON install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic pdf pdf-am ps ps-am tags tags-am uninstall \
-	uninstall-am uninstall-binPROGRAMS uninstall-binSCRIPTS \
-	uninstall-local uninstall-man uninstall-man1 \
-	uninstall-pythonPYTHON
+	uninstall-am uninstall-binSCRIPTS uninstall-libexecPROGRAMS \
+	uninstall-local uninstall-pythonPYTHON
 
 .PRECIOUS: Makefile
 
 
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@wxDVDBackup: wxDVDBackup.in Makefile
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@	$(pyprog_sub) < $(srcdir)/wxDVDBackup.in > wxDVDBackup
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@	chmod +x wxDVDBackup
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@install-data-hook:
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	@echo Installing XDG desktop items: menu entry, icons
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	@XII=$$(which $(XDG_INST_ICON)) && XIM=$$(which $(XDG_INST_MENU)) \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	&& XMM=$$(which $(XDG_INST_MIME)) \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	|| { echo cannot find $(XDG_INST_ICON) or $(XDG_INST_MENU); \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@		echo will not do xdg icon and menu item install; exit 0; } ; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	for s in $(XICOSIZE) ; do \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@		I="$(srcdir)/xdg/$(XDGRESNAME)-$${s}.png"; test -f "$$I" || \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@			{ echo icon "$$I" is missing; continue; } ; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@		$$XII $(XICOARGS) $$s  "$$I" $(XDGRESNAME) || \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@			{ echo failed installing icon size $$s; true; } ; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	done; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	$$XII forceupdate; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	I="$(srcdir)/xdg/$(XDGRESNAME).desktop"; test -f "$$I" || exit 0; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	$$XIM install --novendor "$$I" || \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@		{ echo failed to install "$$I"; true; }
+wxmav: wxmav.in Makefile
+	$(pyprog_sub) < $(srcdir)/wxmav.in > wxmav
+	chmod +x wxmav
+@WITH_FRONTEND_XDG_TRUE@install-data-hook:
+@WITH_FRONTEND_XDG_TRUE@	@echo Installing XDG desktop items: menu entry, icons
+@WITH_FRONTEND_XDG_TRUE@	@XII=$$(which $(XDG_INST_ICON)) && XIM=$$(which $(XDG_INST_MENU)) \
+@WITH_FRONTEND_XDG_TRUE@	&& XMM=$$(which $(XDG_INST_MIME)) \
+@WITH_FRONTEND_XDG_TRUE@	|| { echo cannot find $(XDG_INST_ICON) or $(XDG_INST_MENU); \
+@WITH_FRONTEND_XDG_TRUE@		echo will not do xdg icon and menu item install; exit 0; } ; \
+@WITH_FRONTEND_XDG_TRUE@	XDG_DATA_DIRS="$(STORE_XDG_DATA_DIRS)"; export XDG_DATA_DIRS; \
+@WITH_FRONTEND_XDG_TRUE@	for s in $(XICOSIZE) ; do \
+@WITH_FRONTEND_XDG_TRUE@		echo installing icon size $$s; \
+@WITH_FRONTEND_XDG_TRUE@		I="$(srcdir)/xdg/$(XDGRESNAME)-$${s}.png"; test -f "$$I" || \
+@WITH_FRONTEND_XDG_TRUE@			{ echo icon "$$I" is missing; continue; } ; \
+@WITH_FRONTEND_XDG_TRUE@		$$XII $(XICOARGS) $$s  "$$I" $(XDGRESNAME) || \
+@WITH_FRONTEND_XDG_TRUE@			{ echo failed installing icon size $$s; true; } ; \
+@WITH_FRONTEND_XDG_TRUE@	done; \
+@WITH_FRONTEND_XDG_TRUE@	$$XII forceupdate; \
+@WITH_FRONTEND_XDG_TRUE@	I="$(srcdir)/xdg/$(XDGRESNAME).desktop"; test -f "$$I" || exit 0; \
+@WITH_FRONTEND_XDG_TRUE@	echo XDG_DATA_DIRS contains $$XDG_DATA_DIRS ; \
+@WITH_FRONTEND_XDG_TRUE@	XDG_UTILS_DEBUG_LEVEL=3 $$XIM install --novendor "$$I" && \
+@WITH_FRONTEND_XDG_TRUE@		$$XIM forceupdate >/dev/null 2>/dev/null || \
+@WITH_FRONTEND_XDG_TRUE@			{ echo failed to install "$$I" -- status $$?; true; }
 
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@uninstall-local:
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	@echo Uninstalling XDG desktop items: menu entry, icons
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	@XII=$$(which $(XDG_INST_ICON)) && XIM=$$(which $(XDG_INST_MENU)) \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	&& XMM=$$(which $(XDG_INST_MIME)) \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	|| { echo cannot find $(XDG_INST_ICON) or $(XDG_INST_MENU); \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@		echo will not do xdg icon and menu item uninstall; exit 0; } ; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	I="$(XDGRESNAME).desktop"; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	$$XIM uninstall "$$I" || \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@		{ echo failed to uninstall "$$I"; true; } ; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	for s in $(XICOSIZE) ; do \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@		$$XII $(XICOARGSU) $$s $(XDGRESNAME) || \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@			{ echo failed uninstalling icon size $$s; true; } ; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	done; \
-@WITH_DD_DVD_TRUE@@WITH_FRONTEND_TRUE@@WITH_FRONTEND_XDG_TRUE@	$$XII forceupdate || true
+@WITH_FRONTEND_XDG_TRUE@uninstall-local:
+@WITH_FRONTEND_XDG_TRUE@	@echo Uninstalling XDG desktop items: menu entry, icons
+@WITH_FRONTEND_XDG_TRUE@	@XII=$$(which $(XDG_INST_ICON)) && XIM=$$(which $(XDG_INST_MENU)) \
+@WITH_FRONTEND_XDG_TRUE@	&& XMM=$$(which $(XDG_INST_MIME)) \
+@WITH_FRONTEND_XDG_TRUE@	|| { echo cannot find $(XDG_INST_ICON) or $(XDG_INST_MENU); \
+@WITH_FRONTEND_XDG_TRUE@		echo will not do xdg icon and menu item uninstall; exit 0; } ; \
+@WITH_FRONTEND_XDG_TRUE@	XDG_DATA_DIRS="$(STORE_XDG_DATA_DIRS)"; export XDG_DATA_DIRS; \
+@WITH_FRONTEND_XDG_TRUE@	I="$(XDGRESNAME).desktop"; \
+@WITH_FRONTEND_XDG_TRUE@	$$XIM uninstall "$$I" || \
+@WITH_FRONTEND_XDG_TRUE@		{ echo failed to uninstall "$$I"; true; } ; \
+@WITH_FRONTEND_XDG_TRUE@	for s in $(XICOSIZE) ; do \
+@WITH_FRONTEND_XDG_TRUE@		$$XII $(XICOARGSU) $$s $(XDGRESNAME) || \
+@WITH_FRONTEND_XDG_TRUE@			{ echo failed uninstalling icon size $$s; true; } ; \
+@WITH_FRONTEND_XDG_TRUE@	done; \
+@WITH_FRONTEND_XDG_TRUE@	$$XII forceupdate >/dev/null 2>/dev/null || true
+
+# if WITH_FRONTEND_XDG
+
+#  if you write a self-test script named `chk', uncomment the
+#  following and add `chk' to the EXTRA_DIST list
+#TESTS=chk
+
+#  install the man pages
+#man_MANS=wxmav.1
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

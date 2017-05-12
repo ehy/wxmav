@@ -3,10 +3,16 @@ dnl Process this file with autoconf to produce a configure script.
 dnl Every other copy of the package version number gets its value from here
 AC_INIT([wxmav], [1.0.0])
 
-dnl EH: some [ ... deleted ... ] decided that autoconf should preach
-dnl and fail rather than just work, so this shell parameter is
-dnl needed on OpenIndiana (maybe all Sun) -- must preceed automake
-AS_IF([test rm != am_arrogance],
+dnl Name for the X helper program (reason for most of this script)
+AC_SUBST([XHELPERNAME], [wxmav-x-helper])
+dnl Name for the X helper program source
+AC_SUBST([XHELPERSOURCE], [x-aud-key-srv.c])
+
+dnl EH: prevent configure/automake being conservative on finding
+dnl an rm command that does not satisfy a posix test -- this
+dnl has happened on OpenIndiana, and the following makes things work:
+dnl intitial test condition is probably always true
+AS_IF([test rm != am_please_work_portably],
 [
 ACCEPT_INFERIOR_RM_PROGRAM=yes
 export ACCEPT_INFERIOR_RM_PROGRAM
@@ -27,56 +33,22 @@ AC_SUBST(ISODATE)
 
 dnl We want these before the checks, so the checks can modify their values.
 dnl (found in fetchmail configure.in)
-test x"$CFLAGS" = x && CFLAGS="-O2"; AC_SUBST(CFLAGS)
-test x"$CXXFLAGS" = x && CXXFLAGS="-O2"; AC_SUBST(CXXFLAGS)
+test x"$CFLAGS" = x && CFLAGS="-O"; AC_SUBST(CFLAGS)
+test x"$CXXFLAGS" = x && CXXFLAGS="-O"; AC_SUBST(CXXFLAGS)
 dnl test x"$LDFLAGS" = x && LDFLAGS=-s; AC_SUBST(LDFLAGS)
 
 AC_CANONICAL_HOST
 
-dnl Ensure use of large file support
-AC_SYS_LARGEFILE
+dnl Ensure use of large file support (not needed presently)
+dnl AC_SYS_LARGEFILE
 dnl Check file names
-AC_SYS_LONG_FILE_NAMES
+dnl AC_SYS_LONG_FILE_NAMES
 
-dnl arg to allow disabling of linking libdvdread
-AC_ARG_WITH([libdvdread], AS_HELP_STRING([--with-libdvdread],
-  [link with -ldvdread (or ARG) (the default is to use runtime loading,
-   which is better, where possible)]),,
-  [with_libdvdread=no])
-
-dnl dd-dvd made optional
-AC_ARG_ENABLE([dd-dvd],
-	AS_HELP_STRING([--disable-dd-dvd],
-		 [do not build dd-dvd, the simple dvd filesystem backup program (C++)]),
-	[case "${enableval}" in
-	yes) enable_dd_dvd=true ;;
-	no)  enable_dd_dvd=false ;;
-	*) AC_MSG_ERROR([bad value ${enableval} for --enable-dd-dvd]) ;;
-	esac],[enable_dd_dvd=true])
-AM_CONDITIONAL([WITH_DD_DVD], [test x$enable_dd_dvd = xtrue])
-
-dnl Version 0.2.1, wxPython front end
-AC_ARG_ENABLE([wxpy-frontend],
-	AS_HELP_STRING([--disable-wxpy-frontend],
-		 [do not install the wxPython graphical backup frontend program:
-          requires Python 2.7 (not 3.x), wxPython, growisofs, dvd+rw-mediainfo,
-          dvd+rw-format (the latter three from the same package "dvd+rw-tools"
-          or maybe "growisofs"), genisoimage or mkisofs, and cprec and dd-dvd
-          from this package (--disable-dd-dvd will disable this frontend
-          application too)
-         ]),
-	[case "${enableval}" in
-	yes) enable_frontend=true ;;
-	no)  enable_frontend=false ;;
-	*) AC_MSG_ERROR([bad value ${enableval} for --enable-wxpy-frontend]) ;;
-	esac],[enable_frontend=true])
-AM_CONDITIONAL([WITH_FRONTEND], [test x$enable_frontend = xtrue])
-
-dnl Version 0.2.1, wxPython front end -- install xdg items?
-AC_ARG_ENABLE([wxpy-frontend-xdg],
-	AS_HELP_STRING([--disable-wxpy-frontend-xdg],
-		 [do not install the 'desktop' items (icons, menu, etc.) for the
-          wxPython graphical backup frontend program (--enable-wxpy-frontend) --
+dnl Configure option: install xdg items?
+AC_ARG_ENABLE([xdg-setup-items],
+	AS_HELP_STRING([--disable-xdg-setup-items],
+		 [do not install the 'desktop' items (icons, menu, etc.) for
+          the program -- installation of these items
           requires xdg-icon-resource, xdg-desktop-menu, xdg-mime
           (from package possibly named "xdg-utils") -- installation will
           *not* fail if those programs fail or are absent
@@ -84,104 +56,169 @@ AC_ARG_ENABLE([wxpy-frontend-xdg],
 	[case "${enableval}" in
 	yes) enable_frontend_xdg=true ;;
 	no)  enable_frontend_xdg=false ;;
-	*) AC_MSG_ERROR([bad value ${enableval} for --enable-wxpy-frontend-xdg]) ;;
+	*) AC_MSG_ERROR([bad value ${enableval} for --enable-xdg-setup-items]) ;;
 	esac],[enable_frontend_xdg=true])
 AM_CONDITIONAL([WITH_FRONTEND_XDG], [test x$enable_frontend_xdg = xtrue])
+
+dnl WRT xdg items: scripts such as xdg-desktop-menu check env
+dnl for XDG_DATA_DIRS, and provide defaults if not found; but,
+dnl the scripts defaults might not be right, and doing su/sudo
+dnl make install very well might strip XDG_DATA_DIRS from the
+dnl environment -- so try to record configure-time $XDG_DATA_DIRS
+dnl value so it is available to the xdg* {,un}install rule.
+AC_SUBST([STORE_XDG_DATA_DIRS], [$XDG_DATA_DIRS])
 
 dnl Checks for programs.
 AC_PROG_INSTALL
 AC_PROG_CC
-AC_PROG_CXX
-AC_C_INLINE
+dnl AC_PROG_CXX
+dnl AC_C_INLINE
+
+# proc to warn that the X requiement unsatisfied and
+# helper will not be installed
+_no_helper_warning () {
+    test X"$no_x" = Xyes && {
+    AC_MSG_WARN([X Window System headers path or libraries path
+    were not found: please use configure options:
+    --with-x --x-includes=<X path>/include --x-libraries=<X path>/lib
+    or, the X helper program will not be built or installed --
+    that means that multimedia keys (play/pause, stop, next, previous)
+    will not be available, and the screensaver will not be suspended
+    for video playing.
+    ])
+    }
+}
+
+dnl Check for X (maybe disable use of xmkmf?)
+dnl XMKMF=false
+AC_PATH_X
+_no_helper_warning
+
+# Presently the only compiled program is the X-helper, and
+# if X was not found by now, remaining C related checks are
+# not needed (but the final Python checks are);
+if test X"$no_x" != Xyes ; then
+
+test X = X"$x_includes" || {
+    # add to CPPFLAGS here even though $X_CFLAG from AC_PATH_XTRA
+    # is used below - $X_CFLAG is documented as *compiler* flags
+    # leaving the possibility of something unsuitable for cpp,
+    # therefore $X_CFLAG is added to CFLAGS; but, without the X
+    # path in CPPFLAGS the configure script complains that headers
+    # are not usable by the preprocessor - if this results in
+    # redundant compiler args, it should be harmless
+    CPPFLAGS="$CPPFLAGS -I$x_includes"
+    AC_MSG_RESULT([X paths: headers $x_includes])
+}
+test X = X"$x_libraries" || {
+    # do not add to LDFLAGS here, since $X_LIBS from AC_PATH_XTRA
+    # should suffice
+    #LDFLAGS="$LDFLAGS-L$x_libraries"
+    AC_MSG_RESULT([X paths: libs $x_libraries])
+}
+
+dnl Checks for X include and lib paths
+AC_PATH_XTRA
+test X = X"$X_CFLAGS" || {
+    AC_MSG_RESULT([X_CFLAGS: $X_CFLAGS])
+    CFLAGS="$CFLAGS $X_CFLAGS"
+}
+test X = X"$X_LIBS" || {
+    AC_MSG_RESULT([X_LIBS: $X_LIBS])
+    LDFLAGS="$LDFLAGS $X_LIBS"
+}
 
 dnl Checks for libraries.
-# libdvdread check
-if test x"$with_libdvdread" = xyes; then
-# libdvdread enabled
-#  Now it gets ugly^Hier. Many OS's might offer dvdread with a 3rd party
-#  package system, but the installation directories might not be in
-#  the default search path of the compiler and linker. Or it might be
-#  'hand' installed anywhere. But it must be found. There seems to be
-#  no autoconf magic for this, and all the 'googling' I could stand was
-#  little help. Therefore shell script is resorted to.
-#
-_search_hack_prefix_list="/usr/local /opt/local /opt /usr/pkg"
-_search_hack_headers_list="include/dvdread/dvd_reader.h"
-_search_hack_libraries_list="lib/libdvdread.so lib/libdvdread.a"
 
-for _search_hack_prefix in $_search_hack_prefix_list
-do
-  for _search_hack_var in $_search_hack_headers_list
-  do
-    if test -f "${_search_hack_prefix}/${_search_hack_var}"
-    then
-    	_search_hack_header="${_search_hack_prefix}/${_search_hack_var}"
-	break
-    fi
-  done
-  if test X"$_search_hack_header" != X
-  then
-    CFLAGS="$CFLAGS -I${_search_hack_prefix}/include"
-    CXXFLAGS="$CXXFLAGS -I${_search_hack_prefix}/include"
-    break
-  fi
-done
+AC_CHECK_LIB([X11], [XPending], [],
+[no_x=yes; _no_helper_warning], [])
+fi # if test X"$no_x" != Xyes
 
-for _search_hack_prefix in $_search_hack_prefix_list
-do
-  for _search_hack_var in $_search_hack_libraries_list
-  do
-    if test -f "${_search_hack_prefix}/${_search_hack_var}"
-    then
-    	_search_hack_library="${_search_hack_prefix}/${_search_hack_var}"
-	break
-    fi
-  done
-  if test X"$_search_hack_library" != X
-  then
-    LDFLAGS="$LDFLAGS -L${_search_hack_prefix}/lib"
-    break
-  fi
-done
+# can continue X checks?
+if test X"$no_x" != Xyes ; then
+AC_CHECK_LIB([Xext], [DPMSInfo], [],
+    [_missing_ext_dmps=yes], [-lX11])
 
-AC_CHECK_LIB(dvdread, DVDVersion, AC_DEFINE([HAVE_DVDVERSION], [1], ["Got DVDVersion"]))
-AC_CHECK_LIB(dvdread, DVDReadBlocks,
-  AC_CHECK_LIB(dvdread, UDFFindFile,,
-	AC_MSG_ERROR([libdvdread function UDFFindFile not found -- try a static library build])),
-AC_MSG_ERROR([libdvdread function DVDReadBlocks not found -- not good at all]))
+AC_CHECK_LIB([Xss], [XScreenSaverSuspend], [],
+    [_missing_ext_xss=yes], [-lX11])
 
-else
-# libdvdread not enabled
-if test x"$with_libdvdread" = x || test x"$with_libdvdread" = xno; then
-AC_MSG_NOTICE(Skipping check for libdvdread: --with-libdvdread not given)
-AC_CHECK_LIB(dl, dlsym)
-else
-#  Here user has given a specific library argument; will assume such a user
-#  will have set -I and -L as necessary.
-AC_MSG_NOTICE(Skipping check for libdvdread: using --with-libdvdread=ARG)
-LIBS="$with_libdvdread $LIBS"
-AC_DEFINE([HAVE_LIBDVDREAD], [1])
-fi
-fi
-# end libdvdread check
 
 dnl Checks for header files.
 AC_HEADER_STDC
-AC_HEADER_DIRENT
-AC_CHECK_HEADERS(getopt.h unistd.h sys/param.h sys/time.h time.h sys/mkdev.h sys/sysmacros.h string.h memory.h fcntl.h dirent.h sys/ndir.h ndir.h alloca.h locale.h error.h errno.h limits.h sys/resource.h ctype.h stdarg.h varargs.h dlfcn.h)
 
-dnl  this jm_* was provided by an older autogen, and now causes
-dnl  warning noise with newer auto* tools: do without it and watch
-dnl  for reports from any old system users
-dnl jm_CHECK_TYPE_STRUCT_UTIMBUF
+AC_CHECK_HEADERS(getopt.h)
+dnl autoconf info doc says 'blank-separated argument list';
+dnl hence, the repeats:
+AC_CHECK_HEADERS(unistd.h sys/param.h string.h poll.h locale.h,
+    [], [
+    no_x=yes;
+    AC_MSG_WARN([
+    an expected C header is missing; the X helper program
+    cannot be built - screen-saver control and multimedia
+    keys will not work, but $PACKAGE should work])
+    ])
+AC_CHECK_HEADERS(errno.h limits.h sys/types.h sys/wait.h,
+    [], [
+    no_x=yes;
+    AC_MSG_WARN([
+    an expected C header is missing; the X helper program
+    cannot be built - screen-saver control and multimedia
+    keys will not work, but $PACKAGE should work])
+    ])
+AC_CHECK_HEADERS(X11/X.h X11/Xlib.h X11/Xutil.h X11/keysym.h X11/XF86keysym.h,
+    [], [
+    no_x=yes;
+    AC_MSG_WARN([
+    an expected C header is missing; the X helper program
+    cannot be built - screen-saver control and multimedia
+    keys will not work, but $PACKAGE should work])
+    ])
 
-AC_HEADER_MAJOR
-AC_STRUCT_TM
-AC_STRUCT_ST_BLOCKS
-AC_FUNC_ALLOCA
-AC_FUNC_FSEEKO
-AC_FUNC_CLOSEDIR_VOID
-AC_CHECK_FUNCS(mkfifo vprintf doprnt seekdir telldir getrlimit pathconf getpagesize sysconf strlcpy mmap lstat readlink realpath symlink lchown lchmod lutimes utimes error dlsym posix_memalign getfsfile endfsent getmntinfo setmntent getmntent endmntent mknod getopt getopt_long)
+fi # if test X"$no_x" != Xyes
+
+# can continue X checks?
+if test X"$no_x" != Xyes ; then
+
+AC_CHECK_HEADERS([X11/extensions/scrnsaver.h],[], [],
+[[#include <X11/Xlib.h>
+]])
+AC_CHECK_HEADERS([X11/extensions/dpms.h],[], [],
+[[#include <X11/Xlib.h>
+]])
+
+AC_CHECK_FUNCS(getopt getopt_long setlocale)
+dnl autoconf info doc says
+dnl '... each FUNCTION enumerated in the blank-or-newline-separated ...'
+dnl but newlines are raising syntax errors; hence, the repeats:
+AC_CHECK_FUNCS(fork pipe poll system waitpid chdir,
+    [], [
+    no_x=yes;
+    AC_MSG_WARN([
+    an expected C function is missing; the X helper program
+    cannot be built - screen-saver control and multimedia
+    keys will not work, but $PACKAGE should work])
+    ])
+AC_CHECK_FUNCS(strtoul strcasecmp snprintf strrchr signal,
+    [], [
+    no_x=yes;
+    AC_MSG_WARN([
+    an expected C function is missing; the X helper program
+    cannot be built - screen-saver control and multimedia
+    keys will not work, but $PACKAGE should work])
+    ])
+dnl AC_CHECK_FUNCS(-more funcs go here-,
+dnl     [], [
+dnl     no_x=yes;
+dnl     AC_MSG_WARN([
+dnl     an expected C function is missing; the X helper program
+dnl     cannot be built - screen-saver control and multimedia
+dnl     keys will not work, but $PACKAGE should work])
+dnl     ])
+
+fi # if test X"$no_x" != Xyes
+
+# can continue X checks?
+if test X"$no_x" != Xyes ; then
 
 dnl getopt{,_long}
 AM_CONDITIONAL([NEED_GETOPT_C], [test x$ac_cv_func_getopt != xyes && test x$ac_cv_func_getopt != xtrue])
@@ -191,28 +228,77 @@ dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
-AC_TYPE_UID_T
 AC_CHECK_SIZEOF(char*, 4)
 
-dnl Checks for library functions.
+# ELSE test X"$no_x" != Xyes
+else
+
+# must define conditionals tested in *.am
+AM_CONDITIONAL([NEED_GETOPT_C], [test X = Y])
+AM_CONDITIONAL([NEED_GETOPT_LONG_C], [test X = Y])
+
+# END test X"$no_x" != Xyes
+fi
+
+AM_CONDITIONAL([WITH_X_HELPER], [test X"$no_x" != Xyes])
+
+dnl xdg-* progs might have unuseful defaults when $XDG_DATA_DIRS
+dnl is empty, but install target is probably under su/sudo/pfexec/doas
+dnl etc. and such programs often sanitize the environment, and xdg-*
+dnl progs get left with their defaults -- so store configure-time
+dnl $XDG_DATA_DIRS in a parameter that will be available to the
+dnl xdg items install target
+AC_SUBST([STORE_XDG_DATA_DIRS], [$XDG_DATA_DIRS])
 
 dnl subdir configures
-AC_CONFIG_SUBDIRS(lib_misc wxdvdbackuppkg)
+dnl AC_CONFIG_SUBDIRS(lib_misc wxmavpkg)
 
-dnl Version 0.2.1, wxPython front end
-if test x"$enable_frontend" = xtrue; then
+dnl wxPython runs better with Python
 AM_PATH_PYTHON([2.7],, [:])
 dnl AM_CONDITIONAL([HAVE_PYTHON], [test X"$PYTHON" != X:])
+
+# if python was found, then test suitable wx module
+dnl NOTE:
+dnl in configure.ac this entire function must be enclosed in
+dnl brackets to quote it, since the here-doc contains brackets
+[_py_test_wx_ok () {
+    PY="$1"
+    "$PY" <<"NIK"
+try:
+    import wx
+except ImportError:
+    print("wxPython module not found: import exception")
+    exit(1)
+
+v = int(wx.VERSION[0])
+if v < 3:
+    print("wxPython version {} found, *need* 3 or greater".format(v))
+    exit(1)
+
+print("good, found wxPython version '{}'".format(wx.version()))
+exit(0)
+NIK
+
+    return $?
+}]
+
+# Test python check result, and wx version
 if test X"$PYTHON" = X: ; then
-AC_MSG_ERROR([a suitable Python was not found -- use --disable-wxpy-frontend to install without the Python graphical frontend])
-elif ! $PYTHON -c 'import wx' >/dev/null 2>&1 ; then
-AC_MSG_ERROR([wxPython (wxWidgets python package) was not found -- use --disable-wxpy-frontend to install without the Python graphical frontend])
-else
-# EH: AM_PATH_PYTHON sets pkgpythondir to $PACKAGE -- override that
-pkgpythondir=\${pythondir}/wxdvdbackuppkg
-fi
-dnl END Version 0.2.1, wxPython front end
+    AC_MSG_ERROR([
+    did not find a suitable Python - Python 2.7 or greater needed])
 fi
 
-dnl this was original from autopackage: AC_OUTPUT(Makefile cprec.lsm cprec.spec)
+dnl Python seems OK; now check wx module
+AC_MSG_CHECKING([for wxPython presence and version])
+if ! _PYCHECKRES=`_py_test_wx_ok "$PYTHON" 2>&1` ; then
+    AC_MSG_RESULT([$_PYCHECKRES])
+    AC_MSG_ERROR([
+    sorry, $PACKAGE requires wxPython with wxWidgets 3.x or greater])
+else
+    AC_MSG_RESULT([$_PYCHECKRES])
+    # EH: AM_PATH_PYTHON sets pkgpythondir to $PACKAGE -- override that
+    pkgpythondir=\${pythondir}/wxmavpkg
+fi
+dnl END wxPython
+
 AC_OUTPUT(Makefile)

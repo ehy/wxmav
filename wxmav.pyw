@@ -1977,10 +1977,9 @@ elif _in_xws:
 
             try:
                 if kill_pgrp and self.mk_pgrp:
-                    os.killpg(self.ch_pid, sig)
+                    return os.killpg(self.ch_pid, sig)
                 else:
-                    os.kill(self.ch_pid, sig)
-                return 0
+                    return os.kill(self.ch_pid, sig)
             except OSError as e:
                 self.error = ("kill", sig, e.errno, e.strerror)
             except Exception as e:
@@ -2215,7 +2214,7 @@ elif _in_xws:
 
             self.app = app
 
-            self.xhelperargs = procargs or [_T('x-aud-key-srv'),
+            self.xhelperargs = procargs or [_T('wxmav-x-helper'),
                                             _T('--xautolock'),
                                             _T('--xscreensaver')]
 
@@ -2264,13 +2263,48 @@ elif _in_xws:
                                    mk_pgrp = True)
 
             pid, rfd, efd = self.ch_proc.go()
+
+            # TODO: clean this up
+            # exec*() success detection
+            dec_msg = None
+            dec_sta = 0
+            if pid > 0:
+                wx.MilliSleep(50)
+                st = self.ch_proc.wait(opts = "nohang")
+                #print("WAIT was {}".format(st))
+                if st >= 0:
+                    d = self.ch_proc.decode_wait(st)
+                    if d[0] == "unknown":
+                        st = self.ch_proc.kill(sig = 0)
+                        #print("KILL STATUS OK???: {} ({})".format(
+                        #                                   st, che))
+                    else:
+                        #print("WAIT DECODE: {}".format(d))
+                        st = -1
+                        dec_msg, dec_sta = d
+                elif st == -2:
+                    # wait WNOHANG and nothing ready
+                    st = 0
+                #print("BLOCK STATUS: {}".format(st))
+                if (self.ch_proc.error[0] != "no error" or
+                   (st != 0 and st != None)):
+                    che = self.ch_proc.error
+                    #print("CH ERR STATUS: {} ({})".format(st, che))
+                    self.ch_proc.wait()
+                    pid = -1
+
             if pid < 0:
                 os.close(pip[0])
                 os.close(pip[1])
                 self.pwr = None
                 self.status = self.ch_proc.error # error tuple
+                if dec_msg or self.status[3] == "running":
+                    t0, t1, t2, t3 = self.status
+                    self.status = (t0, dec_sta or t1,
+                                   t2, dec_msg or "unknown")
                 self.ch_proc = None
                 return self.status[3]
+
 
             self.thd = AChildThread(self.app, wx.NewId(),
                                     self.run_ch_proc,
@@ -2598,7 +2632,14 @@ class TheAppClass(wx.App):
         self.xhelper  = None
         self.mshelper = None
         if _in_xws:
-            self.xhelper = XWSHelperProcClass(self)
+            try:
+                procargs = [_T(os.environ['WXMAV_XHELPERPATH']),
+                            _T('--xautolock'),
+                            _T('--xscreensaver')]
+            except:
+                procargs = None
+
+            self.xhelper = XWSHelperProcClass(self, procargs = procargs)
             global X11hack
             if X11hack and X11hack["lib_err"]:
                 self.err_msg(_T("Cannot load {} : '{}'").format(
@@ -2662,6 +2703,12 @@ class TheAppClass(wx.App):
         if self.xhelper:
             if self.xhelper.go():
                 wx.CallAfter(self.frame.xhelper_ready, True)
+            else:
+                # problem execing child: must do without
+                s = self.xhelper.get_status()
+                self.xhelper = None
+                self.err_msg(
+                    "APP OnInit: Xhelper exec FAIL {}".format(s))
 
         return True
 

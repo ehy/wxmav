@@ -1,9 +1,12 @@
 [Desktop Entry]
-Version=1.0.0
 Type=Application
+Version=1.0.0
+Encoding=UTF-8
+Terminal=false
 Name=wxmav
-Comment=M A/V Player (WX)
+GenericName=Media player (wxmav)
+Comment=Play video and audio files and URLs
 TryExec=wxmav
-Exec=wxmav
+Exec=wxmav %U
 Icon=wxmav
-Categories=AudioVideo;Audio;Sound;Video;Multimedia;Utility;
+Categories=AudioVideo;Sound;Audio;Video;Multimedia;X-MandrivaLinux-Multimedia-Video;
