@@ -44,5 +44,7 @@ test X"$bin_file" = X && fail \
 WXMAV_XHELPERPATH=@XHELPERPATH@
 export WXMAV_XHELPERPATH
 
-exec $PYINTERP "$bin_file" ${1+"$@"}
-fail return from exec $PYINTERP \!
+# if exec is used here, session management software might not
+# be able to restart the program
+#exec $PYINTERP "$bin_file" ${1+"$@"}
+$PYINTERP "$bin_file" ${1+"$@"}
