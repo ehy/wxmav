@@ -2264,35 +2264,49 @@ elif _in_xws:
 
             pid, rfd, efd = self.ch_proc.go()
 
-            # TODO: clean this up
-            # exec*() success detection
+            # exec*() success detection - short sleep then
+            # ch_proc.wait nohang, which should return -2,
+            # meaning pid was found but not exited or signalled,
+            # or > 0 meaning exited or signalled, or other
+            # negative value meaning a wait error, like pid NG
             dec_msg = None
             dec_sta = 0
             if pid > 0:
                 wx.MilliSleep(50)
                 st = self.ch_proc.wait(opts = "nohang")
-                #print("WAIT was {}".format(st))
                 if st >= 0:
                     d = self.ch_proc.decode_wait(st)
                     if d[0] == "unknown":
+                        # the wait return is unexpected, so
+                        # try to kill(0) to test the pid,
+                        # keeping that result in st
                         st = self.ch_proc.kill(sig = 0)
-                        #print("KILL STATUS OK???: {} ({})".format(
-                        #                                   st, che))
+                        self.err_msg(
+                            "CHILD EXEC KILL(0) STATUS: {}".format(st))
                     else:
-                        #print("WAIT DECODE: {}".format(d))
+                        # wait return indicates normal exit or
+                        # killed by signal; either way it is a
+                        # mysterious error
+                        self.err_msg(
+                            "CHILD EXEC EARLY EXIT: {}".format(d))
                         st = -1
+                        # save returns from decode_wait(st) for
+                        # use in this object's status
                         dec_msg, dec_sta = d
                 elif st == -2:
-                    # wait WNOHANG and nothing ready
+                    # wait WNOHANG and not ready for the reaper
+                    # (this is good)
                     st = 0
-                #print("BLOCK STATUS: {}".format(st))
                 if (self.ch_proc.error[0] != "no error" or
                    (st != 0 and st != None)):
                     che = self.ch_proc.error
-                    #print("CH ERR STATUS: {} ({})".format(st, che))
+                    self.err_msg(
+                        "CHILD EXEC ERROR STATUS: {} ({})".format(
+                            st, che))
                     self.ch_proc.wait()
                     pid = -1
 
+            # error?
             if pid < 0:
                 os.close(pip[0])
                 os.close(pip[1])
