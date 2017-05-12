@@ -339,7 +339,7 @@ Function .onInstSuccess
 	'shell32.dll::SHChangeNotify(i, i, i, i) v (0x08000000, 0, 0, 0)'
   # query user w/ offer to start
   MessageBox MB_YESNO \
-	"Would you like to start appclass now?" \
+	"Would you like to start appclass (appname.appsuffix) now?" \
 	IDNO no_do_not_invoke_the_program
   Exec '"$INSTDIR\appname.appsuffix" "$INSTDIR\mswxmpldir\*.pls"'
   no_do_not_invoke_the_program:
@@ -364,7 +364,7 @@ FunctionEnd
 	"The program source code (optional; free under GPL license)."
 
   LangString DESC_SecExa ${LANG_ENGLISH} \
-	"Examples for appName, same .pls files ready to play and edit."
+	"Examples for appName, some .pls files ready to play and edit."
 
   ;Assign language strings to sections
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
