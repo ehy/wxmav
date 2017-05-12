@@ -46,7 +46,7 @@ pyprog_sub = sed \
 python_PYTHON = wxmav.py
 bin_SCRIPTS = wxmav
 CLEANFILES = $(bin_SCRIPTS)
-EXTRA_DIST = wxmav.in  xdg/*
+EXTRA_DIST = wxmav.in  xdg/* cdata/* msw_pkg/* examples/*
 
 wxmav: wxmav.in Makefile
 	$(pyprog_sub) < $(srcdir)/wxmav.in > wxmav

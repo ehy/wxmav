@@ -376,7 +376,7 @@ pyprog_sub = sed \
 python_PYTHON = wxmav.py
 bin_SCRIPTS = wxmav
 CLEANFILES = $(bin_SCRIPTS)
-EXTRA_DIST = wxmav.in  xdg/*
+EXTRA_DIST = wxmav.in  xdg/* cdata/* msw_pkg/* examples/*
 
 #install-data-local:
 #	echo HOOK INVOKED: install-data-local
