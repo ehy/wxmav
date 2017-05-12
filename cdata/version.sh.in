@@ -1,0 +1,7 @@
+#! /bin/sh
+
+V="appversion"
+FMT='%s\n'
+test X"$1" = X-s && FMT='"%s"\n'
+test X"$1" = X-i && V="appversionI"
+printf "$FMT" "$V"

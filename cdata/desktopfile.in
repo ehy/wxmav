@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=appversion
+Type=Application
+Name=appName
+Comment=progprettyname
+TryExec=appname
+Exec=appname %F
+Icon=appname
+MimeType=application/x-appname;application/genFileExtND;
+Categories=Graphics;3DGraphics;

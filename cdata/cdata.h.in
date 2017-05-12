@@ -1,0 +1,49 @@
+define(headerName, `cdataName.h')dnl
+define(headerGuard, `_CDATA_H_')dnl
+/**********************************************************************\
+ * headerName -- common data for application appclass                 
+ * Generated using cdataName.m4 from headerName.in                    
+ *                                                                    
+ * Copyright (C) 2012 Ed Hynan                                        
+ *                                                                    
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 2 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *                                                                    
+\**********************************************************************/
+
+cppheaderguard(headerGuard, appversionI)
+
+cppifndefine(`APPNAME_IN_ASCII', appnameS,
+	`	/* name, lowercase, e.g. executable name */')
+
+cppifndefine(`APPCLASS_IN_ASCII', appclassS,
+	`	/* name, Initial Cap, of e.g. executable name */')
+
+cppifndefine(`VENDORNAME', vendornameS,
+	`	/* Vendor, e.g. used in MSW registry */')
+
+cppifndefine(`APPVERSIONSTR', appversionS,
+	`	/* application version as string */')
+
+cppifndefine(`APPVERSION', appversionI,
+	`	/* numeric version: major<<24|minor<<16|revisionmajor<<8|revisionminor */')
+
+#if defined(__WXMSW__)
+cppdefine(HELP_DOC_SUBDIR, mswhelpdirS)
+#else
+cppdefine(HELP_DOC_SUBDIR, genhelpdirS)
+#endif
+
+/* end headerName */
+`#endif	/* 'headerGuard` */'
+

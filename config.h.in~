@@ -3,9 +3,6 @@
 /* Define to 1 if you have the `chdir' function. */
 #undef HAVE_CHDIR
 
-/* Define to 1 if you have the <el_bogo.h> header file. */
-#undef HAVE_EL_BOGO_H
-
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
 
