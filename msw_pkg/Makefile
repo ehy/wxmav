@@ -34,7 +34,7 @@ all: $(NAME)
 #	$(MKNSIS) $(SRC)
 #	ls -l $@
 # for now, w/o i18
-$(NAME) : i18n-sect.in
+$(NAME) :
 	$(M4) $(MACS) $(SRC).in > $(SRC)
 	$(MKNSIS) $(SRC)
 	ls -l $@

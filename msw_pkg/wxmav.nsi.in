@@ -341,10 +341,11 @@ Function .onInstSuccess
   MessageBox MB_YESNO \
 	"Would you like to start appclass (appname.appsuffix) now?" \
 	IDNO no_do_not_invoke_the_program
-  Exec '"$INSTDIR\appname.appsuffix" "$INSTDIR\mswxmpldir\*.pls"'
+  Exec '"appname.appsuffix" "$INSTDIR\mswxmpldir\*.pls"'
   no_do_not_invoke_the_program:
 FunctionEnd
 # end func
+#  Exec '"$INSTDIR\appname.appsuffix" "$INSTDIR\mswxmpldir\*.pls"'
 
 
 ;--------------------------------
