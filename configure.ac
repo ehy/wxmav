@@ -42,7 +42,7 @@ AC_CANONICAL_HOST
 dnl Ensure use of large file support (not needed presently)
 dnl AC_SYS_LARGEFILE
 dnl Check file names
-dnl AC_SYS_LONG_FILE_NAMES
+AC_SYS_LONG_FILE_NAMES
 
 dnl Configure option: install xdg items?
 AC_ARG_ENABLE([xdg-setup-items],
@@ -241,14 +241,6 @@ AM_CONDITIONAL([NEED_GETOPT_LONG_C], [test X = Y])
 fi
 
 AM_CONDITIONAL([WITH_X_HELPER], [test X"$no_x" != Xyes])
-
-dnl xdg-* progs might have unuseful defaults when $XDG_DATA_DIRS
-dnl is empty, but install target is probably under su/sudo/pfexec/doas
-dnl etc. and such programs often sanitize the environment, and xdg-*
-dnl progs get left with their defaults -- so store configure-time
-dnl $XDG_DATA_DIRS in a parameter that will be available to the
-dnl xdg items install target
-AC_SUBST([STORE_XDG_DATA_DIRS], [$XDG_DATA_DIRS])
 
 dnl subdir configures
 dnl AC_CONFIG_SUBDIRS(lib_misc wxmavpkg)
