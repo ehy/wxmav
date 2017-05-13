@@ -135,6 +135,7 @@ AC_CHECK_LIB([X11], [XPending], [],
 fi # if test X"$no_x" != Xyes
 
 # can continue X checks?
+# IF test X"$no_x" != Xyes
 if test X"$no_x" != Xyes ; then
 AC_CHECK_LIB([Xext], [DPMSInfo], [],
     [_missing_ext_dmps=yes], [-lX11])
@@ -153,27 +154,33 @@ AC_CHECK_HEADERS(unistd.h sys/param.h string.h poll.h locale.h,
     [], [
     no_x=yes;
     AC_MSG_WARN([
-    an expected C header is missing; the X helper program
+    C header $ac_header is missing; the X helper program
     cannot be built - screen-saver control and multimedia
     keys will not work, but $PACKAGE should work])
+    break
     ])
-AC_CHECK_HEADERS(errno.h limits.h sys/types.h sys/wait.h,
-    [], [
-    no_x=yes;
-    AC_MSG_WARN([
-    an expected C header is missing; the X helper program
-    cannot be built - screen-saver control and multimedia
-    keys will not work, but $PACKAGE should work])
-    ])
-AC_CHECK_HEADERS(X11/X.h X11/Xlib.h X11/Xutil.h X11/keysym.h X11/XF86keysym.h,
-    [], [
-    no_x=yes;
-    AC_MSG_WARN([
-    an expected C header is missing; the X helper program
-    cannot be built - screen-saver control and multimedia
-    keys will not work, but $PACKAGE should work])
-    ])
-
+test X"$no_x" = Xyes || {
+    AC_CHECK_HEADERS(errno.h limits.h sys/types.h sys/wait.h,
+        [], [
+        no_x=yes;
+        AC_MSG_WARN([
+        C header $ac_header is missing; the X helper program
+        cannot be built - screen-saver control and multimedia
+        keys will not work, but $PACKAGE should work])
+        break
+        ])
+    test X"$no_x" = Xyes || {
+        AC_CHECK_HEADERS(X11/X.h X11/Xlib.h X11/Xutil.h X11/keysym.h X11/XF86keysym.h,
+            [], [
+            no_x=yes;
+            AC_MSG_WARN([
+            C header $ac_header is missing; the X helper program
+            cannot be built - screen-saver control and multimedia
+            keys will not work, but $PACKAGE should work])
+            break
+            ])
+    } # test X"$no_x" = Xyes ||
+} # test X"$no_x" = Xyes ||
 fi # if test X"$no_x" != Xyes
 
 # can continue X checks?
@@ -194,26 +201,34 @@ AC_CHECK_FUNCS(fork pipe poll system waitpid chdir,
     [], [
     no_x=yes;
     AC_MSG_WARN([
-    an expected C function is missing; the X helper program
+    C function $ac_func missing; the X helper program
     cannot be built - screen-saver control and multimedia
     keys will not work, but $PACKAGE should work])
+    break
     ])
-AC_CHECK_FUNCS(strtoul strcasecmp snprintf strrchr signal,
-    [], [
-    no_x=yes;
-    AC_MSG_WARN([
-    an expected C function is missing; the X helper program
-    cannot be built - screen-saver control and multimedia
-    keys will not work, but $PACKAGE should work])
-    ])
-dnl AC_CHECK_FUNCS(-more funcs go here-,
-dnl     [], [
-dnl     no_x=yes;
-dnl     AC_MSG_WARN([
-dnl     an expected C function is missing; the X helper program
-dnl     cannot be built - screen-saver control and multimedia
-dnl     keys will not work, but $PACKAGE should work])
-dnl     ])
+test X"$no_x" = Xyes || {
+    AC_CHECK_FUNCS(strtoul strcasecmp snprintf strrchr signal,
+        [], [
+        no_x=yes;
+        AC_MSG_WARN([
+        C function $ac_func is missing; the X helper program
+        cannot be built - screen-saver control and multimedia
+        keys will not work, but $PACKAGE should work])
+        break
+        ])
+    test X"$no_x" = Xyes || {
+        : # futurama
+        dnl AC_CHECK_FUNCS(-more funcs go here-,
+        dnl     [], [
+        dnl     no_x=yes;
+        dnl     AC_MSG_WARN([
+        dnl     C function $ac_func is missing; the X helper program
+        dnl     cannot be built - screen-saver control and multimedia
+        dnl     keys will not work, but $PACKAGE should work])
+        dnl     break
+        dnl     ])
+    } # test X"$no_x" = Xyes ||
+} # test X"$no_x" = Xyes ||
 
 fi # if test X"$no_x" != Xyes
 
@@ -249,13 +264,19 @@ dnl wxPython runs better with Python
 AM_PATH_PYTHON([2.7],, [:])
 dnl AM_CONDITIONAL([HAVE_PYTHON], [test X"$PYTHON" != X:])
 
+# Test python check result, and wx version
+if test X"$PYTHON" = X: ; then
+    AC_MSG_ERROR([
+    did not find a suitable Python - Python 2.7 or greater needed])
+fi
+
 # if python was found, then test suitable wx module
 dnl NOTE:
 dnl in configure.ac this entire function must be enclosed in
 dnl brackets to quote it, since the here-doc contains brackets
 [_py_test_wx_ok () {
-    PY="$1"
-    "$PY" <<"NIK"
+    _PY="$1"
+    "$_PY" <<"NIK"
 try:
     import wx
 except ImportError:
@@ -274,20 +295,15 @@ NIK
     return $?
 }]
 
-# Test python check result, and wx version
-if test X"$PYTHON" = X: ; then
-    AC_MSG_ERROR([
-    did not find a suitable Python - Python 2.7 or greater needed])
-fi
-
 dnl Python seems OK; now check wx module
 AC_MSG_CHECKING([for wxPython presence and version])
-if ! _PYCHECKRES=`_py_test_wx_ok "$PYTHON" 2>&1` ; then
-    AC_MSG_RESULT([$_PYCHECKRES])
+_PYCHECKRES=`_py_test_wx_ok "$PYTHON" 2>&1`
+_py_test_wx_ok_status=$?
+AC_MSG_RESULT([$_PYCHECKRES])
+if ! test $_py_test_wx_ok_status = 0 ; then
     AC_MSG_ERROR([
     sorry, $PACKAGE requires wxPython with wxWidgets 3.x or greater])
 else
-    AC_MSG_RESULT([$_PYCHECKRES])
     # EH: AM_PATH_PYTHON sets pkgpythondir to $PACKAGE -- override that
     pkgpythondir=\${pythondir}/wxmavpkg
 fi

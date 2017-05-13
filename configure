@@ -5179,6 +5179,7 @@ fi
 fi # if test X"$no_x" != Xyes
 
 # can continue X checks?
+# IF test X"$no_x" != Xyes
 if test X"$no_x" != Xyes ; then
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DPMSInfo in -lXext" >&5
 $as_echo_n "checking for DPMSInfo in -lXext... " >&6; }
@@ -5562,19 +5563,21 @@ else
 
     no_x=yes;
     { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:
-    an expected C header is missing; the X helper program
+    C header $ac_header is missing; the X helper program
     cannot be built - screen-saver control and multimedia
     keys will not work, but $PACKAGE should work" >&5
 $as_echo "$as_me: WARNING:
-    an expected C header is missing; the X helper program
+    C header $ac_header is missing; the X helper program
     cannot be built - screen-saver control and multimedia
     keys will not work, but $PACKAGE should work" >&2;}
+    break
 
 fi
 
 done
 
-for ac_header in errno.h limits.h sys/types.h sys/wait.h
+test X"$no_x" = Xyes || {
+    for ac_header in errno.h limits.h sys/types.h sys/wait.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
@@ -5585,21 +5588,23 @@ _ACEOF
 
 else
 
-    no_x=yes;
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:
-    an expected C header is missing; the X helper program
-    cannot be built - screen-saver control and multimedia
-    keys will not work, but $PACKAGE should work" >&5
+        no_x=yes;
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:
+        C header $ac_header is missing; the X helper program
+        cannot be built - screen-saver control and multimedia
+        keys will not work, but $PACKAGE should work" >&5
 $as_echo "$as_me: WARNING:
-    an expected C header is missing; the X helper program
-    cannot be built - screen-saver control and multimedia
-    keys will not work, but $PACKAGE should work" >&2;}
+        C header $ac_header is missing; the X helper program
+        cannot be built - screen-saver control and multimedia
+        keys will not work, but $PACKAGE should work" >&2;}
+        break
 
 fi
 
 done
 
-for ac_header in X11/X.h X11/Xlib.h X11/Xutil.h X11/keysym.h X11/XF86keysym.h
+    test X"$no_x" = Xyes || {
+        for ac_header in X11/X.h X11/Xlib.h X11/Xutil.h X11/keysym.h X11/XF86keysym.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
@@ -5610,21 +5615,23 @@ _ACEOF
 
 else
 
-    no_x=yes;
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:
-    an expected C header is missing; the X helper program
-    cannot be built - screen-saver control and multimedia
-    keys will not work, but $PACKAGE should work" >&5
+            no_x=yes;
+            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:
+            C header $ac_header is missing; the X helper program
+            cannot be built - screen-saver control and multimedia
+            keys will not work, but $PACKAGE should work" >&5
 $as_echo "$as_me: WARNING:
-    an expected C header is missing; the X helper program
-    cannot be built - screen-saver control and multimedia
-    keys will not work, but $PACKAGE should work" >&2;}
+            C header $ac_header is missing; the X helper program
+            cannot be built - screen-saver control and multimedia
+            keys will not work, but $PACKAGE should work" >&2;}
+            break
 
 fi
 
 done
 
-
+    } # test X"$no_x" = Xyes ||
+} # test X"$no_x" = Xyes ||
 fi # if test X"$no_x" != Xyes
 
 # can continue X checks?
@@ -5684,18 +5691,20 @@ else
 
     no_x=yes;
     { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:
-    an expected C function is missing; the X helper program
+    C function $ac_func missing; the X helper program
     cannot be built - screen-saver control and multimedia
     keys will not work, but $PACKAGE should work" >&5
 $as_echo "$as_me: WARNING:
-    an expected C function is missing; the X helper program
+    C function $ac_func missing; the X helper program
     cannot be built - screen-saver control and multimedia
     keys will not work, but $PACKAGE should work" >&2;}
+    break
 
 fi
 done
 
-for ac_func in strtoul strcasecmp snprintf strrchr signal
+test X"$no_x" = Xyes || {
+    for ac_func in strtoul strcasecmp snprintf strrchr signal
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -5706,19 +5715,24 @@ _ACEOF
 
 else
 
-    no_x=yes;
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:
-    an expected C function is missing; the X helper program
-    cannot be built - screen-saver control and multimedia
-    keys will not work, but $PACKAGE should work" >&5
+        no_x=yes;
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:
+        C function $ac_func is missing; the X helper program
+        cannot be built - screen-saver control and multimedia
+        keys will not work, but $PACKAGE should work" >&5
 $as_echo "$as_me: WARNING:
-    an expected C function is missing; the X helper program
-    cannot be built - screen-saver control and multimedia
-    keys will not work, but $PACKAGE should work" >&2;}
+        C function $ac_func is missing; the X helper program
+        cannot be built - screen-saver control and multimedia
+        keys will not work, but $PACKAGE should work" >&2;}
+        break
 
 fi
 done
 
+    test X"$no_x" = Xyes || {
+        : # futurama
+                                                                            } # test X"$no_x" = Xyes ||
+} # test X"$no_x" = Xyes ||
 
 fi # if test X"$no_x" != Xyes
 
@@ -6175,10 +6189,16 @@ $as_echo "$am_cv_python_pyexecdir" >&6; }
 
 
 
+# Test python check result, and wx version
+if test X"$PYTHON" = X: ; then
+    as_fn_error $? "
+    did not find a suitable Python - Python 2.7 or greater needed" "$LINENO" 5
+fi
+
 # if python was found, then test suitable wx module
 _py_test_wx_ok () {
-    PY="$1"
-    "$PY" <<"NIK"
+    _PY="$1"
+    "$_PY" <<"NIK"
 try:
     import wx
 except ImportError:
@@ -6197,22 +6217,16 @@ NIK
     return $?
 }
 
-# Test python check result, and wx version
-if test X"$PYTHON" = X: ; then
-    as_fn_error $? "
-    did not find a suitable Python - Python 2.7 or greater needed" "$LINENO" 5
-fi
-
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wxPython presence and version" >&5
 $as_echo_n "checking for wxPython presence and version... " >&6; }
-if ! _PYCHECKRES=`_py_test_wx_ok "$PYTHON" 2>&1` ; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $_PYCHECKRES" >&5
+_PYCHECKRES=`_py_test_wx_ok "$PYTHON" 2>&1`
+_py_test_wx_ok_status=$?
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $_PYCHECKRES" >&5
 $as_echo "$_PYCHECKRES" >&6; }
+if ! test $_py_test_wx_ok_status = 0 ; then
     as_fn_error $? "
     sorry, $PACKAGE requires wxPython with wxWidgets 3.x or greater" "$LINENO" 5
 else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $_PYCHECKRES" >&5
-$as_echo "$_PYCHECKRES" >&6; }
     # EH: AM_PATH_PYTHON sets pkgpythondir to $PACKAGE -- override that
     pkgpythondir=\${pythondir}/wxmavpkg
 fi
