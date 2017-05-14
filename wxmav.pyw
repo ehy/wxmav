@@ -1425,6 +1425,7 @@ def mk_from_args(*args, **kwargs):
     fpat  = _T(r".*\.(m3u8?|pls)$")
     upat  = _T(r"^(file|dvd|sftp|ftp|http|https)://")
     ufpat = upat + fpat
+
     wx.GetApp().prdbg(_T("mk_from_args: args '{}'").format(args))
     wx.GetApp().prdbg(_T("mk_from_args: kwargs '{}'").format(kwargs))
 
@@ -1443,6 +1444,11 @@ def mk_from_args(*args, **kwargs):
             dir_recurse = v
         elif k == "file_uri_filter":
             file_uri_filter = v
+        elif k == "uri_filter_permissive":
+            if v != True:
+                continue
+            upat  = _T(r"^([a-z0-9]+)://")
+            ufpat = upat + _T(r".*[^a-z0-9](m3u8?|pls)$")
 
     def _mpfn(f):
         fs  = _T(f).strip()
@@ -2777,10 +2783,7 @@ class TheAppClass(wx.App):
             wx.LogWarning(str().join(p_map(lambda s: s + '\n', args)))
 
     def err_msg(self, msg):
-        #fn = sys.stderr.write
         fn = wx.LogError
-        #fn = wx.LogWarning
-        #fn = wx.LogVerbose
         fn(_T(">>> {}\n").format(msg.rstrip()))
 
     def on_chmsg(self, event):
@@ -4992,14 +4995,21 @@ class TopWnd(wx.Frame):
 
     def do_arg_list(self, files,
                     append = False, recurse = False, play = True,
-                    pushundo = True):
+                    pushundo = True, uri_filter_permissive = True):
+        up = uri_filter_permissive
+
         if not append:
             def _daft(obj, fi, rec, pl):
+                tmp_reslist, errs = get_lst_from_args(
+                                            *fi,
+                                            dir_recurse = rec,
+                                            uri_filter_permissive = up)
+                if not tmp_reslist:
+                    self.cancel_undo()
+                    return
+                obj.reslist = tmp_reslist
                 obj.group_indice = 0
                 obj.media_indice = 0
-                obj.reslist, errs = get_lst_from_args(
-                                            *fi,
-                                            dir_recurse = rec)
                 obj.set_tb_combos()
                 if pl:
                     obj.cmd_on_play(from_user = False)
@@ -5010,10 +5020,13 @@ class TopWnd(wx.Frame):
             wx.CallAfter(_daft, self, files, recurse, play)
             return (None, None)
 
+        reslist, errs = get_lst_from_args(*files,
+                                          dir_recurse = recurse,
+                                          uri_filter_permissive = up)
+        if not reslist:
+            return (None, errs)
         if pushundo:
             self.push_undo(do_copy = True)
-        reslist, errs = get_lst_from_args(*files,
-                                          dir_recurse = recurse)
         cl = self.get_reslist_len()
         self.reslist += reslist
         self.media_indice = cl
@@ -6711,8 +6724,6 @@ class TopWnd(wx.Frame):
 
     def check_set_media_meta(self, do_set = False, only_len = False):
         if not (self.medi and self.load_ok):
-            self.prdbg(_T("check_set_media_meta: load_ok=={}").format(
-                self.load_ok))
             return (0, wx.Size(0, 0))
 
         if do_set:
@@ -6883,6 +6894,16 @@ class TopWnd(wx.Frame):
             self.undo_redo.push_redo(it)
         else:
             self.undo_redo.push_undo(it)
+
+    def cancel_undo(self, count = 1):
+        while count > 0:
+            count -= 1
+            self.undo_redo.pop_undo()
+
+    def cancel_redo(self, count = 1):
+        while count > 0:
+            count -= 1
+            self.undo_redo.pop_redo()
 
     def do_undo(self):
         self.push_redo(do_copy = False)

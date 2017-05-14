@@ -42,9 +42,6 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
-/* Define to 1 if you have the `muchobogo' function. */
-#undef HAVE_MUCHOBOGO
-
 /* Define to 1 if you have the `pipe' function. */
 #undef HAVE_PIPE
 
