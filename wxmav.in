@@ -24,16 +24,12 @@
 
 _inst_py_dir = "@pythondir@"
 
-import os
 import sys
 
 if not _inst_py_dir in sys.path:
     sys.path.append(_inst_py_dir)
 
-os.environ["WXMAV_XHELPERPATH"] = "@XHELPERPATH@"
-
-import wxmav_main as _wxmav_main
+import wxmav_main as _mainmod
 
 if __name__ == '__main__':
-    _wxmav_main.wxmav_main()
-
+    _mainmod.wxmav_main(argv = sys.argv, x_help_path = "@XHELPERPATH@")

@@ -166,6 +166,36 @@ else:
     general_droptarget_base = wx.PyDropTarget
     select_cursor = wx.StockCursor
 
+
+"""
+main proc to get the show on the road
+"""
+
+# this can be set for the wx.App class
+x_helper_prog = None
+
+##
+## main function callable if this is imported as module,
+## or herein in a if __name__ == '__main__': block
+##
+def wxmav_main(argv = None, x_help_path = None):
+    if argv == None:
+        argv = sys.argv
+
+    if x_help_path != None:
+        global x_helper_prog
+        x_helper_prog = x_help_path
+
+    # http://wiki.wxpython.org/MakingSampleApps:
+    if "-inspection" in argv:
+        import wx.lib.inspection
+        wx.lib.inspection.InspectionTool().Show()
+
+    app = TheAppClass(ac = len(argv), av = argv)
+    app.MainLoop()
+
+
+
 """
 string handling
 """
@@ -2747,7 +2777,13 @@ class TheAppClass(wx.App):
                             _T('--xautolock'),
                             _T('--xscreensaver')]
             except:
-                procargs = None
+                global x_helper_prog
+                if x_helper_prog:
+                    procargs = [x_helper_prog,
+                                _T('--xautolock'),
+                                _T('--xscreensaver')]
+                else:
+                    procargs = None
 
             self.xhelper = XWSHelperProcClass(self, procargs = procargs)
             global X11hack
@@ -4937,7 +4973,11 @@ class TopWnd(wx.Frame):
 
         szr.Add(self.player_panel, 1, wx.EXPAND | wx.BOTTOM, 0)
         szr.Add(vszr, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 16)
-        szr.AddSpacer(1)
+        #XXX earlier in development, it seemed this that this space
+        # was needed to prevent screen corruption going fullscreen,
+        # which must have been an erroneous conclusion.
+        # Remove this when certain it's OK
+        #szr.AddSpacer(1)
 
         # re. fullscreen, do some hide/show, so:
         self.hiders = {}
@@ -8157,19 +8197,6 @@ getwxmav_64Data = wxmav_64.GetData
 getwxmav_64Image = wxmav_64.GetImage
 getwxmav_64Bitmap = wxmav_64.GetBitmap
 getwxmav_64Icon = wxmav_64.GetIcon
-
-##
-## main function callable if this is imported as module,
-## or herein in a if __name__ == '__main__': block
-##
-def wxmav_main():
-    # http://wiki.wxpython.org/MakingSampleApps:
-    if "-inspection" in sys.argv:
-        import wx.lib.inspection
-        wx.lib.inspection.InspectionTool().Show()
-
-    app = TheAppClass(ac = len(sys.argv), av = sys.argv)
-    app.MainLoop()
 
 if __name__ == '__main__':
     wxmav_main()
