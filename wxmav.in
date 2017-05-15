@@ -1,7 +1,9 @@
-#! /bin/sh
+#! @PYTHON@
 #
-# Small Bourne shell wrapper to exec Python program code
-# as installed by auto{conf,make}
+# Small program to be installed in e.g. PATH, while real
+# program is in a python package directory and accessible
+# by import
+#
 # Copyright (C) 2017 Ed Hynan
 #
 #  This program is free software; you can redistribute it and/or modify
@@ -20,31 +22,15 @@
 #  MA 02110-1301, USA.
 #
 
-PROG=${0##*/}
-PROGBN=${PROG%.*}
+PYINTERP = @PYTHON@
+inst_py_dir = @pythondir@
 
-PYINTERP=@PYTHON@
-inst_py_dir=@pythondir@
+import os
 
-e2 () { printf '%s: %s\n' "$PROG" "$*" 1>&2; }
-fail () { e2 "$*"; exit 1; }
+os.environ["WXMAV_XHELPERPATH"] = @XHELPERPATH@
 
-bin_file=""
-for X in "pyo" "pyc" "py" ; do
-    TF="$inst_py_dir/${PROGBN}.${X}"
-    if test -f "$TF" ; then
-        bin_file="$TF"
-        break
-    fi
-done
+import @pythondir@/wxmav_main as _wxmav_main
 
-test X"$bin_file" = X && fail \
-    cannot find "${PROGBN}" program code in \""$inst_py_dir"\"
+if __name__ == '__main__':
+    _wxmav_main.wxmav_main()
 
-WXMAV_XHELPERPATH=@XHELPERPATH@
-export WXMAV_XHELPERPATH
-
-# if exec is used here, session management software might not
-# be able to restart the program
-#exec $PYINTERP "$bin_file" ${1+"$@"}
-$PYINTERP "$bin_file" ${1+"$@"}
