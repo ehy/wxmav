@@ -22,14 +22,17 @@
 #  MA 02110-1301, USA.
 #
 
-PYINTERP = @PYTHON@
-inst_py_dir = @pythondir@
+_inst_py_dir = "@pythondir@"
 
 import os
+import sys
 
-os.environ["WXMAV_XHELPERPATH"] = @XHELPERPATH@
+if not _inst_py_dir in sys.path:
+    sys.path.append(_inst_py_dir)
 
-import @pythondir@/wxmav_main as _wxmav_main
+os.environ["WXMAV_XHELPERPATH"] = "@XHELPERPATH@"
+
+import wxmav_main as _wxmav_main
 
 if __name__ == '__main__':
     _wxmav_main.wxmav_main()
