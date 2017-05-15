@@ -1739,7 +1739,7 @@ class AThreadEvent(wx.PyEvent):
         return (self.ev_type, self.ev_data)
 
 """
-Utility event for app to send top window
+Utility event for app to send top window to inicate self.Destroy()
 """
 APP_EVT_DESTROY = wx.NewEventType()
 APP_EVT_DESTROY_BINDME = wx.PyEventBinder(APP_EVT_DESTROY, 1)
@@ -2583,8 +2583,89 @@ class AppNullLog(_log_base):
     def __init__(self):
         _log_base.__init__(self)
 
+    def DoLogRecord(self, l, message, i):
+        pass
+
     def DoLogString(self, message, timeStamp):
         pass
+
+T_EVT_GREPLOG_MESSAGE = wx.NewEventType()
+EVT_GREPLOG_MESSAGE = wx.PyEventBinder(T_EVT_GREPLOG_MESSAGE, 1)
+class AppGrepLogEvent(wx.PyEvent):
+    """A custom event for the wxWidgets event mechanism:
+    to be sent by AppGrepLog when it finds a log message
+    passing the 'grep'.
+    """
+    def __init__(self, e_id, level, message, log_info, inverse):
+        wx.PyEvent.__init__(
+            self, e_id,
+            T_EVT_GREPLOG_MESSAGE)
+
+        self.level = level
+        self.message = message
+        self.log_info = log_info
+        self.inverse = inverse
+
+    def get_message(self):
+        return self.message
+
+    def get_content(self):
+        return (self.level,
+                self.message,
+                self.log_info,
+                self.inverse)
+
+class AppGrepLog(_log_base):
+    """Logging class that inspects the messages passing through
+    with a regular expression (i.e., greps), and on match[*] will
+    either post an event (AppGrepLogEvent), ar call a function.
+    args:
+    ev_destobj -- if ev_id is an int this must be an event handler
+                  derived object; the target of the posted event
+    ev_id      -- may be an int in which case upon a grep match will
+                  post an event (and this int should be returned
+                  by event.GetId(), and the ev_destobj must be valid);
+                  or, may be a function and it will be called with
+                  args: wxLogLevel, the message, timestamp, and
+                  the 'inverse' boolean passed to our ctor -- see
+                  AppGrepLogEvent for the event that might be posted
+    rx         -- the regular expression to use; do not compile
+                  it, that is done in ctor
+    inverse    -- boolean: if False respond to rx matches, or else
+                  respond to match failures; e.g., if all app code
+                  prefixes log messages with '>>> ' then if inverse
+                  is True messages from the wx library can be found
+    target_log -- a wxLog object that is passed the logging data to
+                  do the actual logging; may be None and this will
+                  be a 'null' log
+
+    [*] although writing of matches, rx.search() is used, so anchor!
+    """
+    def __init__(self, ev_destobj, ev_id, rx, inverse, target_log):
+        _log_base.__init__(self)
+        self.ev_destobj = ev_destobj
+        self.ev_id      = ev_id
+        self.rx         = re.compile(rx)
+        self.inverse    = inverse
+        self.target_log = target_log
+
+    def DoLogRecord(self, l, message, i):
+        if self.target_log:
+            self.target_log.LogRecord(l, message, i)
+        m = self.rx.search(message)
+        if (m and not self.inverse) or (self.inverse and not m):
+            eid = self.ev_id
+            inv = self.inverse
+            tim = i.timestamp
+            if isinstance(eid, int):
+                evt = AppGrepLogEvent(eid, l, message, tim, inv)
+                wx.PostEvent(self.ev_destobj, evt)
+            elif callable(eid):
+                # callable() builtin is not certain, e.g. if
+                # arg is a string callable() might be True
+                try: eid(l, message, tim, inv)
+                except: pass
+
 
 # the main app [wx.App]
 
@@ -2641,12 +2722,21 @@ class TheAppClass(wx.App):
         self.linemax = None
         self.quitting = False
 
-        if self.debug or self.verbose:
-            self.wxlog = wx.LogStderr()
-        else:
-            #self.wxlog = wx.LogNull()
-            self.wxlog = AppNullLog()
+        self.frame = None
 
+        # Use function for AppGrepLog, rather than event, since
+        # matches will be synchronous with source of message
+        if True:
+            self.filterlog_id = self.do_filterlog
+        else:
+            # get events from filter log
+            self.Bind(EVT_GREPLOG_MESSAGE, self.on_filterlog)
+            self.filterlog_id = wx.NewId()
+
+        rx = _(r'^>>>\s.*$')
+        log = wx.LogStderr() if (self.debug or
+                                self.verbose) else AppNullLog()
+        self.wxlog = AppGrepLog(self, self.filterlog_id, rx, True, log)
         self.wxlog_orig = wx.Log.SetActiveTarget(self.wxlog)
 
         self.xhelper  = None
@@ -2786,7 +2876,20 @@ class TheAppClass(wx.App):
         fn = wx.LogError
         fn(_T(">>> {}\n").format(msg.rstrip()))
 
+    def do_filterlog(self, l, msg, tim, inv):
+        if self.frame:
+            self.frame.do_filter_msg(l, msg, tim, inv)
+
+    def on_filterlog(self, event):
+        eid = event.GetId()
+        if eid != self.filterlog_id:
+            return
+        l, msg, tim, inv = event.get_content()
+        self.do_filterlog(l, msg, tim, inv)
+
     def on_chmsg(self, event):
+        eid = event.GetId()
+
         t, dat = event.get_content()
 
         if t == _T('time period'):
@@ -4629,6 +4732,11 @@ class TopWnd(wx.Frame):
         # grrr
         self.seek_and_pause_hack =  0
         self.seek_and_play_hack  = -1
+        # grrr again: wxMediaCtrl.Load*() will return True, even
+        # if failing; a wxLog hack greps for wx library messages,
+        # *just* maybe we can identify a media control message
+        # that indicates its error in spite of returning True
+        self.msg_grep = None
 
         # current track should loop
         self.loop_track = False
@@ -6656,6 +6764,7 @@ class TopWnd(wx.Frame):
             ret = bool(self.medi.Load(dn))
 
             self.prdbg(_T("self.medi.Load({}): '{}'").format(ret, dn))
+            self.msg_grep = None
             return ret
         else:
             return True
@@ -6716,11 +6825,17 @@ class TopWnd(wx.Frame):
                           ).format(i, _T(v)))
             ret = not failed
 
-        self.load_ok = ret
+        if self.msg_grep:
+            self.err_msg(_T("IN load_media: {}").format(self.msg_grep))
+            self.load_ok = False
+            self.msg_grep = None
+        else:
+            self.load_ok = ret
+
         if self.load_ok:
             wx.CallAfter(self.check_set_media_meta, True)
 
-        return ret
+        return self.load_ok
 
     def check_set_media_meta(self, do_set = False, only_len = False):
         if not (self.medi and self.load_ok):
@@ -7024,6 +7139,23 @@ class TopWnd(wx.Frame):
             self.Maximize(False)
 
         self.Raise()
+
+    def do_filter_msg(self, lvl, msg, evt_time, inverse):
+        # TODO: more testing here -- this won't help unless
+        # very specific message can be identified; so far it
+        # seems that the hoped for messages are not produced,
+        # but test more as various bad inputs are found
+        if False and lvl == wx.LOG_Error:
+            # in spite of the word 'playback', this message is seen
+            # when wxMediaCtrl.Load*() fails (even though it might
+            # return True!)
+            ms  = _T("Media playback error:")
+            mt  =  _("Media playback error:")
+            mst = _T(msg)
+            if msg[:len(mt)] == mt or msg[:len(ms)] == ms:
+                self.msg_grep = msg
+                print("FRAME do_filter_msg, time {} - msg '{}'".format(
+                    evt_time, msg))
 
     def do_command_button(self, button_id):
         btn = self.get_obj_by_id(button_id)
