@@ -3128,8 +3128,6 @@ class MediaPanel(wx.Panel):
 
         self.medi = None
 
-        self.in_msw = _in_msw
-
         self.SetBackgroundColour(wx.Colour(0, 0, 0))
 
         self.handlers = handlers
@@ -3158,7 +3156,7 @@ class MediaPanel(wx.Panel):
         # ~2009
         try:
             backend = ""
-            if True and self.in_msw:
+            if True and _in_msw:
                 # [original comment:]
                 # the default backend doesn't
                 # always send the EVT_MEDIA_LOADED
@@ -4848,10 +4846,6 @@ class TopWnd(wx.Frame):
         # and determines whether Play() is called
         self.pos_seek_state  = None
 
-        # will sometimes need to know this:
-        self.in_msw = _in_msw
-        self.in_gtk = _in_gtk
-
         # managet for undo/redo stacks
         self.undo_redo = UndoRedoManager()
 
@@ -4990,20 +4984,18 @@ class TopWnd(wx.Frame):
         self.Bind(wx.EVT_SHOW, self.on_show)
         self.Bind(wx.EVT_IDLE, self.on_idle)
 
-        # regrettable hack event bindings
-        # -- on a GNU/Linux system with GTK3 recently updated to
-        #    version 22.11 nifty new bugs come out to play, such
-        #    as a failure to refresh a frame window's contents
+        # -- a GNU/Linux system with GTK3 recently updated to
+        #    version 22.11 fails to refresh frame window's contents
         #    when un-minimized after a long time minimized --
-        #    so its for that that wxIconizeEvent is be handled to
-        #    force an interface paint job
-        if self.in_gtk:
+        #    so wxIconizeEvent is handled to try workaround
+        #    hacks to force an interface paint job
+        if _in_gtk:
             self.Bind(wx.EVT_ICONIZE, self.on_iconize_event)
 
         # MSW, to get multimedia 'hotkeys' -- note MS does
         # not have VK_ definition for pause, only for
         # play/pause toggle
-        if self.in_msw:
+        if _in_msw:
             self.register_hotkey_done = False
             self.Bind(wx.EVT_HOTKEY, self.on_ms_hotkey)
             self.hotk_id_base  = 0xBFFF - 64
@@ -6230,7 +6222,7 @@ class TopWnd(wx.Frame):
         if not self.medi:
             return
 
-        if self.in_msw and not force:
+        if _in_msw and not force:
             return
 
         self.medi.SetFocus()
@@ -6333,7 +6325,7 @@ class TopWnd(wx.Frame):
 
         # wx on Unix does not define these -- MSW only?
         try:
-            if not self.in_msw or not self.register_hotkey_done:
+            if not _in_msw or not self.register_hotkey_done:
                 if kc == wx.WXK_MEDIA_NEXT_TRACK:
                     self.do_command_button(self.id_next)
                     return
@@ -6375,8 +6367,12 @@ class TopWnd(wx.Frame):
         self.mctrl.Enable(self.mctrl_pause, True)
         self.mctrl.Enable(self.mctrl_stop, True)
 
-    def on_iconize_event(self, event):
-        pass
+    # see comment in ctor, where this is Bind()ed
+    if _in_gtk:
+        def on_iconize_event(self, event):
+            # if restored from minimized state:
+            if not event.IsIconized():
+                wx.CallAfter(self.Layout)
 
     def on_idle(self, event):
         if self.do_setwname_done == False:
@@ -6692,7 +6688,7 @@ class TopWnd(wx.Frame):
             # MSW spurious stop event: will note -2 and refrain
             # from issuing an extra play() -- this is fragile --
             # do all MSW backends always send spurious stop event?
-            self.pause_ticks = -2 if self.in_msw else -1
+            self.pause_ticks = -2 if _in_msw else -1
             self.prdbg(_T("loaded, duration hack, SEEK({})").format(
                         self.pause_seek_pos))
 
@@ -6755,7 +6751,7 @@ class TopWnd(wx.Frame):
         if force:
             # MS seems to have trouble with 'nul', OTOH gstreamer
             # (GTK) seems to ignore empty string
-            dn = _T('') if self.in_msw else os.devnull
+            dn = _T('') if _in_msw else os.devnull
 
             ret = bool(self.medi.Load(dn))
 
@@ -7427,26 +7423,31 @@ class TopWnd(wx.Frame):
         self.tmp_title = m
         self.SetTitle(m)
 
-    def register_ms_hotkeys(self, reg = True):
-        if not self.in_msw:
-            return
+    if _in_msw:
+        def register_ms_hotkeys(self, reg = True):
+            if self.register_hotkey_done and reg:
+                return
 
-        if self.register_hotkey_done and reg:
-            return
+            if reg:
+                # no return check: they work, or they don't
+                self.RegisterHotKey(
+                    self.hotk_id_play, 0, self.msvk_id_play)
+                self.RegisterHotKey(
+                    self.hotk_id_stop, 0, self.msvk_id_stop)
+                self.RegisterHotKey(
+                    self.hotk_id_next, 0, self.msvk_id_next)
+                self.RegisterHotKey(
+                    self.hotk_id_prev, 0, self.msvk_id_prev)
+            else:
+                self.UnregisterHotKey(self.hotk_id_play)
+                self.UnregisterHotKey(self.hotk_id_stop)
+                self.UnregisterHotKey(self.hotk_id_next)
+                self.UnregisterHotKey(self.hotk_id_prev)
 
-        if reg:
-            # no return check: they work, or they don't
-            self.RegisterHotKey(self.hotk_id_play, 0, self.msvk_id_play)
-            self.RegisterHotKey(self.hotk_id_stop, 0, self.msvk_id_stop)
-            self.RegisterHotKey(self.hotk_id_next, 0, self.msvk_id_next)
-            self.RegisterHotKey(self.hotk_id_prev, 0, self.msvk_id_prev)
-        else:
-            self.UnregisterHotKey(self.hotk_id_play)
-            self.UnregisterHotKey(self.hotk_id_stop)
-            self.UnregisterHotKey(self.hotk_id_next)
-            self.UnregisterHotKey(self.hotk_id_prev)
-
-        self.register_hotkey_done = reg
+            self.register_hotkey_done = reg
+    else: #msw
+        def register_ms_hotkeys(self, reg = True):
+            self.register_hotkey_done = True
 
     def xhelper_ready(self, ok):
         if ok:
@@ -7682,7 +7683,7 @@ class TopWnd(wx.Frame):
         if not (isinstance(event, wx.ShowEvent)): #and event.GetShow()):
             return
 
-        if self.in_msw:
+        if _in_msw:
             self.register_ms_hotkeys()
 
         self.focus_medi_opt()
@@ -7696,19 +7697,20 @@ class TopWnd(wx.Frame):
         self.do_timep(iv)
         self.do_time_medi(iv)
 
-    def on_ms_hotkey(self, event):
-        kid = event.GetId()
+    if _in_msw:
+        def on_ms_hotkey(self, event):
+            kid = event.GetId()
 
-        if kid == self.hotk_id_play:
-            self.do_command_button(self.id_play)
-        elif kid == self.hotk_id_pause:
-            self.do_command_button(self.id_play)
-        elif kid == self.hotk_id_stop:
-            self.do_command_button(self.id_stop)
-        elif kid == self.hotk_id_next:
-            self.do_command_button(self.id_next)
-        elif kid == self.hotk_id_prev:
-            self.do_command_button(self.id_prev)
+            if kid == self.hotk_id_play:
+                self.do_command_button(self.id_play)
+            elif kid == self.hotk_id_pause:
+                self.do_command_button(self.id_play)
+            elif kid == self.hotk_id_stop:
+                self.do_command_button(self.id_stop)
+            elif kid == self.hotk_id_next:
+                self.do_command_button(self.id_next)
+            elif kid == self.hotk_id_prev:
+                self.do_command_button(self.id_prev)
 
     def on_chmsg(self, event):
         t, dat = event.get_content()
