@@ -3752,12 +3752,25 @@ class EditTreeCtrl(wx.TreeCtrl):
         tr.delete_item_and_children(ID, True)
 
     # see comment in __init__ at self.deletes_pending
-    def delete_item_and_children(self, ID = None, flush = False):
+    def delete_item_and_children(self, ID = None,
+                                       flush = False,
+                                       flush_now = False):
         tr = self
         if ID:
             tr.add_pending_delete(ID)
         if flush:
-            tr.delete_pending()
+            tr.delete_pending(flush_now)
+
+    # clear it all out -- use instead if treectrl::DeleteAllItems()
+    def delete_all_items(self, flush = True):
+        tr = self
+        ID = tr.GetRootItem()
+        if not ID.IsOk():
+            return
+
+        tr.delete_item_and_children(ID, flush = flush, flush_now = True)
+
+        tr.DeleteAllItems()
 
     def copy_item_children(self, src, dst):
         tr = self
@@ -3819,7 +3832,7 @@ class EditTreeCtrl(wx.TreeCtrl):
     # deleted in the middle of e.g., the drop target handler;
     # delete_pending does the actual deletion of items in
     # storage ...
-    def delete_pending(self):
+    def delete_pending(self, do_now = False):
         tr = self
         tlst = []
 
@@ -3838,7 +3851,10 @@ class EditTreeCtrl(wx.TreeCtrl):
                     tr.DeleteChildren(i)
                 tr.Delete(i)
 
-        wx.CallAfter(_del_later, tr, tlst)
+        if do_now:
+            _del_later(tr, tlst)
+        else:
+            wx.CallAfter(_del_later, tr, tlst)
 
     # ... add_pending_delete adds a tree item to
     # storage for eventual deletion in delete_pending()
@@ -4056,7 +4072,8 @@ class GroupSetEditDialog(wx.Dialog):
         self.edit_panel = GroupSetEditPanel(self, wx.ID_ANY)
 
         self.tree = self.edit_panel.get_tree()
-        self._setup_tree()
+        if self.data:
+            self.set_data(self.data)
 
         szr.Add(self.edit_panel,
                 proportion = 1,
@@ -4074,7 +4091,6 @@ class GroupSetEditDialog(wx.Dialog):
         self.Layout()
 
         self.tree.SetFocus()
-        self.tree.make_default_selection()
 
     def _get_tree_children(self, grp_ID):
         tr   = self.tree
@@ -4153,11 +4169,21 @@ class GroupSetEditDialog(wx.Dialog):
 
         return data
 
+    def set_data(self, data):
+        tr = self.tree
+        tr.delete_all_items()
+        self.data = data
+        self._setup_tree()
+        self.tree.make_default_selection()
+
     def _setup_tree(self):
         tr  = self.tree
         dat = self.data
 
-        self.treeroot = root = tr.AddRoot(_("hidden root node"))
+        root = tr.GetRootItem()
+        if not root.IsOk():
+            root = tr.AddRoot(_("hidden root node"))
+        self.treeroot = root
 
         if phoenix:
             tr.SetItemData(root, None)
@@ -5892,12 +5918,20 @@ class TopWnd(wx.Frame):
         wxadv.AboutBox(self.__class__.about_info)
 
     def dialog_set_editor(self):
-        dlg = GroupSetEditDialog(self, wx.ID_ANY, data = self.reslist)
+        try:
+            dlg = self.group_edit_dialog
+        except:
+            dlg = GroupSetEditDialog(self, wx.ID_ANY)
+            self.group_edit_dialog = dlg
+
+        dlg.set_data(self.reslist)
 
         if dlg.ShowModal() != wx.ID_OK:
+            dlg.set_data([])
             return False
 
         dat = dlg.get_data()
+        dlg.set_data([])
         # if user wants to delete all, let it be done
         # through the edit menu delete items
         if not dat:
