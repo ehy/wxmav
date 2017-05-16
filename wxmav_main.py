@@ -5658,12 +5658,18 @@ class TopWnd(wx.Frame):
         # Help menu
         #
         self.mhelp = mhelp = wx.Menu()
+        # view python and wx version in message box
+        self.mhelp_ckver = cur = wx.NewId()
+        mhelp.Append(cur, _("See Versions"),
+                        _("See version iformation."))
+        # separator
+        mhelp.AppendSeparator()
         # usual help menu -- TODO uncomment when help is ready
         self.mhelp_help = cur = wx.ID_HELP
         #mhelp.Append(cur, _("&Help"),
         #                _("Show help."))
         # separator
-        mhelp.AppendSeparator()
+        #mhelp.AppendSeparator()
         # usual about menu
         self.mhelp_about = cur = wx.ID_ABOUT
         mhelp.Append(cur, _("&About"),
@@ -5874,6 +5880,15 @@ class TopWnd(wx.Frame):
         sb = self.CreateStatusBar(number = 2, style = sty)
         sb.SetStatusWidths([-6, -1])
 
+
+    def do_version_dialog(self):
+        m = _T(
+            "{} version {}\n\nPython '{}'\n\nwxPython '{}'").format(
+            wx.GetApp().get_prog_name(), version_string,
+            sys.version, wx.version())
+
+        wx.MessageBox(m, _("Version Information"),
+            style = wx.OK | wx.ICON_INFORMATION)
 
     def do_about_dialog(self):
         if not self.__class__.about_info:
@@ -6249,6 +6264,8 @@ class TopWnd(wx.Frame):
             t = self.mopts.IsChecked(self.mopts_proxy)
             self.can_use_proxy = t
         # Help menu
+        elif i == self.mhelp_ckver:
+            self.do_version_dialog()
         elif i == self.mhelp_help:
             pass
         elif i == self.mhelp_about:
