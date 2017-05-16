@@ -3028,11 +3028,21 @@ class SliderPanel(wx.Panel):
         self.Bind(wx.EVT_KEY_DOWN, self.on_key)
         self.Bind(wx.EVT_KEY_UP,   self.on_key)
 
+        # for wxPython 4.0.0a1
+        self.Bind(wx.EVT_SIZE, self.on_size)
+
         self.SetSizer(szr)
         self.Layout()
 
     def get_slider(self):
         return self.slider
+
+    # for wxPython 4.0.0a1 -- this should not be necessary, but with
+    # new phoenix background in one of two instances did not paint
+    # properly on fullscreen or maximize; this should be harmless
+    # otherwise.
+    def on_size(self, event):
+        wx.CallAfter(self.Layout)
 
     def on_key(self, event):
         event.Skip()
@@ -4846,14 +4856,14 @@ class TopWnd(wx.Frame):
         # and determines whether Play() is called
         self.pos_seek_state  = None
 
-        # managet for undo/redo stacks
+        # manager for undo/redo stacks
         self.undo_redo = UndoRedoManager()
 
         # get config values here, in case a setting applies
         # to interface objects created below
         cfvals = self.config_rd()
         if cfvals:
-            self.vol_cur       = cfvals["volume"]
+            self.vol_cur = cfvals["volume"]
             self.vol_cur = min(
                 max(self.vol_cur, self.vol_min), self.vol_max)
 
@@ -4955,10 +4965,10 @@ class TopWnd(wx.Frame):
         vszr = wx.BoxSizer(wx.VERTICAL)
         hszr = wx.BoxSizer(wx.HORIZONTAL)
 
-        hszr.Add(self.btn_panel, 1, wx.EXPAND, 0)
-        hszr.Add(self.vol_panel, 0, wx.EXPAND, 0)
+        hszr.Add(self.btn_panel, 5, wx.EXPAND, 1)
+        hszr.Add(self.vol_panel, 1, wx.EXPAND, 1)
         vszr.Add(self.pos_panel, 1, wx.EXPAND | wx.TOP, 4)
-        vszr.Add(hszr, 0, wx.EXPAND | wx.BOTTOM | wx.TOP, 3)
+        vszr.Add(hszr, 1, wx.EXPAND | wx.BOTTOM | wx.TOP, 3)
 
         szr.Add(self.player_panel, 1, wx.EXPAND | wx.BOTTOM, 0)
         szr.Add(vszr, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 16)
