@@ -2854,6 +2854,9 @@ class TheAppClass(wx.App):
                 self.err_msg(
                     "APP OnInit: Xhelper exec FAIL {}".format(s))
 
+        if py_v_is_3:
+            self.err_msg("PYTHON VERSION: '{}'".format(sys.version))
+
         return True
 
 
