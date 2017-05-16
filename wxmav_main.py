@@ -453,7 +453,6 @@ def _(s):
     return _T(wx.GetTranslation(s))
 
 
-#XXX [obsolete]
 # Coding problems extend to reading and writing, the latter
 # in particular raising encoding exceptions; the codecs module
 # has an open() that returns an object with a mostly compatible
@@ -934,7 +933,6 @@ def av_dir_find(name, recurse = False, ext_list = None):
                 if x and x[1:].lower() in ext:
                     return True
         except Exception as e:
-            #print("EEEXXX")
             #print(e)
             raise Exception(e)
         return False
@@ -4842,9 +4840,6 @@ class TopWnd(wx.Frame):
         # mouse tracking for fullscreen mode
         self.fs_mouse_pos = (-1, -1)
 
-        # check this in idle handler because bugs are crawling around
-        self.force_hack_idle = 0
-
         # if user drags position slider to seek, it can be pretty
         # lousy with many seeks while playing -- so pause and set
         # this > 0, and let tick handler call play when this is 0
@@ -4973,7 +4968,7 @@ class TopWnd(wx.Frame):
 
         szr.Add(self.player_panel, 1, wx.EXPAND | wx.BOTTOM, 0)
         szr.Add(vszr, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 16)
-        #XXX earlier in development, it seemed this that this space
+        #XXX earlier in development, it seemed this that this spacer
         # was needed to prevent screen corruption going fullscreen,
         # which must have been an erroneous conclusion.
         # Remove this when certain it's OK
@@ -6328,14 +6323,12 @@ class TopWnd(wx.Frame):
                 self.medi_tick = -1
                 self.show_wnd_obj(self.hiders["vszr"], True)
                 self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
-                wx.CallAfter(self.force_hack)
             return
         elif kc == ord('h') or kc == ord('H'):
             if self.IsFullScreen():
                 self.medi_tick = -1
                 self.show_wnd_obj(self.hiders["vszr"], False)
                 self.SetCursor(select_cursor(wx.CURSOR_BLANK))
-                wx.CallAfter(self.force_hack)
             return
 
         # wx on Unix does not define these -- MSW only?
@@ -6361,22 +6354,6 @@ class TopWnd(wx.Frame):
     def err_msg(self, msg):
         wx.GetApp().err_msg(msg)
 
-    #XXX this seems no longer nexessary
-    # bad hack: it has historically happened, and continues to happen
-    # on MSW (7) and GTK, that some interface updates don't appear
-    # without being forced, e.g. by resizing; wx 2.8 docs say that
-    # if using sizers, wxWindow::Layout() should be used, but this
-    # hack proves effective regardless
-    def force_hack(self, use_hack = False, sz = None, force = False):
-        if use_hack:
-            if not sz:
-                sz = self.GetSize()
-
-            ev = wx.SizeEvent(sz, self.GetId())
-            wx.CallAfter(wx.PostEvent, self, ev)
-        elif force: #else:
-            self.Layout()
-
     def get_obj_by_id(self, the_id):
         for ID, obj in self.ctl_data:
             if ID == the_id:
@@ -6399,10 +6376,7 @@ class TopWnd(wx.Frame):
         self.mctrl.Enable(self.mctrl_stop, True)
 
     def on_iconize_event(self, event):
-        #"""work around GTK3 bug"""
-        unmin = not event.IsIconized()
-        if unmin:
-            self.force_hack_idle += 1
+        pass
 
     def on_idle(self, event):
         if self.do_setwname_done == False:
@@ -6535,10 +6509,6 @@ class TopWnd(wx.Frame):
 
         self.player_panel.do_idle(event)
 
-        if self.force_hack_idle > 0:
-            self.force_hack_idle -= 1
-            wx.CallAfter(self.force_hack)
-
     def on_media_finish(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_FINISHED"))
         dn, med, des, com, err, lth = self.get_reslist_item_tup()
@@ -6553,17 +6523,6 @@ class TopWnd(wx.Frame):
         if self.loop_track:
             wx.CallAfter(self.cmd_on_play)
             return
-
-        #XXX remove
-        #if not self.adv_track:
-        #    return
-        #
-        ##XXX currently does nothing w/o 'force = True'
-        #self.unload_media()
-        #
-        #if not self.cmd_on_next():
-        #    self.in_play = self.load_ok = False
-        #    self.in_stop = False
 
         self.unload_media()
         self.in_play = False
@@ -6644,8 +6603,6 @@ class TopWnd(wx.Frame):
         self.set_statusbar(self.get_time_str(tm = ln), 1)
 
         wx.CallAfter(self.with_media_loaded)
-
-        wx.CallAfter(self.force_hack)
 
     def on_media_pause(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_PAUSE"))
@@ -6769,7 +6726,6 @@ class TopWnd(wx.Frame):
 
             self.prdbg(_T("with_media_loaded: call after Play()"))
             wx.CallAfter(self.medi.Play)
-            self.force_hack()
             self.focus_medi_opt()
 
     def slider_setup(self, pos = None):
@@ -6900,7 +6856,6 @@ class TopWnd(wx.Frame):
             self.player_panel.set_meta(sz, ln)
             if not only_len:
                 self.player_panel.do_new_size()
-                self.force_hack()
 
         return self.media_meta
 
@@ -6978,8 +6933,6 @@ class TopWnd(wx.Frame):
                 self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
                 self.medi_tick = 0
                 wx.GetApp().do_screensave(True)
-
-        wx.CallAfter(self.force_hack)
 
     def do_group_items_desc_from_tags(self, grp = None):
         if grp == None:
@@ -7308,8 +7261,6 @@ class TopWnd(wx.Frame):
 
         if not b:
             self.err_msg(er.format(_T(med)))
-        else:
-            self.force_hack()
 
         # try to keep focus on media control
         self.focus_medi_opt()
@@ -7328,7 +7279,6 @@ class TopWnd(wx.Frame):
 
         self.set_play_label()
 
-        self.force_hack()
         self.slider_setup()
 
         # try to keep focus on media control
@@ -7452,7 +7402,6 @@ class TopWnd(wx.Frame):
         if not self.load_ok:
             return
 
-        self.force_hack()
         # try to keep focus on media control
         self.focus_medi_opt()
 
@@ -7518,13 +7467,11 @@ class TopWnd(wx.Frame):
         if t == self.medi_tick_span or not self.medi_has_mouse:
             if self.IsFullScreen():
                 self.show_wnd_obj(self.hiders["vszr"], True)
-                wx.CallAfter(self.force_hack)
 
             self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
         elif t == 0:
             if self.IsFullScreen():
                 self.show_wnd_obj(self.hiders["vszr"], False)
-                wx.CallAfter(self.force_hack)
 
             self.SetCursor(select_cursor(wx.CURSOR_BLANK))
 
