@@ -1128,7 +1128,7 @@ class AVGroupList(AVGroup):
     def chew_dat(dat):
         if not dat:
             return ([], None)
-        if re.match(_T(r"^\[playlist\]\s*$"), _T(dat[0])):
+        if re.match(_T(r"^\[playlist\]\s*$"), _T(dat[0]), re.I):
             return AVGroupList.chew_dat_xpls(dat[1:])
         if re.match(_T(r"^#EXTM3U\s*$"), _T(dat[0])):
             return AVGroupList.chew_dat_xm3u(dat[1:])
@@ -1142,13 +1142,33 @@ class AVGroupList(AVGroup):
         if len(dat) < 2:
             return (ret, filedesc)
 
-        l = dat[-1]
-        m = re.match(_T(r"Version\s*=\s*([0-9]+)"), _T(l))
-        ver = int(m.group(1)) if m else None
+        # cannot rely on order although loose spec specifies order ...
+        #l = dat[-1]
+        #m = re.match(_T(r"Version\s*=\s*([0-9]+)"), _T(l), re.I)
+        #ver = int(m.group(1)) if m else None
+        #
+        #l = dat[-2]
+        #m = re.match(
+        #   _T(r"NumberOfEntries\s*=\s*([0-9]+)"), _T(l), re.I)
+        #num = int(m.group(1)) if m else 0
 
-        l = dat[-2]
-        m = re.match(_T(r"NumberOfEntries\s*=\s*([0-9]+)"), _T(l))
-        num = int(m.group(1)) if m else 0
+        # ... so inefficiently loop and check data
+        ver = None
+        num = 0
+        for i, l in enumerate(dat):
+            m = re.match(_T(r"Version\s*=\s*([0-9]+)"), _T(l), re.I)
+            if m:
+                ver = int(m.group(1))
+                del dat[i]
+                continue
+            m = re.match(
+                _T(r"NumberOfEntries\s*=\s*([0-9]+)"), _T(l), re.I)
+            if m:
+                num = int(m.group(1))
+                del dat[i]
+                continue
+
+        print("PLS FOUND, V {} - Num {}".format(ver, num))
 
         try:
             i = 0
@@ -1182,6 +1202,9 @@ class AVGroupList(AVGroup):
                                 # description -- if several, last wins
                                 filedesc = m.group(1).strip()
                         break
+
+                    print("PLS GOT: {} - {}".format(
+                        m.group(1), m.group(2)))
                     if int(m.group(2)) != j:
                         # return partial success on error
                         return (ret, filedesc)
@@ -1371,6 +1394,11 @@ class AVGroupListURIFile(AVGroupList):
     def __init__(self, desc = defdesc, name = None):
         dat, err = urifile2linelist_tup(name) if name else (
             None, _("no file URL"))
+
+        wx.GetApp().prdbg(
+            _T("AVGroupListURIFile: n '{}' d '{}' e '{}'").format(
+                    name, dat, err))
+
         if err:
             AVGroupList.__init__(self, desc = desc)
             self.data = [AVItem(err = err, desc = name)]
