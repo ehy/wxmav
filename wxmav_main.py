@@ -1144,12 +1144,12 @@ class AVGroupList(AVGroup):
 
         # cannot rely on order although loose spec specifies order ...
         #l = dat[-1]
-        #m = re.match(_T(r"Version\s*=\s*([0-9]+)"), _T(l), re.I)
+        #m = re.match(_T(r"Version\s*=\s*([0-9]+)"), _T(l))
         #ver = int(m.group(1)) if m else None
         #
         #l = dat[-2]
         #m = re.match(
-        #   _T(r"NumberOfEntries\s*=\s*([0-9]+)"), _T(l), re.I)
+        #   _T(r"NumberOfEntries\s*=\s*([0-9]+)"), _T(l))
         #num = int(m.group(1)) if m else 0
 
         # ... so inefficiently loop and check data
@@ -1167,8 +1167,6 @@ class AVGroupList(AVGroup):
                 num = int(m.group(1))
                 del dat[i]
                 continue
-
-        print("PLS FOUND, V {} - Num {}".format(ver, num))
 
         try:
             i = 0
@@ -1203,8 +1201,6 @@ class AVGroupList(AVGroup):
                                 filedesc = m.group(1).strip()
                         break
 
-                    print("PLS GOT: {} - {}".format(
-                        m.group(1), m.group(2)))
                     if int(m.group(2)) != j:
                         # return partial success on error
                         return (ret, filedesc)
