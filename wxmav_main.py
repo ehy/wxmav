@@ -4111,11 +4111,6 @@ class GroupSetEditDialog(wx.Dialog):
                 if s_ne(lbl, tr.no_media) and s_ne(lbl, odn):
                     i.resname = lbl
                     i.res_dispname = None
-                    #try:
-                    #    dn = old.get_resourcename_with_displayname()
-                    #    i.resname = lbl.encode(dn.codec)
-                    #except:
-                    #    i.resname = lbl
 
                 # if this item has more than one child,
                 # it is a bug
