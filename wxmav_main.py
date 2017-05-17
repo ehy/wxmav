@@ -4110,6 +4110,7 @@ class GroupSetEditDialog(wx.Dialog):
                 odn = old.get_res_disp_str(True) or old.resname
                 if s_ne(lbl, tr.no_media) and s_ne(lbl, odn):
                     i.resname = lbl
+                    i.res_dispname = None
                     #try:
                     #    dn = old.get_resourcename_with_displayname()
                     #    i.resname = lbl.encode(dn.codec)
