@@ -32,7 +32,9 @@ dnl
 dnl application attributes defs
 dnl
 define(appsuffix, `pyw')dnl
+define(modsuffix, `py')dnl
 define(appname, `wxmav')dnl
+define(appnamemain, appname`_main')dnl
 define(appnameS, `"appname"')dnl				e.g. executable name
 define(appName, `WXMav')dnl
 define(appNameS, `"appName"')dnl				name w/ initial cap
@@ -44,8 +46,12 @@ define(vendorname,
 define(vendornameS, `"vendorname"')dnl
 define(mswinstallername,
 	appName`-'appversion`-install.exe')dnl	name of MSW install prog
+define(mswinstallerembedname,
+	appName`-'appversion`-install-all.exe')dnl	name of MSW install prog
 define(mswinstallernameS,
 	"mswinstallername")dnl
+define(mswinstallerembednameS,
+	"mswinstallerembedname")dnl
 dnl define(mswinstallername64,
 dnl 	appName`-'appversion`-msw64-install.exe')dnl	name of MSW64bit install prog
 dnl define(mswinstallername64S,
@@ -87,3 +93,12 @@ dnl appVMajor.appVMinor.appRMajor.appRMinor`ifdef(`appPatchLvl', `p'appPatchLvl)
 define(appversion,
 appVMajor.appVMinor.appRMajor)dnl
 define(appversionS, `"appversion"')dnl
+
+dnl additional app data
+define(appiconsingle, `mav.ico')
+define(appiconmulti, `mav-varsz.ico')
+define(installerbmpinst, `mav.bmp')
+define(installerbmpunst, `vam.bmp')
+define(installerbmpbnnr, `banner-375x96.bmp')
+
+define(pkgsdir, `pkgs')

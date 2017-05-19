@@ -1,0 +1,77 @@
+;/*********************************************************************\
+;	Script for wxmav MSW binary installer program.
+;	Copyright (C) 2017 Ed Hynan covering modifications and
+;	additions in this derivative source.  This is "derivative"
+;	in that it is based on example source that is included with
+;	NSIS distribution.
+;
+;	The licence for use of this source is an exception to the
+;	to the license generally covering the distribution that
+;	includes this source.  This source is covered by the same
+;	license covering the source from which it is derived, and
+;	of the '.nsh' sources that it includes with "!include";
+;	that license, current with this writing, is stated to be
+;	the "zlib/libpng license".  See:
+;
+;		http://nsis.sourceforge.net/License
+;
+;	That license covers both the '.in' form of the file, which is
+;	written to be processed with the POSIX 'm4' macro processor,
+;	and the output result of processing with m4.  (The '.m4' macro
+;	definitions file, "cdata.m4", is licensed under the GPLv2 or later,
+;	which must not be construed as altering the license covering the
+;	result of processing the input form of this file.)
+;\*********************************************************************/
+;
+dnl #
+dnl NOTE: this .in file is for processing with POSIX m4 using
+dnl definitions in the following file:
+dnl include(`../cdata/cdata.m4')dnl
+dnl macros not included here so they can be given on m4 command
+; NOTE: important! if the [Build] section specifies nsi_template
+; the NSIS script output has unexpected differences -- most likely
+; bugs -- as follows
+;
+;       01) [Python]->include_msvcrt defaults to true and
+;           the several dll's are included as files in the script,
+;           except *not* if [Build]->nsi_template is used --
+;           even if [Python]->include_msvcrt is explicitely
+;           true -- so if needed that must be added manually
+[Application]
+;name=progprettyname
+name=WX Mav
+version=appversion
+; How to launch the app - this calls the 'main' function from the 'myapp' package:
+;entry_point=appnamemain:appnamemain
+script=appname.appsuffix
+icon=appiconmulti
+console=false
+publisher=vendorname
+
+[Shortcut WXMav]
+script=appname.appsuffix
+icon=appiconsingle
+console=false
+
+[Python]
+version=3.6.1
+bitness=32
+;format=installer
+format=bundled
+;include_msvcrt=true
+
+[Include]
+; Importable packages that your application requires, one per line
+packages=appnamemain
+    mutagen
+    six
+pypi_wheels=wxPython==4.0.0a2
+; Other files and folders that should be installed
+;files = ../COPYING > $INSTDIR
+;    ../LICENSE.gpl,v2 > $INSTDIR
+;    ../LICENSE.gpl,v3 > $INSTDIR
+
+[Build]
+installer_name=mswinstallerembedname
+; NOTE: this causes unexpected changes in NSIS script -- see above
+nsi_template=installer_template.nsi

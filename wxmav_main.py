@@ -171,7 +171,9 @@ else:
 main proc to get the show on the road
 """
 
-# this can be set for the wx.App class
+# this can be set for the wx.App class --
+# used only for Unix w/ X Window System,
+# ignored elsewise
 x_helper_prog = None
 
 ##
@@ -182,7 +184,7 @@ def wxmav_main(argv = None, x_help_path = None):
     if argv == None:
         argv = sys.argv
 
-    if x_help_path != None:
+    if _in_xws and x_help_path != None:
         global x_helper_prog
         x_helper_prog = x_help_path
 
@@ -1500,7 +1502,7 @@ def mk_from_args(*args, **kwargs):
             if v != True:
                 continue
             upat  = _T(r"^([a-z0-9]+)://")
-            ufpat = upat + _T(r".*[^a-z0-9](m3u8?|pls)$")
+            ufpat = upat + _T(r".*[^a-z0-9](m3u8?|pls)(?:\?\S+)?$")
 
     def _mpfn(f):
         fs  = _T(f).strip()
@@ -5115,6 +5117,12 @@ class TopWnd(wx.Frame):
 
         if not cmdargs:
             cmdargs = []
+        if _in_msw:
+            import glob
+            t = cmdargs
+            cmdargs = []
+            for arg in t:
+                cmdargs += glob.glob(arg)
 
         if not len(cmdargs):
             argplay = False
@@ -7473,6 +7481,8 @@ class TopWnd(wx.Frame):
             obj.load_ok = False
             obj.cmd_on_play()
 
+        if _in_msw:
+            self.cmd_on_stop()
         wx.CallAfter(_sub_unload_and_play, self)
 
     def on_stop(self, event):

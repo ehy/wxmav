@@ -1,0 +1,855 @@
+making symbolic links for ../wxmav.pyw ../wxmav_main.py
+lrwxrwxrwx 1 evh evh 12 May 19 09:58 wxmav.pyw -> ../wxmav.pyw
+lrwxrwxrwx 1 evh evh 16 May 19 09:58 wxmav_main.py -> ../wxmav_main.py
+m4 ../cdata/cdata.m4 installer_template.nsi.in > installer_template.nsi
+m4 ../cdata/cdata.m4 wxmav.nsist.in > wxmav.nsist
+pynsist wxmav.nsist
+Unpacking Python...
+Copying packages into build directory...
+Using cached wheel: wxPython-4.0.0a2-cp36-cp36m-win32.whl
+Writing NSI file to build/nsis/installer.nsi
+MakeNSIS v16-Apr-2016.cvs - Copyright 1995-2015 Contributors
+See the file COPYING for license details.
+Credits can be found in the Users Manual.
+
+Processing config: 
+Processing plugin dlls: "/usr/local/nsis-2.50/share/nsis/Plugins/*.dll"
+ - AdvSplash::show
+ - Banner::destroy
+ - Banner::getWindow
+ - Banner::show
+ - BgImage::AddImage
+ - BgImage::AddText
+ - BgImage::Clear
+ - BgImage::Destroy
+ - BgImage::Redraw
+ - BgImage::SetBg
+ - BgImage::SetReturn
+ - BgImage::Sound
+ - Dialer::AttemptConnect
+ - Dialer::AutodialHangup
+ - Dialer::AutodialOnline
+ - Dialer::AutodialUnattended
+ - Dialer::GetConnectedState
+ - InstallOptions::dialog
+ - InstallOptions::initDialog
+ - InstallOptions::show
+ - LangDLL::LangDialog
+ - Math::Script
+ - NSISdl::download
+ - NSISdl::download_quiet
+ - Splash::show
+ - StartMenu::Init
+ - StartMenu::Select
+ - StartMenu::Show
+ - System::Alloc
+ - System::Call
+ - System::Copy
+ - System::Free
+ - System::Get
+ - System::Int64Op
+ - System::Store
+ - TypeLib::GetLibVersion
+ - TypeLib::Register
+ - TypeLib::UnRegister
+ - UserInfo::GetAccountType
+ - UserInfo::GetName
+ - UserInfo::GetOriginalAccountType
+ - VPatch::GetFileCRC32
+ - VPatch::GetFileMD5
+ - VPatch::vpatchfile
+ - nsDialogs::Create
+ - nsDialogs::CreateControl
+ - nsDialogs::CreateItem
+ - nsDialogs::CreateTimer
+ - nsDialogs::GetUserData
+ - nsDialogs::KillTimer
+ - nsDialogs::OnBack
+ - nsDialogs::OnChange
+ - nsDialogs::OnClick
+ - nsDialogs::OnNotify
+ - nsDialogs::SelectFileDialog
+ - nsDialogs::SelectFolderDialog
+ - nsDialogs::SetRTL
+ - nsDialogs::SetUserData
+ - nsDialogs::Show
+ - nsExec::Exec
+ - nsExec::ExecToLog
+ - nsExec::ExecToStack
+
+!define: "MUI_INSERT_NSISCONF"=""
+
+Changing directory to: "/home/evh/code/active-proj/wxmav/msw_pynsist/build/nsis"
+
+Processing script file: "build/nsis/installer.nsi"
+!define: "VERSION"="1.0.0"
+!define: "INST_ROOT"="WXMav 1.0.0"
+!define: "EXEC_LVL"="admin"
+!define: "SRC_ZIP"="wxmav-1.0.0.tar.gz"
+!define: "FILECLASS"="WXMav.File"
+!define: "FILEDESC"="WXMav (WX) M A/V Player Document"
+!define: "APP_SICO"="mav.ico"
+!define: "APP_VICO"="mav-varsz.ico"
+!define: "PATH_APP_SICO"="..\..\mav.ico"
+!define: "PATH_APP_VICO"="..\..\mav-varsz.ico"
+!define: "APP_ICO"="mav-varsz.ico"
+!define: "PATH_APP_ICO"="..\..\mav-varsz.ico"
+!define: "APP_BANNER"="..\..\banner-375x96.bmp"
+!define: "APP_BANNER_WI"="375"
+!define: "APP_BANNER_HI"="96"
+!define: "BMP_INST"="..\..\mav.bmp"
+!define: "BMP_UNST"="..\..\vam.bmp"
+!define: "ADDREMNAME"="WXMav 1.0.0"
+!define: "_HK_"="SHCTX"
+CRCCheck: on
+!define: "MULTIUSER_EXECUTIONLEVEL"="Admin"
+!define: "MULTIUSER_MUI"="1"
+!define: "MULTIUSER_INSTALLMODE_COMMANDLINE"="1"
+!define: "MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_KEY"="Software\GPLFreeSoftwareApplications\wxmav\1.0.0"
+!define: "MULTIUSER_INSTALLMODE_DEFAULT_REGISTRY_VALUENAME"=""
+!define: "MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_KEY"="Software\GPLFreeSoftwareApplications\wxmav\1.0.0"
+!define: "MULTIUSER_INSTALLMODE_INSTDIR_REGISTRY_VALUENAME"=""
+!define: "MULTIUSER_INSTALLMODE_INSTDIR"="WXMav 1.0.0"
+!include: "/usr/local/nsis-2.50/share/nsis/Include/MultiUser.nsh"
+!define: "MULTIUSER_INCLUDED"=""
+----------------------------------------------------------------------
+NSIS String Functions Header File 1.09 - Copyright 2004 Diego Pedroso
+----------------------------------------------------------------------
+ (/usr/local/nsis-2.50/share/nsis/Include/StrFunc.nsh:52)
+$ {StrStr} - Copyright 2004 Diego Pedroso - Based on functions by Ximon Eighteen (macro:STRFUNC_FUNC:11)
+$ {UnStrStr} - Copyright 2004 Diego Pedroso - Based on functions by Ximon Eighteen (macro:STRFUNC_FUNC:5)
+!include: closed: "/usr/local/nsis-2.50/share/nsis/Include/MultiUser.nsh"
+!include: "/usr/local/nsis-2.50/share/nsis/Include/MUI2.nsh"
+!include: "/usr/local/nsis-2.50/share/nsis/Contrib/Modern UI 2/MUI2.nsh"
+NSIS Modern User Interface version 2.0 - Copyright 2002-2015 Joost Verburg (/usr/local/nsis-2.50/share/nsis/Contrib/Modern UI 2/MUI2.nsh:8)
+!include: closed: "/usr/local/nsis-2.50/share/nsis/Contrib/Modern UI 2/MUI2.nsh"
+!include: closed: "/usr/local/nsis-2.50/share/nsis/Include/MUI2.nsh"
+!include: "/usr/local/nsis-2.50/share/nsis/Include/FileFunc.nsh"
+!include: closed: "/usr/local/nsis-2.50/share/nsis/Include/FileFunc.nsh"
+Name: "WXMav (WX) M A/V Player 1.0.0"
+OutFile: "WXMav-1.0.0-install.exe"
+Icon: "..\..\mav-varsz.ico"
+Var: "StartMenuFolder"
+!define: "MUI_HEADERIMAGE"=""
+!define: "MUI_HEADERIMAGE_BITMAP"="..\..\banner-375x96.bmp"
+!define: "MUI_WELCOMEFINISHPAGE_BITMAP"="..\..\mav.bmp"
+!define: "MUI_UNWELCOMEFINISHPAGE_BITMAP"="..\..\vam.bmp"
+!define: "MUI_ABORTWARNING"=""
+!insertmacro: MUI_PAGE_WELCOME
+!insertmacro: end of MUI_PAGE_WELCOME
+!insertmacro: MUI_PAGE_LICENSE
+!insertmacro: end of MUI_PAGEDECLARATION_LICENSE
+!insertmacro: end of MUI_PAGE_LICENSE
+!insertmacro: MUI_PAGE_COMPONENTS
+!insertmacro: end of MUI_PAGE_COMPONENTS
+!insertmacro: MULTIUSER_PAGE_INSTALLMODE
+!insertmacro: end of MULTIUSER_PAGE_INSTALLMODE
+!insertmacro: MUI_PAGE_DIRECTORY
+!insertmacro: end of MUI_PAGE_DIRECTORY
+!define: "MUI_STARTMENUPAGE_REGISTRY_ROOT"="SHCTX"
+!define: "MUI_STARTMENUPAGE_REGISTRY_KEY"="Software\GPLFreeSoftwareApplications\wxmav\1.0.0"
+!define: "MUI_STARTMENUPAGE_REGISTRY_VALUENAME"="Start Menu Folder"
+!insertmacro: MUI_PAGE_STARTMENU
+!insertmacro: end of MUI_PAGE_STARTMENU
+!insertmacro: MUI_PAGE_INSTFILES
+!insertmacro: end of MUI_PAGE_INSTFILES
+!insertmacro: MUI_PAGE_FINISH
+!insertmacro: end of MUI_PAGE_FINISH
+!insertmacro: MUI_UNPAGE_WELCOME
+!insertmacro: end of MUI_UNPAGE_WELCOME
+!insertmacro: MUI_UNPAGE_CONFIRM
+!insertmacro: end of MUI_UNPAGE_CONFIRM
+!insertmacro: MUI_UNPAGE_INSTFILES
+!insertmacro: end of MUI_UNPAGE_INSTFILES
+!insertmacro: MUI_UNPAGE_FINISH
+!insertmacro: end of MUI_UNPAGE_FINISH
+!insertmacro: MUI_LANGUAGE
+!insertmacro: end of MUI_LANGUAGE
+Section: "WXMav program" ->(SecExe)
+SetOutPath: "$INSTDIR\pkgs"
+File: "wxmav_main.py" [compress] 76601/274392 bytes
+SetOutPath: "$INSTDIR"
+File: "wxmav.pyw" [compress] 602/1037 bytes
+File: "mav-varsz.ico" [compress] 14786/92478 bytes
+WriteRegStr: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\=$INSTDIR
+WriteRegStr: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\installation directory=$INSTDIR
+WriteRegStr: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\installed version string=1.0.0
+WriteRegDWORD: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\installed version integer=16777216
+WriteRegStr: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\installed executable file=$INSTDIR\wxmav.pyw
+WriteRegStr: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\DefaultIcon\installed icon=$INSTDIR\mav-varsz.ico
+WriteRegStr: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\installed uninstall program=$INSTDIR\uninstall.exe
+WriteUninstaller: "$INSTDIR\uninstall.exe"
+!insertmacro: MUI_STARTMENU_WRITE_BEGIN
+!insertmacro: end of MUI_STARTMENU_WRITE_BEGIN
+CreateDirectory: "$SMPROGRAMS\$StartMenuFolder"
+CreateShortCut: "$SMPROGRAMS\$StartMenuFolder\WXMav.lnk"->"$INSTDIR\wxmav.pyw"  icon:,0, showmode=0x0, hotkey=0x0, comment=
+CreateShortCut: "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"->"$INSTDIR\uninstall.exe"  icon:,0, showmode=0x0, hotkey=0x0, comment=
+!insertmacro: MUI_STARTMENU_WRITE_END
+!insertmacro: end of MUI_STARTMENU_WRITE_END
+!insertmacro: mk_file_association
+ReadRegStr $R0 HKCR\.pls\
+WriteRegStr: HKCR\.pls\WXMav.File_backup=$R0
+WriteRegStr: HKCR\.pls\=WXMav.File
+WriteRegStr: HKCR\WXMav.File\=WXMav (WX) M A/V Player Document
+WriteRegStr: HKCR\WXMav.File\DefaultIcon\=$INSTDIR\mav-varsz.ico
+WriteRegStr: HKCR\WXMav.File\shell\=open
+WriteRegStr: HKCR\WXMav.File\shell\open\=Open with WXMav
+WriteRegStr: HKCR\WXMav.File\shell\open\command\=$INSTDIR\wxmav.pyw "%1"
+!insertmacro: end of mk_file_association
+WriteRegStr: SHCTX\Software\Microsoft\Windows\CurrentVersion\Uninstall\WXMav 1.0.0\DisplayName=WXMav - WXMav (WX) M A/V Player
+WriteRegStr: SHCTX\Software\Microsoft\Windows\CurrentVersion\Uninstall\WXMav 1.0.0\Publisher=GPLFreeSoftwareApplications
+WriteRegStr: SHCTX\Software\Microsoft\Windows\CurrentVersion\Uninstall\WXMav 1.0.0\DisplayVersion=1.0.0
+WriteRegDWORD: SHCTX\Software\Microsoft\Windows\CurrentVersion\Uninstall\WXMav 1.0.0\NoModify=1
+WriteRegDWORD: SHCTX\Software\Microsoft\Windows\CurrentVersion\Uninstall\WXMav 1.0.0\NoRepair=1
+WriteRegStr: SHCTX\Software\Microsoft\Windows\CurrentVersion\Uninstall\WXMav 1.0.0\UninstallString="$INSTDIR\uninstall.exe" /$MultiUser.InstallMode
+WriteRegStr: SHCTX\Software\Microsoft\Windows\CurrentVersion\Uninstall\WXMav 1.0.0\QuietUninstallString="$INSTDIR\uninstall.exe" /$MultiUser.InstallMode /S
+!insertmacro: GetSizeCall
+!insertmacro: end of GetSizeCall
+IntFmt: $0->$0 (fmt:0x%08X)
+WriteRegDWORD: SHCTX\Software\Microsoft\Windows\CurrentVersion\Uninstall\WXMav 1.0.0\EstimatedSize=$0
+SectionEnd
+Section: "WXMav source archive" ->(SecSrc)
+SetOutPath: "$INSTDIR\Source Code"
+File: "wxmav-1.0.0.tar.gz" [compress] 411555/411615 bytes
+WriteRegStr: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\installed source archive=$INSTDIR\Source Code\wxmav-1.0.0.tar.gz
+SectionEnd
+Section: "WXMav examples" ->(SecExa)
+SetOutPath: "$INSTDIR\Examples"
+File: "0._internet_radio_streams.pls" [compress] 798/2444 bytes
+File: "1._roger_fast_and_furious_corman.pls" [compress] 244/534 bytes
+WriteRegStr: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\installed examples=$INSTDIR\Examples\(*.pls)
+SectionEnd
+Section: "WXMav python and wxpython" ->(SecPyw)
+SetOutPath: "$INSTDIR\pkgs"
+File: "six.py" [compress] 7423/29664 bytes
+File: "wxmav_main.py" [compress] 0/274392 bytes
+File: Descending to: "pkgs/mutagen/"
+File: "__init__.py" [compress] 2494/8010 bytes
+File: "_compat.py" [compress] 737/1983 bytes
+File: "_constants.py" [compress] 1109/3368 bytes
+File: "_id3frames.py" [compress] 9304/40924 bytes
+File: "_id3specs.py" [compress] 3695/14422 bytes
+File: "_id3util.py" [compress] 1245/4503 bytes
+File: "_util.py" [compress] 3669/12633 bytes
+File: "_vorbis.py" [compress] 3029/9643 bytes
+File: "aiff.py" [compress] 2869/9319 bytes
+File: "apev2.py" [compress] 5432/19059 bytes
+File: "asf.py" [compress] 4769/22751 bytes
+File: "easyid3.py" [compress] 3970/14404 bytes
+File: "easymp4.py" [compress] 2365/8379 bytes
+File: "flac.py" [compress] 7557/28652 bytes
+File: "id3.py" [compress] 9153/32095 bytes
+File: "m4a.py" [compress] 5677/18515 bytes
+File: "monkeysaudio.py" [compress] 1111/2853 bytes
+File: "mp3.py" [compress] 3195/10003 bytes
+File: "mp4.py" [compress] 7945/28889 bytes
+File: "musepack.py" [compress] 2723/8873 bytes
+File: "ogg.py" [compress] 5210/17493 bytes
+File: "oggflac.py" [compress] 1727/4481 bytes
+File: "oggopus.py" [compress] 1374/3559 bytes
+File: "oggspeex.py" [compress] 1517/4127 bytes
+File: "oggtheora.py" [compress] 1420/3890 bytes
+File: "oggvorbis.py" [compress] 1508/4204 bytes
+File: "optimfrog.py" [compress] 1013/2276 bytes
+File: "trueaudio.py" [compress] 957/2190 bytes
+File: "wavpack.py" [compress] 1388/3835 bytes
+File: Descending to: "pkgs/wx/"
+File: "__init__.py" [compress] 290/621 bytes
+File: "__version__.py" [compress] 143/217 bytes
+File: "_adv.cp36-win32.pyd" [compress] 202121/827392 bytes
+File: "_aui.cp36-win32.pyd" [compress] 131569/483328 bytes
+File: "_core.cp36-win32.pyd" [compress] 1308207/5327360 bytes
+File: "_dataview.cp36-win32.pyd" [compress] 124295/455680 bytes
+File: "_glcanvas.cp36-win32.pyd" [compress] 26974/81920 bytes
+File: "_grid.cp36-win32.pyd" [compress] 116370/431104 bytes
+File: "_html.cp36-win32.pyd" [compress] 133485/486912 bytes
+File: "_html2.cp36-win32.pyd" [compress] 30748/93696 bytes
+File: "_media.cp36-win32.pyd" [compress] 28063/83968 bytes
+File: "_msw.cp36-win32.pyd" [compress] 26652/78848 bytes
+File: "_propgrid.cp36-win32.pyd" [compress] 199870/756224 bytes
+File: "_ribbon.cp36-win32.pyd" [compress] 109800/430080 bytes
+File: "_richtext.cp36-win32.pyd" [compress] 322445/1240576 bytes
+File: "_stc.cp36-win32.pyd" [compress] 123904/450048 bytes
+File: "_xml.cp36-win32.pyd" [compress] 23901/72192 bytes
+File: "_xrc.cp36-win32.pyd" [compress] 31749/97280 bytes
+File: "adv.py" [compress] 1317/5960 bytes
+File: "adv.pyi" [compress] 20856/124604 bytes
+File: "aui.py" [compress] 970/4434 bytes
+File: "aui.pyi" [compress] 12343/85687 bytes
+File: "core.py" [compress] 27543/133248 bytes
+File: "core.pyi" [compress] 202282/1224540 bytes
+File: "dataview.py" [compress] 2214/8993 bytes
+File: "dataview.pyi" [compress] 13239/92493 bytes
+File: "freetype6.dll" [compress] 272954/538324 bytes
+File: "glcanvas.py" [compress] 216/301 bytes
+File: "glcanvas.pyi" [compress] 1400/4182 bytes
+File: "grid.py" [compress] 1984/8725 bytes
+File: "grid.pyi" [compress] 15667/109350 bytes
+File: "html.py" [compress] 673/1527 bytes
+File: "html.pyi" [compress] 12935/73754 bytes
+File: "html2.py" [compress] 625/1515 bytes
+File: "html2.pyi" [compress] 3685/16404 bytes
+File: "libcairo-2.dll" [compress] 530724/1294335 bytes
+File: "libexpat-1.dll" [compress] 56826/143096 bytes
+File: "libfontconfig-1.dll" [compress] 126976/279059 bytes
+File: "libpng14-14.dll" [compress] 105329/230529 bytes
+File: "media.py" [compress] 539/1172 bytes
+File: "media.pyi" [compress] 1892/6885 bytes
+File: "msvcp140.dll" [compress] 159376/443192 bytes
+File: "msw.py" [compress] 202/283 bytes
+File: "msw.pyi" [compress] 1273/3981 bytes
+File: "propgrid.py" [compress] 4988/64741 bytes
+File: "propgrid.pyi" [compress] 26972/213763 bytes
+File: "ribbon.py" [compress] 743/2355 bytes
+File: "ribbon.pyi" [compress] 9313/72627 bytes
+File: "richtext.py" [compress] 1535/6567 bytes
+File: "richtext.pyi" [compress] 42654/303624 bytes
+File: "siplib.cp36-win32.pyd" [compress] 41485/87040 bytes
+File: "stc.py" [compress] 722/2639 bytes
+File: "stc.pyi" [compress] 31283/180993 bytes
+File: "vcruntime140.dll" [compress] 47651/85840 bytes
+File: "webkit.py" [compress] 429/745 bytes
+File: "webkit.pyi" [compress] 1771/7788 bytes
+File: "wxbase30u_net_vc140.dll" [compress] 64407/161792 bytes
+File: "wxbase30u_vc140.dll" [compress] 764521/2103808 bytes
+File: "wxbase30u_xml_vc140.dll" [compress] 59069/140288 bytes
+File: "wxmsw30u_adv_vc140.dll" [compress] 399290/1289216 bytes
+File: "wxmsw30u_aui_vc140.dll" [compress] 145843/407040 bytes
+File: "wxmsw30u_core_vc140.dll" [compress] 1713413/4948992 bytes
+File: "wxmsw30u_gl_vc140.dll" [compress] 26176/65536 bytes
+File: "wxmsw30u_html_vc140.dll" [compress] 203795/595968 bytes
+File: "wxmsw30u_media_vc140.dll" [compress] 38654/103936 bytes
+File: "wxmsw30u_propgrid_vc140.dll" [compress] 240834/704000 bytes
+File: "wxmsw30u_qa_vc140.dll" [compress] 4364/9728 bytes
+File: "wxmsw30u_ribbon_vc140.dll" [compress] 120361/337408 bytes
+File: "wxmsw30u_richtext_vc140.dll" [compress] 444694/1420800 bytes
+File: "wxmsw30u_stc_vc140.dll" [compress] 413988/946176 bytes
+File: "wxmsw30u_webview_vc140.dll" [compress] 43987/112640 bytes
+File: "wxmsw30u_xrc_vc140.dll" [compress] 185837/683520 bytes
+File: "xml.py" [compress] 293/429 bytes
+File: "xml.pyi" [compress] 2628/12095 bytes
+File: "xrc.py" [compress] 999/2248 bytes
+File: "xrc.pyi" [compress] 4554/19403 bytes
+File: "zlib1.dll" [compress] 56073/100352 bytes
+File: Descending to: "pkgs/wx/lib/"
+File: "CDate.py" [compress] 1782/5131 bytes
+File: "ClickableHtmlWindow.py" [compress] 827/1849 bytes
+File: "__init__.py" [compress] 0 bytes
+File: "activex.py" [compress] 2364/6050 bytes
+File: "activexwrapper.py" [compress] 1937/4971 bytes
+File: "anchors.py" [compress] 1164/3868 bytes
+File: "busy.py" [compress] 1801/4957 bytes
+File: "buttons.py" [compress] 6915/33515 bytes
+File: "calendar.py" [compress] 11307/47369 bytes
+File: "colourdb.py" [compress] 5902/27182 bytes
+File: "colourselect.py" [compress] 3359/11420 bytes
+File: "colourutils.py" [compress] 1267/3530 bytes
+File: "combotreebox.py" [compress] 7763/32868 bytes
+File: "delayedresult.py" [compress] 5001/16319 bytes
+File: "dialogs.py" [compress] 4917/17389 bytes
+File: "docview.py" [compress] 20164/106939 bytes
+File: "dragscroller.py" [compress] 796/2547 bytes
+File: "embeddedimage.py" [compress] 997/2431 bytes
+File: "eventStack.py" [compress] 1295/4504 bytes
+File: "eventwatcher.py" [compress] 4337/15411 bytes
+File: "evtmgr.py" [compress] 5061/17015 bytes
+File: "expando.py" [compress] 4407/14589 bytes
+File: "fancytext.py" [compress] 4677/16897 bytes
+File: "filebrowsebutton.py" [compress] 4479/16811 bytes
+File: "flashwin.py" [compress] 1739/7989 bytes
+File: "flashwin_old.py" [compress] 2866/18619 bytes
+File: "floatbar.py" [compress] 2595/10724 bytes
+File: "foldmenu.py" [compress] 888/2488 bytes
+File: "gestures.py" [compress] 3065/9765 bytes
+File: "graphics.py" [compress] 13288/58159 bytes
+File: "gridmovers.py" [compress] 2989/15229 bytes
+File: "iewin.py" [compress] 2215/7279 bytes
+File: "iewin_old.py" [compress] 4396/28062 bytes
+File: "imagebrowser.py" [compress] 7490/27347 bytes
+File: "imageutils.py" [compress] 1694/4396 bytes
+File: "infoframe.py" [compress] 5339/19173 bytes
+File: "inspection.py" [compress] 18701/51058 bytes
+File: "intctrl.py" [compress] 8538/35368 bytes
+File: "itemspicker.py" [compress] 2280/8373 bytes
+File: "langlistctrl.py" [compress] 4352/15512 bytes
+File: "layoutf.py" [compress] 2783/9619 bytes
+File: "msgpanel.py" [compress] 1074/2913 bytes
+File: "multisash.py" [compress] 4035/23590 bytes
+File: "myole4ax.idl" [compress] 1315/4700 bytes
+File: "myole4ax.tlb" [compress] 3190/8736 bytes
+File: "newevent.py" [compress] 1228/5999 bytes
+File: "nvdlg.py" [compress] 1742/5081 bytes
+File: "pdfwin.py" [compress] 2855/10847 bytes
+File: "pdfwin_old.py" [compress] 4787/25983 bytes
+File: "platebtn.py" [compress] 6902/25376 bytes
+File: "popupctl.py" [compress] 2022/6962 bytes
+File: "printout.py" [compress] 8032/38258 bytes
+File: "progressindicator.py" [compress] 1468/4301 bytes
+File: "pydocview.py" [compress] 29233/133651 bytes
+File: "rcsizer.py" [compress] 2210/7433 bytes
+File: "resizewidget.py" [compress] 2931/11266 bytes
+File: "scrolledpanel.py" [compress] 2745/8073 bytes
+File: "sheet.py" [compress] 4187/15102 bytes
+File: "sized_controls.py" [compress] 6503/27530 bytes
+File: "softwareupdate.py" [compress] 4738/15007 bytes
+File: "splitter.py" [compress] 7100/30302 bytes
+File: "statbmp.py" [compress] 1797/5575 bytes
+File: "stattext.py" [compress] 3108/10153 bytes
+File: "throbber.py" [compress] 3330/12698 bytes
+File: "ticker.py" [compress] 2478/7920 bytes
+File: "ticker_xrc.py" [compress] 500/1429 bytes
+File: "utils.py" [compress] 1016/2738 bytes
+File: "wordwrap.py" [compress] 1351/3214 bytes
+File: "wxpTag.py" [compress] 2966/8864 bytes
+File: Descending to: "pkgs/wx/lib/agw/"
+File: "__init__.py" [compress] 2809/6474 bytes
+File: "advancedsplash.py" [compress] 5088/19547 bytes
+File: "aquabutton.py" [compress] 6673/32436 bytes
+File: "artmanager.py" [compress] 13281/71667 bytes
+File: "balloontip.py" [compress] 7821/38107 bytes
+File: "buttonpanel.py" [compress] 19702/96372 bytes
+File: "cubecolourdialog.py" [compress] 50737/141163 bytes
+File: "customtreectrl.py" [compress] 57161/298434 bytes
+File: "flatmenu.py" [compress] 44203/233132 bytes
+File: "flatnotebook.py" [compress] 38913/220283 bytes
+File: "floatspin.py" [compress] 13441/54385 bytes
+File: "fmcustomizedlg.py" [compress] 4132/17551 bytes
+File: "fmresources.py" [compress] 2309/13438 bytes
+File: "foldpanelbar.py" [compress] 16996/78584 bytes
+File: "fourwaysplitter.py" [compress] 8073/34858 bytes
+File: "genericmessagedialog.py" [compress] 22119/64283 bytes
+File: "gradientbutton.py" [compress] 4939/21014 bytes
+File: "hyperlink.py" [compress] 4902/20019 bytes
+File: "hypertreelist.py" [compress] 37477/188241 bytes
+File: "infobar.py" [compress] 8784/31847 bytes
+File: "knobctrl.py" [compress] 6479/26780 bytes
+File: "labelbook.py" [compress] 17116/110199 bytes
+File: "multidirdialog.py" [compress] 11422/25643 bytes
+File: "peakmeter.py" [compress] 6542/32646 bytes
+File: "piectrl.py" [compress] 5548/30170 bytes
+File: "pybusyinfo.py" [compress] 3710/11156 bytes
+File: "pycollapsiblepane.py" [compress] 7540/34244 bytes
+File: "pygauge.py" [compress] 4692/17903 bytes
+File: "pyprogress.py" [compress] 6891/28848 bytes
+File: "rulerctrl.py" [compress] 12292/55359 bytes
+File: "shapedbutton.py" [compress] 29379/69175 bytes
+File: "shortcuteditor.py" [compress] 39986/104345 bytes
+File: "speedmeter.py" [compress] 13557/65142 bytes
+File: "supertooltip.py" [compress] 10503/47390 bytes
+File: "thumbnailctrl.py" [compress] 22262/83871 bytes
+File: "toasterbox.py" [compress] 8300/44886 bytes
+File: "ultimatelistctrl.py" [compress] 85168/456332 bytes
+File: "xlsgrid.py" [compress] 16340/72072 bytes
+File: "zoombar.py" [compress] 18260/46793 bytes
+File: Descending to: "pkgs/wx/lib/agw/aui/"
+File: "__init__.py" [compress] 6130/16174 bytes
+File: "aui_constants.py" [compress] 79042/170611 bytes
+File: "aui_switcherdialog.py" [compress] 7597/33210 bytes
+File: "aui_utilities.py" [compress] 6117/20277 bytes
+File: "auibar.py" [compress] 22565/132444 bytes
+File: "auibook.py" [compress] 40028/208294 bytes
+File: "dockart.py" [compress] 7921/46493 bytes
+File: "framemanager.py" [compress] 72183/370511 bytes
+File: "tabart.py" [compress] 15270/107601 bytes
+File: "tabmdi.py" [compress] 4098/17917 bytes
+File: Descending to: "pkgs/wx/lib/agw/data/"
+File: "ShortcutEditor_1.png" [compress] 67381/71812 bytes
+File: "ShortcutEditor_1_thumb.png" [compress] 17464 bytes
+File: "ShortcutEditor_2.png" [compress] 59886/64125 bytes
+File: "ShortcutEditor_2_thumb.png" [compress] 16471 bytes
+File: "ShortcutEditor_3.png" [compress] 56541/61122 bytes
+File: "ShortcutEditor_3_thumb.png" [compress] 16252 bytes
+File: "ShortcutEditor_4.png" [compress] 83608/87263 bytes
+File: "ShortcutEditor_4_thumb.png" [compress] 17765 bytes
+File: "default_help_text.html" [compress] 1821/4324 bytes
+File: Descending to: "pkgs/wx/lib/agw/persist/"
+File: "__init__.py" [compress] 2971/7468 bytes
+File: "persist_constants.py" [compress] 1939/9925 bytes
+File: "persist_handlers.py" [compress] 11768/74931 bytes
+File: "persistencemanager.py" [compress] 6188/30241 bytes
+File: Descending to: "pkgs/wx/lib/agw/ribbon/"
+File: "__init__.py" [compress] 2585/8918 bytes
+File: "art.py" [compress] 1898/9564 bytes
+File: "art_aui.py" [compress] 10540/59033 bytes
+File: "art_default.py" [compress] 941/2523 bytes
+File: "art_internal.py" [compress] 1760/6722 bytes
+File: "art_msw.py" [compress] 20030/133617 bytes
+File: "art_osx.py" [compress] 809/1844 bytes
+File: "bar.py" [compress] 9710/51141 bytes
+File: "buttonbar.py" [compress] 9122/50626 bytes
+File: "control.py" [compress] 2120/7438 bytes
+File: "gallery.py" [compress] 6246/32178 bytes
+File: "page.py" [compress] 7299/34524 bytes
+File: "panel.py" [compress] 9632/43717 bytes
+File: "toolbar.py" [compress] 9132/49387 bytes
+File: Descending to: "pkgs/wx/lib/analogclock/"
+File: "__init__.py" [compress] 2001/5635 bytes
+File: "analogclock.py" [compress] 4336/17597 bytes
+File: "helpers.py" [compress] 4820/27226 bytes
+File: "setup.py" [compress] 3155/17053 bytes
+File: "styles.py" [compress] 570/1199 bytes
+File: Descending to: "pkgs/wx/lib/analogclock/lib_setup/"
+File: "__init__.py" [compress] 0 bytes
+File: "buttontreectrlpanel.py" [compress] 2942/10149 bytes
+File: "fontselect.py" [compress] 712/1653 bytes
+File: Descending to: "pkgs/wx/lib/art/"
+File: "__init__.py" [compress] 85/98 bytes
+File: "flagart.py" [compress] 52760/92874 bytes
+File: "img2pyartprov.py" [compress] 672/1804 bytes
+File: Descending to: "pkgs/wx/lib/colourchooser/"
+File: "__init__.py" [compress] 489/890 bytes
+File: "canvas.py" [compress] 1869/4752 bytes
+File: "intl.py" [compress] 439/727 bytes
+File: "pycolourbox.py" [compress] 1342/3275 bytes
+File: "pycolourchooser.py" [compress] 5708/21698 bytes
+File: "pycolourslider.py" [compress] 1404/3236 bytes
+File: "pypalette.py" [compress] 5335/9735 bytes
+File: Descending to: "pkgs/wx/lib/editor/"
+File: "README.txt" [compress] 1168/2407 bytes
+File: "__init__.py" [compress] 331/694 bytes
+File: "editor.py" [compress] 6462/28841 bytes
+File: "images.py" [compress] 321/419 bytes
+File: "selection.py" [compress] 479/1307 bytes
+File: Descending to: "pkgs/wx/lib/floatcanvas/"
+File: "FCEvents.py" [compress] 592/2061 bytes
+File: "FCObjects.py" [compress] 19359/104762 bytes
+File: "FloatCanvas.py" [compress] 9651/38100 bytes
+File: "GUIMode.py" [compress] 2891/13176 bytes
+File: "NavCanvas.py" [compress] 1875/5399 bytes
+File: "Resources.py" [compress] 5409/15793 bytes
+File: "ScreenShot.py" [compress] 63165/136046 bytes
+File: "__init__.py" [compress] 2074/4566 bytes
+File: Descending to: "pkgs/wx/lib/floatcanvas/Utilities/"
+File: "BBox.py" [compress] 2515/8648 bytes
+File: "Colors.py" [compress] 1064/4410 bytes
+File: "GUI.py" [compress] 1059/2792 bytes
+File: "__init__.py" [compress] 61/63 bytes
+File: Descending to: "pkgs/wx/lib/masked/"
+File: "__init__.py" [compress] 578/1239 bytes
+File: "combobox.py" [compress] 8992/35379 bytes
+File: "ctrl.py" [compress] 1075/3039 bytes
+File: "ipaddrctrl.py" [compress] 3230/9156 bytes
+File: "maskededit.py" [compress] 79989/344310 bytes
+File: "numctrl.py" [compress] 18365/81147 bytes
+File: "textctrl.py" [compress] 4906/17821 bytes
+File: "timectrl.py" [compress] 14295/58056 bytes
+File: Descending to: "pkgs/wx/lib/mixins/"
+File: "__init__.py" [compress] 242/471 bytes
+File: "grid.py" [compress] 530/1252 bytes
+File: "gridlabelrenderer.py" [compress] 2165/8073 bytes
+File: "imagelist.py" [compress] 940/2545 bytes
+File: "inspection.py" [compress] 2085/6039 bytes
+File: "listctrl.py" [compress] 8994/31525 bytes
+File: "rubberband.py" [compress] 3744/12786 bytes
+File: "treemixin.py" [compress] 6785/28710 bytes
+File: Descending to: "pkgs/wx/lib/ogl/"
+File: "__init__.py" [compress] 147/276 bytes
+File: "basic.py" [compress] 23217/130018 bytes
+File: "bmpshape.py" [compress] 847/2358 bytes
+File: "canvas.py" [compress] 4024/18245 bytes
+File: "composit.py" [compress] 9569/55821 bytes
+File: "diagram.py" [compress] 1836/6428 bytes
+File: "divided.py" [compress] 3611/16136 bytes
+File: "drawn.py" [compress] 6918/32149 bytes
+File: "lines.py" [compress] 13501/65537 bytes
+File: "oglmisc.py" [compress] 4098/17283 bytes
+File: Descending to: "pkgs/wx/lib/pdfviewer/"
+File: "__init__.py" [compress] 1715/4309 bytes
+File: "buttonpanel.py" [compress] 3029/10691 bytes
+File: "images.py" [compress] 10712/16648 bytes
+File: "viewer.py" [compress] 12474/45077 bytes
+File: Descending to: "pkgs/wx/lib/pdfviewer/bitmaps/"
+File: "ArrowLeft.png" [compress] 774 bytes
+File: "ArrowRight.png" [compress] 748 bytes
+File: "DirectionH.png" [compress] 946 bytes
+File: "DirectionV.png" [compress] 919 bytes
+File: "PlayerFirst.png" [compress] 776 bytes
+File: "PlayerLast.png" [compress] 763 bytes
+File: "PlayerNext.png" [compress] 750 bytes
+File: "PlayerPrev.png" [compress] 887 bytes
+File: "Printer.png" [compress] 838 bytes
+File: "ReadMe.txt" [compress] 533/1000 bytes
+File: "Save.png" [compress] 825 bytes
+File: "ZoomIn.png" [compress] 1127 bytes
+File: "ZoomOut.png" [compress] 1100 bytes
+File: "encode_bitmaps.py" [compress] 442/1110 bytes
+File: Descending to: "pkgs/wx/lib/plot/"
+File: "CHANGELOG.md" [compress] 2720/6352 bytes
+File: "README.md" [compress] 417/695 bytes
+File: "__init__.py" [compress] 513/1172 bytes
+File: "__main__.py" [compress] 88/103 bytes
+File: "plotcanvas.py" [compress] 17804/102972 bytes
+File: "polyobjects.py" [compress] 11254/52984 bytes
+File: "utils.py" [compress] 3621/10713 bytes
+File: Descending to: "pkgs/wx/lib/plot/examples/"
+File: "__init__.py" [compress] 0 bytes
+File: "demo.py" [compress] 7705/37601 bytes
+File: "simple_example.py" [compress] 735/1446 bytes
+File: Descending to: "pkgs/wx/lib/pubsub/"
+File: "LICENSE_BSD_Simple.txt" [compress] 699/1313 bytes
+File: "README.txt" [compress] 250/386 bytes
+File: "README_WxPython.txt" [compress] 514/1086 bytes
+File: "RELEASE_NOTES.txt" [compress] 1064/2252 bytes
+File: "__init__.py" [compress] 251/364 bytes
+File: "policies.py" [compress] 367/870 bytes
+File: "pub.py" [compress] 1925/5589 bytes
+File: "py2and3.py" [compress] 5097/21810 bytes
+File: "setuparg1.py" [compress] 814/1752 bytes
+File: "setupkwargs.py" [compress] 590/1152 bytes
+File: Descending to: "pkgs/wx/lib/pubsub/core/"
+File: "__init__.py" [compress] 1158/2658 bytes
+File: "callables.py" [compress] 2437/7096 bytes
+File: "imp2.py" [compress] 867/2117 bytes
+File: "itopicdefnprovider.py" [compress] 0 bytes
+File: "listener.py" [compress] 486/990 bytes
+File: "listenerbase.py" [compress] 2382/6665 bytes
+File: "notificationmgr.py" [compress] 2066/7596 bytes
+File: "publisherbase.py" [compress] 2775/8492 bytes
+File: "topicargspec.py" [compress] 1158/2842 bytes
+File: "topicdefnprovider.py" [compress] 6808/24341 bytes
+File: "topicexc.py" [compress] 1021/2624 bytes
+File: "topicmgr.py" [compress] 5385/18370 bytes
+File: "topicobj.py" [compress] 5096/18487 bytes
+File: "topictreetraverser.py" [compress] 1510/5255 bytes
+File: "topicutils.py" [compress] 1467/3798 bytes
+File: "treeconfig.py" [compress] 315/580 bytes
+File: "validatedefnargs.py" [compress] 473/991 bytes
+File: "weakmethod.py" [compress] 1464/3822 bytes
+File: Descending to: "pkgs/wx/lib/pubsub/core/arg1/"
+File: "__init__.py" [compress] 394/644 bytes
+File: "listenerimpl.py" [compress] 1377/3544 bytes
+File: "publisher.py" [compress] 693/1408 bytes
+File: "publishermixin.py" [compress] 570/1121 bytes
+File: "topicargspecimpl.py" [compress] 826/1956 bytes
+File: "topicmgrimpl.py" [compress] 333/564 bytes
+File: Descending to: "pkgs/wx/lib/pubsub/core/kwargs/"
+File: "__init__.py" [compress] 396/646 bytes
+File: "datamsg.py" [compress] 474/935 bytes
+File: "listenerimpl.py" [compress] 1325/3518 bytes
+File: "publisher.py" [compress] 867/2342 bytes
+File: "publishermixin.py" [compress] 872/2307 bytes
+File: "topicargspecimpl.py" [compress] 2538/8173 bytes
+File: "topicmgrimpl.py" [compress] 217/300 bytes
+File: Descending to: "pkgs/wx/lib/pubsub/examples/"
+File: "multithreadloop.py" [compress] 1660/4118 bytes
+File: "runall.bat" [compress] 480/1580 bytes
+File: "runall_regression.txt" [compress] 1015/8389 bytes
+File: Descending to: "pkgs/wx/lib/pubsub/examples/advanced/"
+File: "README.txt" [compress] 351/814 bytes
+File: "arg1_listeners.py" [compress] 451/1084 bytes
+File: "arg1_senders.py" [compress] 230/417 bytes
+File: "arg1_topics.py" [compress] 311/684 bytes
+File: "arg1_topics_out.py" [compress] 310/684 bytes
+File: "exchandle.py" [compress] 317/539 bytes
+File: "kwargs_listeners.py" [compress] 455/1083 bytes
+File: "kwargs_senders.py" [compress] 244/445 bytes
+File: "kwargs_topics.py" [compress] 433/1179 bytes
+File: "kwargs_topics_out.py" [compress] 434/1179 bytes
+File: "main_arg1.py" [compress] 637/1349 bytes
+File: "main_kwargs.py" [compress] 646/1383 bytes
+File: "notifhandle.py" [compress] 431/881 bytes
+File: Descending to: "pkgs/wx/lib/pubsub/examples/basic_arg1/"
+File: "README.txt" [compress] 443/864 bytes
+File: "console_listeners.py" [compress] 455/1099 bytes
+File: "console_main.py" [compress] 273/443 bytes
+File: "console_senders.py" [compress] 255/550 bytes
+File: "wx_main.py" [compress] 1274/3289 bytes
+File: Descending to: "pkgs/wx/lib/pubsub/examples/basic_kwargs/"
+File: "README.txt" [compress] 317/549 bytes
+File: "console_listeners.py" [compress] 447/1043 bytes
+File: "console_main.py" [compress] 265/413 bytes
+File: "console_senders.py" [compress] 261/558 bytes
+File: "wx_main.py" [compress] 785/1858 bytes
+File: "wx_win1.py" [compress] 464/853 bytes
+File: "wx_win2.py" [compress] 498/1062 bytes
+File: Descending to: "pkgs/wx/lib/pubsub/utils/"
+File: "__init__.py" [compress] 337/611 bytes
+File: "exchandling.py" [compress] 1482/3788 bytes
+File: "misc.py" [compress] 1286/3086 bytes
+File: "notification.py" [compress] 3376/12884 bytes
+File: "topictreeprinter.py" [compress] 2522/7814 bytes
+File: "xmltopicdefnprovider.py" [compress] 2742/8917 bytes
+File: Descending to: "pkgs/wx/lib/wxcairo/"
+File: "__init__.py" [compress] 1780/4888 bytes
+File: "wx_cairocffi.py" [compress] 2151/6796 bytes
+File: "wx_pycairo.py" [compress] 3339/17107 bytes
+File: Descending to: "pkgs/wx/py/"
+File: "CHANGES.txt" [compress] 9595/24857 bytes
+File: "Py.ico" [compress] 1883/4710 bytes
+File: "PyAlaCarte.py" [compress] 391/783 bytes
+File: "PyAlaMode.py" [compress] 390/782 bytes
+File: "PyAlaModeTest.py" [compress] 391/761 bytes
+File: "PyCrust.ico" [compress] 0/4710 bytes
+File: "PyCrust.py" [compress] 997/2214 bytes
+File: "PyCrust_16.png" [compress] 706 bytes
+File: "PyCrust_32.png" [compress] 1273 bytes
+File: "PyFilling.py" [compress] 410/799 bytes
+File: "PyShell.py" [compress] 985/2201 bytes
+File: "PySlices.ico" [compress] 2199/6502 bytes
+File: "PySlices.py" [compress] 1223/2996 bytes
+File: "PySlicesShell.py" [compress] 1131/2802 bytes
+File: "PySlices_16.png" [compress] 733 bytes
+File: "PySlices_32.png" [compress] 1848 bytes
+File: "PyWrap.py" [compress] 643/1479 bytes
+File: "README.txt" [compress] 998/2380 bytes
+File: "__init__.py" [compress] 205/473 bytes
+File: "buffer.py" [compress] 1201/4213 bytes
+File: "crust.py" [compress] 3636/14765 bytes
+File: "crustslices.py" [compress] 3833/15509 bytes
+File: "dispatcher.py" [compress] 2382/9191 bytes
+File: "document.py" [compress] 362/1092 bytes
+File: "editor.py" [compress] 5618/29310 bytes
+File: "editwindow.py" [compress] 2879/10861 bytes
+File: "filling.py" [compress] 3480/12890 bytes
+File: "frame.py" [compress] 7618/39189 bytes
+File: "images.py" [compress] 7543/16090 bytes
+File: "interpreter.py" [compress] 1742/6284 bytes
+File: "introspect.py" [compress] 4322/14177 bytes
+File: "magic.py" [compress] 1406/3829 bytes
+File: "parse.py" [compress] 1698/5310 bytes
+File: "path.py" [compress] 531/1005 bytes
+File: "pseudo.py" [compress] 799/2464 bytes
+File: "shell.py" [compress] 13606/56705 bytes
+File: "sliceshell.py" [compress] 29891/148826 bytes
+File: "version.py" [compress] 217/289 bytes
+File: Descending to: "pkgs/wx/py/tests/"
+File: "test_interpreter.py" [compress] 719/1949 bytes
+File: "test_introspect.py" [compress] 4222/24647 bytes
+File: "test_pseudo.py" [compress] 504/1514 bytes
+File: "test_version.py" [compress] 415/853 bytes
+File: "testall.py" [compress] 335/581 bytes
+File: Descending to: "pkgs/wx/tools/"
+File: "__init__.py" [compress] 161/244 bytes
+File: "dbg.py" [compress] 2983/8641 bytes
+File: "genaxmodule.py" [compress] 631/1264 bytes
+File: "helpviewer.py" [compress] 1108/2541 bytes
+File: "img2img.py" [compress] 825/2245 bytes
+File: "img2png.py" [compress] 711/1466 bytes
+File: "img2py.py" [compress] 3618/10535 bytes
+File: "img2xpm.py" [compress] 709/1459 bytes
+File: "pywxrc.py" [compress] 7043/33216 bytes
+File: Returning to: "pkgs"
+SetOutPath: "$INSTDIR"
+SetOutPath: "$INSTDIR"
+File: "mav.ico" [compress] 1625/4286 bytes
+File: "wxmav.pyw" [compress] 0/1037 bytes
+File: "mav-varsz.ico" [compress] 0/92478 bytes
+SetOutPath: "$INSTDIR\Python"
+File: "_asyncio.pyd" [compress] 21543/45208 bytes
+File: "_bz2.pyd" [compress] 37884/77976 bytes
+File: "_ctypes.pyd" [compress] 47626/101528 bytes
+File: "_decimal.pyd" [compress] 90924/215704 bytes
+File: "_elementtree.pyd" [compress] 69426/156312 bytes
+File: "_hashlib.pyd" [compress] 485774/1042584 bytes
+File: "_lzma.pyd" [compress] 82978/183448 bytes
+File: "_msi.pyd" [compress] 16729/32408 bytes
+File: "_multiprocessing.pyd" [compress] 14009/25240 bytes
+File: "_overlapped.pyd" [compress] 17301/33944 bytes
+File: "_socket.pyd" [compress] 30463/61592 bytes
+File: "_sqlite3.pyd" [compress] 30977/64152 bytes
+File: "_ssl.pyd" [compress] 683508/1458840 bytes
+File: "pyexpat.pyd" [compress] 67928/157336 bytes
+File: "python.exe" [compress] 50508/97944 bytes
+File: "python3.dll" [compress] 18307/58008 bytes
+File: "python36._pth" [compress] 77/79 bytes
+File: "python36.dll" [compress] 1413467/3263640 bytes
+File: "python36.zip" [compress] 2179473/2224303 bytes
+File: "pythonw.exe" [compress] 48600/96408 bytes
+File: "select.pyd" [compress] 13064/23192 bytes
+File: "sqlite3.dll" [compress] 473889/866456 bytes
+File: "unicodedata.pyd" [compress] 361045/895640 bytes
+File: "vcruntime140.dll" [compress] 47626/85328 bytes
+File: "winsound.pyd" [compress] 12996/24216 bytes
+File: Returning to: "Python"
+SectionEnd
+Function: ".onInit"
+!insertmacro: MULTIUSER_INIT
+$ {StrStr} "$MultiUser.Result" "$MultiUser.Parameters" "/CurrentUser" (macro:FUNCTION_STRING_StrStr_Call:3)
+$ {StrStr} "$MultiUser.Result" "$MultiUser.Parameters" "/AllUsers" (macro:FUNCTION_STRING_StrStr_Call:3)
+!insertmacro: end of MULTIUSER_INIT
+!insertmacro: MUI_LANGDLL_DISPLAY
+!insertmacro: end of MUI_LANGDLL_DISPLAY
+FunctionEnd
+Function: ".onInstSuccess"
+Plugin Command: Call shell32.dll::SHChangeNotify(i, i, i, i) v (0x08000000, 0, 0, 0)
+FunctionEnd
+LangString: "DESC_SecExe" 1033 "The main program executable file (wxmav.pyw)."
+LangString: "DESC_SecSrc" 1033 "The program source code (optional; free under GPL license)."
+LangString: "DESC_SecExa" 1033 "Examples for WXMav, some .pls files ready to play and edit."
+LangString: "DESC_SecPyw" 1033 "Python interpreter, and wxPython package."
+!insertmacro: MUI_FUNCTION_DESCRIPTION_BEGIN
+!insertmacro: end of MUI_FUNCTION_DESCRIPTION_BEGIN
+!insertmacro: MUI_DESCRIPTION_TEXT
+!insertmacro: end of MUI_DESCRIPTION_TEXT
+!insertmacro: MUI_DESCRIPTION_TEXT
+!insertmacro: end of MUI_DESCRIPTION_TEXT
+!insertmacro: MUI_DESCRIPTION_TEXT
+!insertmacro: end of MUI_DESCRIPTION_TEXT
+!insertmacro: MUI_DESCRIPTION_TEXT
+!insertmacro: end of MUI_DESCRIPTION_TEXT
+!insertmacro: MUI_FUNCTION_DESCRIPTION_END
+!insertmacro: end of MUI_FUNCTION_DESCRIPTION_END
+Section: "Uninstall"
+!insertmacro: rm_file_association
+ReadRegStr $R0 HKCR\.pls\WXMav.File_backup
+WriteRegStr: HKCR\.pls\=$R0
+DeleteRegKey: HKCR\WXMav.File
+!insertmacro: end of rm_file_association
+Delete: "$INSTDIR\uninstall.exe"
+Delete: "$INSTDIR\Source Code\wxmav-1.0.0.tar.gz"
+Delete: "$INSTDIR\Examples\*.*"
+Delete: "$INSTDIR\wxmav.pyw"
+Delete: "$INSTDIR\mav-varsz.ico"
+RMDir: "$INSTDIR\Source Code"
+RMDir: "$INSTDIR\Examples"
+RMDir: /r "$INSTDIR\pkgs"
+RMDir: "$INSTDIR"
+!insertmacro: MUI_STARTMENU_GETFOLDER
+!insertmacro: end of MUI_STARTMENU_GETFOLDER
+Delete: "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
+Delete: "$SMPROGRAMS\$StartMenuFolder\WXMav.lnk"
+RMDir: "$SMPROGRAMS\$StartMenuFolder"
+DeleteRegKey: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0\MainWindow
+DeleteRegKey: SHCTX\Software\GPLFreeSoftwareApplications\wxmav\1.0.0
+DeleteRegKey: SHCTX\Software\GPLFreeSoftwareApplications\wxmav
+DeleteRegKey: SHCTX\Software\GPLFreeSoftwareApplications
+DeleteRegKey: SHCTX\Software\Microsoft\Windows\CurrentVersion\Uninstall\WXMav 1.0.0
+SectionEnd
+Function: "un.onInit"
+!insertmacro: MULTIUSER_UNINIT
+$ {UnStrStr} "$MultiUser.Result" "$MultiUser.Parameters" "/CurrentUser" (macro:FUNCTION_STRING_UnStrStr_Call:3)
+$ {UnStrStr} "$MultiUser.Result" "$MultiUser.Parameters" "/AllUsers" (macro:FUNCTION_STRING_UnStrStr_Call:3)
+!insertmacro: end of MULTIUSER_UNINIT
+!insertmacro: MUI_UNGETLANGUAGE
+!insertmacro: end of MUI_UNGETLANGUAGE
+FunctionEnd
+Function: "un.onUninstSuccess"
+Plugin Command: Call shell32.dll::SHChangeNotify(i, i, i, i) v (0x08000000, 0, 0, 0)
+FunctionEnd
+
+Processed 1 file, writing output:
+Adding plug-ins initializing function... Done!
+Processing pages... Done!
+Removing unused resources... Done!
+Generating language tables... Done!
+Generating uninstaller... Done!
+
+Output: "WXMav-1.0.0-install.exe"
+Install: 9 pages (576 bytes), 4 sections (4192 bytes), 1660 instructions (46480 bytes), 854 strings (48499 bytes), 1 language table (410 bytes).
+Uninstall: 5 pages (320 bytes), 
+1 section (1048 bytes), 686 instructions (19208 bytes), 240 strings (3753 bytes), 1 language table (294 bytes).
+Datablock optimizer saved 133382 bytes (~0.6%).
+
+Using zlib compression.
+
+EXE header size:               51712 / 36864 bytes
+Install code:                  26756 / 100533 bytes
+Install data:               19159488 / 53533878 bytes
+Uninstall code+data:          120321 / 124680 bytes
+CRC (0xA9410F2C):                  4 / 4 bytes
+
+Total size:                 19358281 / 53795959 bytes (35.9%)
+Installer written to build/nsis/WXMav-1.0.0-install.exe
+ls -l build/nsis/WXMav-1.0.0-install.exe
+-rw-r--r-- 1 evh evh 19358281 May 19 09:58 build/nsis/WXMav-1.0.0-install.exe
+all made in msw_pynsist

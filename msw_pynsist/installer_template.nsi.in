@@ -53,15 +53,15 @@ dnl## macros not included here so they can be given on m4 command
   !define FILEDESC     "progprettyname Document"
   !define APP_SICO     "mav.ico"
   !define APP_VICO     "mav-varsz.ico"
-  !define PATH_APP_SICO     ".\mav.ico"
-  !define PATH_APP_VICO     ".\mav-varsz.ico"
+  !define PATH_APP_SICO     "..\..\mav.ico"
+  !define PATH_APP_VICO     "..\..\mav-varsz.ico"
   !define APP_ICO           "${APP_VICO}"
   !define PATH_APP_ICO      "${PATH_APP_VICO}"
-  !define APP_BANNER     	".\installerbmpbnnr"
+  !define APP_BANNER     	"..\..\installerbmpbnnr"
   !define APP_BANNER_WI		375
   !define APP_BANNER_HI		96
-  !define BMP_INST          "installerbmpinst"
-  !define BMP_UNST          "installerbmpunst"
+  !define BMP_INST          "..\..\installerbmpinst"
+  !define BMP_UNST          "..\..\installerbmpunst"
   # name used in control panel add/remove reg key
   !define ADDREMNAME   "appclass appversion"
   # MSW registry H-key, e.g. HKCU or HKLM or multiuser SHCTX
@@ -97,6 +97,8 @@ dnl## macros not included here so they can be given on m4 command
 
   CRCCheck on
 
+SetCompressor `lzma'
+
   RequestExecutionLevel ${EXEC_LVL}
 
   !define MULTIUSER_EXECUTIONLEVEL Admin
@@ -127,7 +129,7 @@ dnl## macros not included here so they can be given on m4 command
 
   ;Name and file
   Name "progprettyname appversion"
-  OutFile mswinstallernameS
+  OutFile mswinstallerembednameS
 
 # Added EH 0.0.4.4: suddenly seems necessary
   Icon "${PATH_APP_ICO}"
@@ -152,7 +154,7 @@ dnl## macros not included here so they can be given on m4 command
 ;Pages
 
   !insertmacro MUI_PAGE_WELCOME
-  !insertmacro MUI_PAGE_LICENSE "..\licenseFile"
+  !insertmacro MUI_PAGE_LICENSE "..\..\..\licenseFile"
   !insertmacro MUI_PAGE_COMPONENTS
   !insertmacro MULTIUSER_PAGE_INSTALLMODE
   !insertmacro MUI_PAGE_DIRECTORY
@@ -195,17 +197,16 @@ Section "appclass program" SecExe
   SetOutPath "$INSTDIR\pkgsdir"
 
   ;Add package files
-  File "..\appnamemain.modsuffix"
+  File "..\..\..\appnamemain.modsuffix"
 
   ; End Added 19.05.2017
   SetOutPath "$INSTDIR"
 
   ;ADD YOUR OWN FILES HERE...
   # Added EH:
-  File "..\appname.appsuffix"
+  File "..\..\..\appname.appsuffix"
   # Added EH 1.0:
   File "${PATH_APP_ICO}"
-  File "${PATH_APP_SICO}"
 
   ;Store installation folder
   WriteRegStr ${_HK_} "Software\vendorname\appname\appversion" \
@@ -231,10 +232,9 @@ Section "appclass program" SecExe
 
   ;Create shortcuts
   CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
-;  CreateShortCut "$SMPROGRAMS\$StartMenuFolder\appName.lnk" \
-;  	"$INSTDIR\appname.appsuffix"
   CreateShortCut "$SMPROGRAMS\$StartMenuFolder\appName.lnk" \
-    "$INSTDIR\appname.appsuffix" "$INSTDIR\${APP_ICO}"
+    "$INSTDIR\Python\pythonw.exe" "$\"$INSTDIR\appname.appsuffix$\"" \
+    "$INSTDIR\${APP_VICO}"
   CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" \
   	"$INSTDIR\uninstall.exe"
 
@@ -244,7 +244,10 @@ Section "appclass program" SecExe
   # use macros {mk,rm}_file_association
   !insertmacro mk_file_association genFileExtNDS \
       "${FILECLASS}" "${FILEDESC}" "$INSTDIR\${APP_ICO}" \
-      "Open with appName" "$INSTDIR\appname.appsuffix $\"%1$\""
+      "Open with appName" \
+      "$\"$INSTDIR\Python\pythonw$\" $\"$INSTDIR\appname.appsuffix$\" $\"%1$\""
+
+      ;"Open with appName" "$INSTDIR\appname.appsuffix $\"%1$\""
 
   # This should make an entry in MSW control panel "Add/Remove Software"
   # from example at:
@@ -284,8 +287,8 @@ SectionEnd
 #
 #  SetOutPath "$INSTDIR\mswhelpdir"
 #
-#  File "..\doc\help.zip"
-#  File "..\doc\appname.pdf"
+#  File "..\..\..\doc\help.zip"
+#  File "..\..\..\doc\appname.pdf"
 #
 #  ;Store installation folder
 #  WriteRegStr ${_HK_} "Software\vendorname\appname\appversion" \
@@ -305,7 +308,7 @@ Section "appclass source archive" SecSrc
 
   SetOutPath "$INSTDIR\mswsrc_dir"
 
-  File "..\${SRC_ZIP}"
+  File "..\..\..\${SRC_ZIP}"
 
   ;Store installation folder
   WriteRegStr ${_HK_} "Software\vendorname\appname\appversion" \
@@ -324,7 +327,7 @@ Section "appclass examples" SecExa
   # So, will have to give extensions individually (still better
   # than each file individually).
   #File /a "..\examples\*.*"
-  File  "..\examples\*.pls"
+  File  "..\..\..\examples\*.pls"
 
   ;Store installation folder
   WriteRegStr ${_HK_} "Software\vendorname\appname\appversion" \
@@ -332,6 +335,52 @@ Section "appclass examples" SecExa
     "$INSTDIR\mswxmpldir\(*.pls)"
 
 SectionEnd
+
+[% block sections %]
+
+Section "appclass python and wxpython" SecPyw
+
+  SetOutPath "`$INSTDIR\pkgs'"
+  File /r "`pkgs\*.*'"
+  SetOutPath "`$INSTDIR'"
+
+  [% block install_files %]
+  ; Install files
+  [% for destination, group in grouped_files %]
+    SetOutPath "`[[destination]]'"
+    [% for file in group %]
+      File "`[[ file ]]'"
+    [% endfor %]
+  [% endfor %]
+
+  ; Install directories
+  [% for dir, destination in ib.install_dirs %]
+    SetOutPath "`[[ pjoin(destination, dir) ]]'"
+    File /r "`[[dir]]\*.*'"
+  [% endfor %]
+  [% endblock install_files %]
+
+  SetOutPath "$INSTDIR"
+
+  [% block install_commands %]
+  [% if has_commands %]
+    nsExec::ExecToLog '[[ python ]] -Es "$INSTDIR\_rewrite_shebangs.py" "$INSTDIR\bin"'
+    nsExec::ExecToLog '[[ python ]] -Es "$INSTDIR\_system_path.py" add "$INSTDIR\bin"'
+  [% endif %]
+  [% endblock install_commands %]
+
+  ; Byte-compile Python files.
+  DetailPrint "Byte-compiling Python modules..."
+  nsExec::ExecToLog '[[ python ]] -m compileall -q "$INSTDIR\pkgs"'
+
+#  ;Store installation folder
+#  WriteRegStr ${_HK_} "Software\vendorname\appname\appversion" \
+#	"installed examples" \
+#    "$INSTDIR\mswxmpldir\(*.pls)"
+
+SectionEnd
+
+[% endblock sections %]
 
 ;--------------------------------
 ;Installer Functions
@@ -353,11 +402,11 @@ Function .onInstSuccess
   # query user w/ offer to start
   # Note does not work with script by name; probably requires
   # an 'open' op based on file suffix, not performed with Exec
-  ;MessageBox MB_YESNO \
-	;"Would you like to start appclass (appname.appsuffix) now?" \
-	;IDNO no_do_not_invoke_the_program
-  ;Exec '"$INSTDIR\appname.appsuffix" "$INSTDIR\mswxmpldir\*.pls"'
-  ;no_do_not_invoke_the_program:
+  MessageBox MB_YESNO \
+	"Would you like to start appclass (appname.appsuffix) now?" \
+	IDNO no_do_not_invoke_the_program
+  Exec '"$INSTDIR\Python\pythonw.exe" "$INSTDIR\appname.appsuffix" "$INSTDIR\mswxmpldir\*.pls"'
+  no_do_not_invoke_the_program:
 FunctionEnd
 # end func
 
@@ -381,6 +430,9 @@ FunctionEnd
   LangString DESC_SecExa ${LANG_ENGLISH} \
 	"Examples for appName, some .pls files ready to play and edit."
 
+  LangString DESC_SecPyw ${LANG_ENGLISH} \
+	"Python interpreter, and wxPython package."
+
   ;Assign language strings to sections
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
     !insertmacro MUI_DESCRIPTION_TEXT ${SecExe} $(DESC_SecExe)
@@ -388,6 +440,7 @@ FunctionEnd
 #    !insertmacro MUI_DESCRIPTION_TEXT ${SecI18n} $(DESC_SecI18n)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecSrc} $(DESC_SecSrc)
     !insertmacro MUI_DESCRIPTION_TEXT ${SecExa} $(DESC_SecExa)
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecPyw} $(DESC_SecPyw)
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 ;--------------------------------
@@ -410,14 +463,16 @@ Section "Uninstall"
   Delete "$INSTDIR\mswxmpldir\*.*"
   Delete "$INSTDIR\appname.appsuffix"
   Delete "$INSTDIR\${APP_ICO}"
-  Delete "$INSTDIR\${APP_SICO}"
 
   #RMDir "$INSTDIR\mswhelpdir"
   #RMDir "$INSTDIR\en"
   #RMDir "$INSTDIR\en_US"
-  RMDir "$INSTDIR\mswsrc_dir"
-  RMDir "$INSTDIR\mswxmpldir"
+  RMDir /r "$INSTDIR\mswsrc_dir"
+  RMDir /r "$INSTDIR\mswxmpldir"
+  RMDir /r "$INSTDIR\`Python'"
   RMDir /r "$INSTDIR\pkgsdir"
+  Delete "$INSTDIR\${APP_SICO}"
+  Delete "$INSTDIR\${APP_VICO}"
   RMDir "$INSTDIR"
 
   # orig. from example "StartMenu.nsi"

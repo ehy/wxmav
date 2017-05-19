@@ -14,6 +14,8 @@ MACS = $(NAME).m4
 #VERIN = ./version.sh.in
 MKM = ../msw_pkg/Makefile
 MKMIN = ../msw_pkg/Makefile.in
+MKN = ../msw_pynsist/Makefile
+MKNIN = ../msw_pynsist/Makefile.in
 # Xorg desktop file
 #XDMIN = ./desktopmime.in
 #XDM = ../epspline.xdgmime.xml
@@ -28,7 +30,7 @@ MV = mv
 M4 = m4
 MKDIR = mkdir
 
-all: $(HDR) $(VER) $(XDM) $(XDF) $(MKM)
+all: $(HDR) $(VER) $(XDM) $(XDF) $(MKM) $(MKN)
 	@P="$$(pwd)"; D="$${P##*/}"; echo $@ made in "$$D" ; exit 0
 
 force:
@@ -52,6 +54,10 @@ force:
 
 $(MKM) : $(MACS) $(MKMIN)
 	$(M4) $(MACS) $(MKMIN) > $@
+	ls -l $@
+
+$(MKN) : $(MACS) $(MKNIN)
+	$(M4) $(MACS) $(MKNIN) > $@
 	ls -l $@
 
 install: all
