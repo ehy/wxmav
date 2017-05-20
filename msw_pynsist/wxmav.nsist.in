@@ -54,7 +54,8 @@ icon=appiconsingle
 console=false
 
 [Python]
-version=3.6.1
+;version=3.6.1
+version=2.7.9
 bitness=32
 ;format=installer
 format=bundled
@@ -65,7 +66,8 @@ format=bundled
 packages=appnamemain
     mutagen
     six
-pypi_wheels=wxPython==4.0.0a2
+;pypi_wheels=wxPython==4.0.0a2
+pypi_wheels=wxPython==3.0.2.0
 ; Other files and folders that should be installed
 ;files = ../COPYING > $INSTDIR
 ;    ../LICENSE.gpl,v2 > $INSTDIR
