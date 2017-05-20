@@ -3207,6 +3207,8 @@ class MediaPanel(wx.Panel):
                 # and it does a little oscilloscope thingy for audio
                 # TODO: make backend menu option for MSW
                 #backend = wx.media.MEDIABACKEND_QUICKTIME
+                # Note: DIRECTSHOW is no longer an option: does
+                # not do unbounded streams
                 #backend = wx.media.MEDIABACKEND_DIRECTSHOW
                 backend = wx.media.MEDIABACKEND_WMP10
 
@@ -7481,8 +7483,6 @@ class TopWnd(wx.Frame):
             obj.load_ok = False
             obj.cmd_on_play()
 
-        if _in_msw:
-            self.cmd_on_stop()
         wx.CallAfter(_sub_unload_and_play, self)
 
     def on_stop(self, event):
