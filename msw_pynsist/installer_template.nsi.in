@@ -362,6 +362,68 @@ Section "appclass python and wxpython" SecPyw
 
   SetOutPath "$INSTDIR"
 
+  ; Note EH: for some reason, if using [Build]->nsi_template=some.nsi
+  ; in the pynist config, it simply will not add the MSVC runtime
+  ; (as it does using its own template) -- I cannot spot a difference
+  ; in the pynist template and this template to explain that; must
+  ; be some some unfortunate decision in pynist python code.
+  ; Fortunately, the msw runtime is unpacked in the pynist build
+  ; directory (in dir msvcrt); so, just to make progress with a
+  ; temporary(-ish) workaround, copy the template output statements
+  ; verbatim here
+
+    ; Install MSVCRT if it's not already on the system
+    IfFileExists "$SYSDIR\ucrtbase.dll" skip_msvcrt
+    SetOutPath "$INSTDIR\Python"
+    File msvcrt\api-ms-win-core-console-l1-1-0.dll
+    File msvcrt\api-ms-win-core-datetime-l1-1-0.dll
+    File msvcrt\api-ms-win-core-debug-l1-1-0.dll
+    File msvcrt\api-ms-win-core-errorhandling-l1-1-0.dll
+    File msvcrt\api-ms-win-core-file-l1-1-0.dll
+    File msvcrt\api-ms-win-core-file-l1-2-0.dll
+    File msvcrt\api-ms-win-core-file-l2-1-0.dll
+    File msvcrt\api-ms-win-core-handle-l1-1-0.dll
+    File msvcrt\api-ms-win-core-heap-l1-1-0.dll
+    File msvcrt\api-ms-win-core-interlocked-l1-1-0.dll
+    File msvcrt\api-ms-win-core-libraryloader-l1-1-0.dll
+    File msvcrt\api-ms-win-core-localization-l1-2-0.dll
+    File msvcrt\api-ms-win-core-memory-l1-1-0.dll
+    File msvcrt\api-ms-win-core-namedpipe-l1-1-0.dll
+    File msvcrt\api-ms-win-core-processenvironment-l1-1-0.dll
+    File msvcrt\api-ms-win-core-processthreads-l1-1-0.dll
+    File msvcrt\api-ms-win-core-processthreads-l1-1-1.dll
+    File msvcrt\api-ms-win-core-profile-l1-1-0.dll
+    File msvcrt\api-ms-win-core-rtlsupport-l1-1-0.dll
+    File msvcrt\api-ms-win-core-string-l1-1-0.dll
+    File msvcrt\api-ms-win-core-synch-l1-1-0.dll
+    File msvcrt\api-ms-win-core-synch-l1-2-0.dll
+    File msvcrt\api-ms-win-core-sysinfo-l1-1-0.dll
+    File msvcrt\api-ms-win-core-timezone-l1-1-0.dll
+    File msvcrt\api-ms-win-core-util-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-conio-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-convert-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-environment-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-filesystem-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-heap-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-locale-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-math-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-multibyte-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-private-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-process-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-runtime-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-stdio-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-string-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-time-l1-1-0.dll
+    File msvcrt\api-ms-win-crt-utility-l1-1-0.dll
+    File msvcrt\ucrtbase.dll
+    File msvcrt\x86.zip
+    skip_msvcrt:
+
+  ; END temporary(-ish) workaround, template output statements
+  ; verbatim here
+
+  SetOutPath "$INSTDIR"
+
   [% block install_commands %]
   [% if has_commands %]
     nsExec::ExecToLog '[[ python ]] -Es "$INSTDIR\_rewrite_shebangs.py" "$INSTDIR\bin"'

@@ -58,7 +58,7 @@ version=3.6.1
 bitness=32
 ;format=installer
 format=bundled
-;include_msvcrt=true
+include_msvcrt=true
 
 [Include]
 ; Importable packages that your application requires, one per line
