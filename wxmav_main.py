@@ -4827,6 +4827,8 @@ class TopWnd(wx.Frame):
         # grrr
         self.seek_and_pause_hack =  0
         self.seek_and_play_hack  = -1
+        # see comment at get_medi_state()
+        self.medi_state = wx.media.MEDIASTATE_STOPPED
         # grrr again: wxMediaCtrl.Load*() will return True, even
         # if failing; a wxLog hack greps for wx library messages,
         # *just* maybe we can identify a media control message
@@ -5985,7 +5987,7 @@ class TopWnd(wx.Frame):
         if not dat:
             return False
 
-        st = self.medi.GetState()
+        st = self.get_medi_state()
 
         # orig data is not changed
         self.push_undo(do_copy = False)
@@ -6501,7 +6503,7 @@ class TopWnd(wx.Frame):
 
             # {,de}activate control menus --
             # note play/pause is handled elswhere
-            st = self.medi.GetState()
+            st = self.get_medi_state()
             # track items
             if st == wx.media.MEDIASTATE_PLAYING:
                 self.mctrl.Enable(self.mctrl_play, False)
@@ -6519,6 +6521,7 @@ class TopWnd(wx.Frame):
                 # NOTE: remove from butid or infinite loop!
                 del butid[butid.index(self.id_stop)]
             else:
+                self.prdbg(_T("IDLE: OTHER STATE {}").format(st))
                 self.mctrl.Enable(self.mctrl_play, False)
                 self.mctrl.Enable(self.mctrl_pause, False)
                 self.mctrl.Enable(self.mctrl_stop, False)
@@ -6601,6 +6604,9 @@ class TopWnd(wx.Frame):
 
     def on_media_finish(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_FINISHED"))
+
+        self.set_medi_state(wx.media.MEDIASTATE_STOPPED)
+
         dn, med, des, com, err, lth = self.get_reslist_item_tup()
 
         nm = _T(des or dn or med)
@@ -6640,6 +6646,8 @@ class TopWnd(wx.Frame):
     def on_media_play(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_PLAY"))
 
+        self.set_medi_state(wx.media.MEDIASTATE_PLAYING)
+
         self.set_pause_label()
         self.in_play = True
         self.in_stop = False
@@ -6670,7 +6678,7 @@ class TopWnd(wx.Frame):
                 # stop event; also, there would be little reason not
                 # to simply stop since position needn't be preserved
                 if seek_op == 1 and seek_pos > 0:
-                    self.medi.Pause()
+                    self.medi_pause()
                     wx.CallAfter(self.cmd_on_pause, from_user = True)
                     self.prdbg(_T("HACK: PAUSED pos {}").format(
                                                 seek_pos))
@@ -6696,6 +6704,9 @@ class TopWnd(wx.Frame):
 
     def on_media_pause(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_PAUSE"))
+
+        self.set_medi_state(wx.media.MEDIASTATE_PAUSED)
+
         self.set_play_label()
 
         ln, sz = self.check_set_media_meta()
@@ -6728,6 +6739,8 @@ class TopWnd(wx.Frame):
 
     def on_media_stop(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_STOP"))
+
+        self.set_medi_state(wx.media.MEDIASTATE_STOPPED)
 
         if not self.in_stop:
             self.prdbg(_T(
@@ -6766,6 +6779,9 @@ class TopWnd(wx.Frame):
     # wxwidgets 3.x
     def on_media_loaded(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_LOADED"))
+
+        self.set_medi_state(wx.media.MEDIASTATE_STOPPED)
+
         call_me = self.load_func
         self.load_func = None
 
@@ -6812,7 +6828,7 @@ class TopWnd(wx.Frame):
         if call_me:
             wx.CallAfter(call_me)
         elif not self.in_play:
-            self.medi.Pause()
+            self.medi_pause()
 
             self.prdbg(_T("with_media_loaded: call after Play()"))
             wx.CallAfter(self.medi.Play)
@@ -6843,6 +6859,7 @@ class TopWnd(wx.Frame):
         self.media_meta = (0, wx.Size(0, 0))
 
         if force:
+            self.set_medi_state("unloaded force")
             # MS seems to have trouble with 'nul', OTOH gstreamer
             # (GTK) seems to ignore empty string
             dn = _T('') if _in_msw else os.devnull
@@ -6853,6 +6870,7 @@ class TopWnd(wx.Frame):
             self.msg_grep = None
             return ret
         else:
+            self.set_medi_state("unloaded easy")
             return True
 
     def load_media(self, med = None):
@@ -6955,7 +6973,7 @@ class TopWnd(wx.Frame):
 
         if self.in_play:
             if self.pos_seek_state == None:
-                st = self.medi.GetState()
+                st = self.get_medi_state()
                 if st == wx.media.MEDIASTATE_PLAYING:
                     self.pos_seek_state = st
                     self.medi.Pause()
@@ -7085,7 +7103,7 @@ class TopWnd(wx.Frame):
         it = UndoItem(self.reslist)
         it.media_indice = self.media_indice
         it.group_indice = self.group_indice
-        it.media_state  = self.medi.GetState()
+        it.media_state  = self.get_medi_state()
         it.media_pos    = self.medi.Tell()
 
         if is_redo:
@@ -7325,9 +7343,9 @@ class TopWnd(wx.Frame):
         # was already loaded
         b = False
         er = _("Failed playing '{}'")
-        st = self.medi.GetState()
+        st = self.get_medi_state()
         if st == wx.media.MEDIASTATE_PLAYING:
-            b = self.medi.Pause()
+            b = self.medi_pause()
             if b:
                 s0 = _("Paused in '{}'").format(res)
                 s1 = _("waiting . . .")
@@ -7363,7 +7381,7 @@ class TopWnd(wx.Frame):
         if not self.load_ok:
             return
 
-        st = self.medi.GetState()
+        st = self.get_medi_state()
         if st == wx.media.MEDIASTATE_PLAYING:
             self.medi.Pause()
 
@@ -7390,7 +7408,7 @@ class TopWnd(wx.Frame):
         self.media_indice = ixnew
         self.set_tb_combos()
 
-        st = self.medi.GetState()
+        st = self.get_medi_state()
         if (st == wx.media.MEDIASTATE_PLAYING or
             st == wx.media.MEDIASTATE_PAUSED):
             wx.CallAfter(self._unload_and_play)
@@ -7432,7 +7450,7 @@ class TopWnd(wx.Frame):
         self.media_indice = ixnew
         self.set_tb_combos()
 
-        st = self.medi.GetState()
+        st = self.get_medi_state()
         if (st == wx.media.MEDIASTATE_PLAYING or
             st == wx.media.MEDIASTATE_PAUSED):
             wx.CallAfter(self._unload_and_play)
@@ -7483,6 +7501,8 @@ class TopWnd(wx.Frame):
             obj.load_ok = False
             obj.cmd_on_play()
 
+        #self.prdbg(_T("IN _unload_and_play()"))
+        #self.unload_media(force = True)
         wx.CallAfter(_sub_unload_and_play, self)
 
     def on_stop(self, event):
@@ -7495,7 +7515,7 @@ class TopWnd(wx.Frame):
         # try to keep focus on media control
         self.focus_medi_opt()
 
-        st = self.medi.GetState()
+        st = self.get_medi_state()
         if st != wx.media.MEDIASTATE_STOPPED:
             self.medi.Stop()
 
@@ -7623,6 +7643,32 @@ class TopWnd(wx.Frame):
 
             self.tittime -= 1
 
+    def get_medi_state(self):
+        # Incredibly, under mws self.medi.GetState() will return
+        # *incorrect values* for some but not all unbounded streams,
+        # although not consistently. Sigh. Event delivery appears
+        # to be more reliable, so set state in event handlers, and
+        # use self.get_medi_state() wherever self.medi.GetState()
+        # had been used.
+        # msw only for now.
+        return self.medi_state if _in_msw else self.medi.GetState()
+
+    def set_medi_state(self, state):
+        self.medi_state = state
+
+    def medi_pause(self):
+        # see comment at get_medi_state -- in addition to that pause
+        # might become ineffectve
+        if _in_msw:
+            st = self.get_medi_state()
+            ub = (self.medi.Length() < 1)
+            if ub and st == wx.media.MEDIASTATE_PLAYING:
+                # stop
+                wx.CallAfter(self.do_command_button, self.id_stop)
+                return True
+
+        return self.medi.Pause()
+
     def get_config(self):
         try:
             return self.config
@@ -7680,7 +7726,7 @@ class TopWnd(wx.Frame):
         gdesc = grp.desc if (grp and grp.has_unique_desc()) else ""
         config.Write("group_desc", gdesc)
         config.WriteInt("volume", self.vol_cur)
-        st = self.medi.GetState()
+        st = self.get_medi_state()
         cur = self.medi.Length()
         if (st == wx.media.MEDIASTATE_PLAYING or
             st == wx.media.MEDIASTATE_PAUSED) and cur > 0:
