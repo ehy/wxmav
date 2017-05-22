@@ -7644,14 +7644,16 @@ class TopWnd(wx.Frame):
             self.tittime -= 1
 
     def get_medi_state(self):
-        # Incredibly, under mws self.medi.GetState() will return
+        # Incredibly, under msw self.medi.GetState() will return
         # *incorrect values* for some but not all unbounded streams,
         # although not consistently. Sigh. Event delivery appears
         # to be more reliable, so set state in event handlers, and
         # use self.get_medi_state() wherever self.medi.GetState()
         # had been used.
         # msw only for now.
-        return self.medi_state if _in_msw else self.medi.GetState()
+        #XXX testing only (maybe): use self.medi_state unconditionally
+        return self.medi_state
+        #return self.medi_state if _in_msw else self.medi.GetState()
 
     def set_medi_state(self, state):
         self.medi_state = state
@@ -7659,13 +7661,16 @@ class TopWnd(wx.Frame):
     def medi_pause(self):
         # see comment at get_medi_state -- in addition to that pause
         # might become ineffectve
-        if _in_msw:
+        #XXX testing only (maybe): use workaround unconditionally
+        if True or _in_msw:
             st = self.get_medi_state()
             ub = (self.medi.Length() < 1)
             if ub and st == wx.media.MEDIASTATE_PLAYING:
-                # stop
-                wx.CallAfter(self.do_command_button, self.id_stop)
-                return True
+                if st != self.medi.GetState():
+                    self.prdbg(_T("medi_pause: MEDI.GetState() bug!!!"))
+                    # stop
+                    wx.CallAfter(self.do_command_button, self.id_stop)
+                    return True
 
         return self.medi.Pause()
 
