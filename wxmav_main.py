@@ -7502,7 +7502,11 @@ class TopWnd(wx.Frame):
             obj.cmd_on_play()
 
         #self.prdbg(_T("IN _unload_and_play()"))
-        #self.unload_media(force = True)
+        self.medi.Stop()
+        self.unload_media(force = True)
+        self.in_stop = True
+        self.in_play = False
+        self.set_play_label()
         wx.CallAfter(_sub_unload_and_play, self)
 
     def on_stop(self, event):
