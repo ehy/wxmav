@@ -1,4 +1,4 @@
-#! python3.6
+#! python
 #
 # Small program to be installed in e.g. PATH, while real
 # program is in a python package directory and accessible

@@ -2823,6 +2823,12 @@ class TheAppClass(wx.App):
             # Custom event from child handler threads
             self.Bind(EVT_CHILDPROC_MESSAGE, self.on_chmsg)
 
+        # Bind handlers for {QUERY_,}END_SESSION events --
+        # These might be delivered only on MSW, but the
+        # binding should be OK in any case
+        self.Bind(wx.EVT_QUERY_END_SESSION, self.on_query_endsession)
+        self.Bind(wx.EVT_END_SESSION, self.on_do_endsession)
+
         #self.SetAppName(self.prog)
         self.std_paths = wx.StandardPaths.Get()
 
@@ -2949,6 +2955,43 @@ class TheAppClass(wx.App):
             return
         l, msg, tim, inv = event.get_content()
         self.do_filterlog(l, msg, tim, inv)
+
+    def on_do_endsession(self, event):
+        """on_do_endsession to handle wx.EVT_END_SESSION --
+        non-optional quit for logout/shutdown -- close frame
+        with argument True meaning cannot veto, do not query
+        user, just close down
+        """
+        try:
+            self.frame.Close(True)
+        except:
+            pass
+
+    def on_query_endsession(self, event):
+        """on_query_endsession to handle wx.EVT_QUERY_END_SESSION --
+        optional quit for logout/shutdown -- the event arg has
+        CanVeto(), and if true it might be possible to veto
+        the impending doom; but, this app has no need to do so,
+        so this event is merely taken as a sign that data should be
+        written
+        """
+        try:
+            self.reslist = self.frame.get_reslist()
+        except:
+            self.reslist = None
+
+        if self.reslist:
+            dset = self.get_data_dir_curset()
+            wr_current_set(self.reslist, dset)
+
+        try:
+            self.frame.config_wr()
+        except:
+            pass
+
+        config = self.get_config()
+        if config:
+            config.Flush()
 
     def on_chmsg(self, event):
         eid = event.GetId()
@@ -7677,6 +7720,9 @@ class TopWnd(wx.Frame):
                     return True
 
         return self.medi.Pause()
+
+    def get_reslist(self):
+        return self.reslist
 
     def get_config(self):
         try:

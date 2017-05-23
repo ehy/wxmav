@@ -234,7 +234,8 @@ Section "appclass program" SecExe
 ;  CreateShortCut "$SMPROGRAMS\$StartMenuFolder\appName.lnk" \
 ;  	"$INSTDIR\appname.appsuffix"
   CreateShortCut "$SMPROGRAMS\$StartMenuFolder\appName.lnk" \
-    "$INSTDIR\appname.appsuffix" "$INSTDIR\${APP_ICO}"
+    "$INSTDIR\appname.appsuffix" "" \
+    "$INSTDIR\${APP_VICO}"
   CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" \
   	"$INSTDIR\uninstall.exe"
 
