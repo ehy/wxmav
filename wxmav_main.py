@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python
 # coding=utf-8
 
 #  This program is free software; you can redistribute it and/or modify
@@ -162,9 +162,23 @@ else:
 if phoenix:
     general_droptarget_base = wx.DropTarget
     select_cursor = wx.Cursor
+    # wxPython 4.x docs re. wx.QueueEvent and wx.PostEvent
+    # state that wx.QueueEvent is safer across threads than
+    # wx.PostEvent due to some possible issue with strings.
+    # had been using wx.PostEvent w/o observed problems, but
+    # use wx.QueueEvent if it is safer and _nearly_ equivalent
+    # (difference is it is put in queue and not processed
+    # immediately . . . should not be a problem here, but
+    # watch it) . . .
+    def put_thd_event(*args):
+        return wx.QueueEvent(*args)
 else:
     general_droptarget_base = wx.PyDropTarget
     select_cursor = wx.StockCursor
+    # . . . OTOH, wxPython 3.x does not have wx.QueueEvent, and
+    # wx.PostEvent has been regarded/stated as safe across threads
+    def put_thd_event(*args):
+        return wx.PostEvent(*args)
 
 
 """
@@ -1782,8 +1796,11 @@ class AThreadEvent(wx.PyEvent):
             self, destid,
             T_EVT_CHILDPROC_MESSAGE)
 
-        self.ev_type = evttag
-        self.ev_data = payload
+        # use deepcopy out of paranoia re. data in events that
+        # are delivered across threads -- see wxPython 4.x docs re.
+        # put_thd_event and wx.PostEvent (re. string fields)
+        self.ev_type = copy.deepcopy(evttag)
+        self.ev_data = copy.deepcopy(payload)
 
     def get_content(self):
         """on receipt, get_content() may be called on the event
@@ -1829,10 +1846,10 @@ class AChildThread(threading.Thread):
         t = _T("tid {tid}").format(tid = tid)
 
         m = _T('enter run')
-        # wx.PostEvent should suffice here
-        #wx.CallAfter(wx.PostEvent,
-        #    self.destobj, AThreadEvent(m, t, self.destid))
-        wx.PostEvent(self.destobj, AThreadEvent(m, t, self.destid))
+
+        #XXX
+        #wx.PostEvent(self.destobj, AThreadEvent(m, t, self.destid))
+        put_thd_event(self.destobj, AThreadEvent(m, t, self.destid))
 
         self.status = self.cb(self.args)
 
@@ -1841,9 +1858,10 @@ class AChildThread(threading.Thread):
             return
 
         m = _T('exit run')
-        #wx.CallAfter(wx.PostEvent,
-        #    self.destobj, AThreadEvent(m, t, self.destid))
-        wx.PostEvent(self.destobj, AThreadEvent(m, t, self.destid))
+
+        #XXX
+        #wx.PostEvent(self.destobj, AThreadEvent(m, t, self.destid))
+        put_thd_event(self.destobj, AThreadEvent(m, t, self.destid))
 
     def get_status(self):
         return self.status
@@ -2531,16 +2549,16 @@ elif _in_xws:
                 f1 = os.fdopen(fdr1, "r", bufsize)
                 f2 = os.fdopen(fdr2, "r", bufsize)
             except OSError as e:
-                wx.PostEvent(
+                put_thd_event(
                     self.app, AThreadEvent(_T("X"), e.strerror, -1))
                 return -1
             except Exception as e:
                 e = _T("Exception '{}'").format(e)
-                wx.PostEvent(self.app, AThreadEvent(_T("X"), e, -1))
+                put_thd_event(self.app, AThreadEvent(_T("X"), e, -1))
                 return -1
             except:
                 e = _T("unknown exception")
-                wx.PostEvent(self.app, AThreadEvent(_T("X"), e, -1))
+                put_thd_event(self.app, AThreadEvent(_T("X"), e, -1))
                 return -1
 
             # immediately get line max
@@ -2573,7 +2591,7 @@ elif _in_xws:
                     (err, msg) = e
                     if err == eintr:
                         continue
-                    wx.PostEvent(
+                    put_thd_event(
                         self.app, AThreadEvent(_T("X"), msg, -1))
                     return -1
 
@@ -2595,7 +2613,7 @@ elif _in_xws:
                         lin = fN.readline(bufsize)
 
                         if len(lin) > 0:
-                            wx.PostEvent(self.app,
+                            put_thd_event(self.app,
                                          AThreadEvent(pfx, lin, -1))
                         else:
                             flist.remove(fd)
