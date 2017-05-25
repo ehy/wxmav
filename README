@@ -1,24 +1,20 @@
-This package contains two command line tool programs -- the namesake
-'cprec' and dd-dvd (the latter can be disabled by configure
-option --disable-dd-dvd) -- and a graphical front-end wxDVDBackup.
-These tools are helpers for making a backup of DVD video.
+# (WX) M A/V (Player)
 
-The cprec and dd-dvd tools should be useful to those accustomed to
-working at the command line and developing their own procedures
-for accomplishing a task.  Manual pages cprec(1) and dd-dvd(1)
-are installed.
+## AKA wxmav
 
-The front-end wxDVDBackup should be easy and convenient to use,
-particularly for those willing to spend a few moments examining the
-interface.  There are several detailed ``tool-tips''.
+__(WX) M A/V (Player)__ is the fancy name of the program.
+The familiar name is simply __wxmav__ (and the _installed_ name
+is __wxmav.pyw__ on _MSWindows_ and just __wxmav.py__ elsewhere).
+The friendly familiar name will be used here.
 
-Both cprec and dd-dvd depend on a library called libdvdread, but
-libdvdread is not a prerequisite to build and install the programs,
-because by default the programs attempt to load libdvdread and its
-symbols at runtime. See INSTALL.
+wxmav is a player for audio or visual media in common formats.
+The ‘wx’ [or ‘(WX)’] part just means that the program uses the
+__wxWidgets__ library.  Don’t worry if you don’t know what that is,
+using the program does not require you to know.  You can think of
+the ‘wx’ like the “Sweet” in _Sweet Jane_ or the “Weird” in
+_Weird Al_.
 
-The front-end wxDVDBackup is written in python and uses wxPython,
-plus some other useful tools. See INSTALL.
 
-Author: Ed Hynan <email in cprec(1) and dd-dvd(1)>.
+Author: Ed Hynan, email: given name + surname without space@Google’s
+well known mail domain.
 
