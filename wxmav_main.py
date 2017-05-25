@@ -1798,7 +1798,7 @@ class AThreadEvent(wx.PyEvent):
 
         # use deepcopy out of paranoia re. data in events that
         # are delivered across threads -- see wxPython 4.x docs re.
-        # put_thd_event and wx.PostEvent (re. string fields)
+        # wx.QueueEvent and wx.PostEvent (re. string fields)
         self.ev_type = copy.deepcopy(evttag)
         self.ev_data = copy.deepcopy(payload)
 
@@ -1847,8 +1847,6 @@ class AChildThread(threading.Thread):
 
         m = _T('enter run')
 
-        #XXX
-        #wx.PostEvent(self.destobj, AThreadEvent(m, t, self.destid))
         put_thd_event(self.destobj, AThreadEvent(m, t, self.destid))
 
         self.status = self.cb(self.args)
@@ -1859,8 +1857,6 @@ class AChildThread(threading.Thread):
 
         m = _T('exit run')
 
-        #XXX
-        #wx.PostEvent(self.destobj, AThreadEvent(m, t, self.destid))
         put_thd_event(self.destobj, AThreadEvent(m, t, self.destid))
 
     def get_status(self):
