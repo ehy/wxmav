@@ -481,13 +481,23 @@ def _(s):
 # partial work-around is possible
 
 def cv_open_r(name):
+    # madness ... see comment at cv_open_w below . . .
     if not _in_msw or _ucode_type == None:
         return open(name, 'r')
     else:
         return codecs.open(name, encoding = _ucode_type, mode = 'r')
 
 def cv_open_w(name):
-    return open(name, 'wt')
+    # . . . insanity: on msw codecs.open is needed to *read* utf8
+    # _BUT_ but to *write* utf8 using codecs.open with python 2.7
+    # writes garbage and and plain open must be used, _but_ with
+    # python 3.x plain open writes garbage and codecs.open must
+    # be used (best described by the quaint old expression
+    # "I don't know whether to shit or wind my watch.")
+    if not py_v_is_3 or (not _in_msw or _ucode_type == None):
+        return open(name, 'wt')
+    else:
+        return codecs.open(name, encoding = _ucode_type, mode = 'w')
 
 
 """
