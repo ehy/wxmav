@@ -5459,12 +5459,12 @@ class TopWnd(wx.Frame):
             _T(it.err    )        if it else None,
             it.length             if it else None)
 
-    def set_statusbar(self, txt, pane):
+    def set_statusbar(self, txt, pane, notify = False):
         sb = self.GetStatusBar()
         t = _WX(txt)
         sb.SetStatusText(t, pane)
         if pane == 0:
-            self.set_taskbar_tooltip(t)
+            self.set_taskbar_tooltip(t, notify = notify)
 
     def set_tb_combos(self, do_group = True, do_resrc = True):
         ix = self.media_indice
@@ -5558,7 +5558,7 @@ class TopWnd(wx.Frame):
         else:
             return self.del_taskbar_object()
 
-    def set_taskbar_tooltip(self, tip = "", ico = None):
+    def set_taskbar_tooltip(self, tip = "", ico = None, notify = False):
         tob = self.get_taskbar_object(make_if_needed = False)
 
         if tob == None:
@@ -5571,13 +5571,27 @@ class TopWnd(wx.Frame):
                 ico = getwxmav_24Icon()
 
         nam = self.GetTitle()
-        t = _T(tip).strip()
-        if t:
-            t = _T("{}\n\n{}").format(_T(nam), t)
+        ts = _T(tip).strip()
+        if ts:
+            t = _T("{}\n\n{}").format(_T(nam), ts)
         else:
             t = _T(nam)
 
         tob.SetIcon(ico, t)
+
+        if True and notify == True:
+            if _in_msw and True:
+                # these are doc'd by wxWidgets, but not by
+                # wxPython, so they might not be implemented
+                try:
+                    wxadv.NotificationMessage.UseTaskBarIcon(tob)
+                    wxadv.NotificationMessage.MSWUseToasts()
+                except:
+                    pass
+            n = wxadv.NotificationMessage()
+            n.SetTitle(_T(nam))
+            n.SetMessage(ts)
+            n.Show()
 
 
     def make_menu_bar(self):
@@ -6667,7 +6681,8 @@ class TopWnd(wx.Frame):
         dn, med, des, com, err, lth = self.get_reslist_item_tup()
 
         nm = _T(des or dn or med)
-        self.set_statusbar(_("Finished '{}'").format(nm), 0)
+        self.set_statusbar(
+            _("Finished '{}'").format(nm), 0, notify = True)
         self.set_statusbar(_T("  "), 1)
 
         self.set_play_label()
@@ -6735,7 +6750,7 @@ class TopWnd(wx.Frame):
                 # stop event; also, there would be little reason not
                 # to simply stop since position needn't be preserved
                 if seek_op == 1 and seek_pos > 0:
-                    self.medi_pause()
+                    #self.medi_pause()
                     wx.CallAfter(self.cmd_on_pause, from_user = True)
                     self.prdbg(_T("HACK: PAUSED pos {}").format(
                                                 seek_pos))
@@ -6754,7 +6769,8 @@ class TopWnd(wx.Frame):
             if ln < 1:
                 wx.CallAfter(self.check_set_media_meta, True)
 
-        self.set_statusbar(_("Playing '{}'").format(nm), 0)
+        self.set_statusbar(
+            _("Playing '{}'").format(nm), 0, notify = True)
         self.set_statusbar(self.get_time_str(tm = ln), 1)
 
         wx.CallAfter(self.with_media_loaded)
@@ -6776,7 +6792,8 @@ class TopWnd(wx.Frame):
         dn, med, des, com, err, lth = self.get_reslist_item_tup()
 
         nm = _T(des or dn or med)
-        self.set_statusbar(_("Paused '{}'").format(nm), 0)
+        self.set_statusbar(
+            _("Paused '{}'").format(nm), 0, notify = True)
         tm = self.media_meta[0]
         self.set_statusbar(self.get_time_str(tm = tm), 1)
 
@@ -6820,7 +6837,8 @@ class TopWnd(wx.Frame):
         nm = _T(des or dn or med)
         self.prdbg(_T("on_media_stop: user stop {}").format(nm))
 
-        self.set_statusbar(_("Stopped '{}'").format(des or med), 0)
+        self.set_statusbar(
+            _("Stopped '{}'").format(des or med), 0, notify = True)
         self.set_statusbar(_T("  "), 1)
 
         self.in_play = False
