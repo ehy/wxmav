@@ -2900,6 +2900,11 @@ class TheAppClass(wx.App):
 
         self.frame.Show(True)
 
+        if config.ReadBool(_T("iconized"), False):
+            self.frame.Iconize(True)
+        elif config.ReadBool(_T("maximized"), False):
+            self.frame.Maximize(True)
+
         if self.xhelper:
             if self.xhelper.go():
                 wx.CallAfter(self.frame.xhelper_ready, True)
@@ -4985,7 +4990,7 @@ class TopWnd(wx.Frame):
         # to interface objects created below
         cfvals = self.config_rd()
         if cfvals:
-            self.vol_cur = cfvals["volume"]
+            self.vol_cur = cfvals[_T("volume")]
             self.vol_cur = min(
                 max(self.vol_cur, self.vol_min), self.vol_max)
 
@@ -5065,8 +5070,8 @@ class TopWnd(wx.Frame):
 
         # put {menu,tool,status}bar on frame
         if cfvals:
-            self.loop_track    = cfvals["loop_play"]
-            self.adv_track     = cfvals["auto_advance"]
+            self.loop_track    = cfvals[_T("loop_play")]
+            self.adv_track     = cfvals[_T("auto_advance")]
         self.make_menu_bar()
         self.make_status_bar()
         self.make_tool_bar()
@@ -5219,17 +5224,17 @@ class TopWnd(wx.Frame):
         # started without arguments, which implies load and
         # use last set of media groups -- therefore state
         do_state = False
-        if cfvals and cfvals["res_restart"] and not argplay:
-            group_indice = cfvals["group_index"]
+        if cfvals and cfvals[_T("res_restart")] and not argplay:
+            group_indice = cfvals[_T("group_index")]
 
             if group_indice >= 0 and group_indice < len(self.reslist):
                 ok = True
                 igrp = self.reslist[group_indice]
 
                 if igrp.has_unique_desc():
-                    ok = s_eq(cfvals["group_desc"], igrp.desc)
+                    ok = s_eq(cfvals[_T("group_desc")], igrp.desc)
 
-                media_indice = cfvals["resource_index"]
+                media_indice = cfvals[_T("resource_index")]
 
                 if (ok and media_indice >= 0 and
                     media_indice < self.get_reslist_len()):
@@ -5239,10 +5244,10 @@ class TopWnd(wx.Frame):
 
         self.prdbg(_T("DO RESTORE STATE: {}").format(do_state))
         if do_state:
-            self.media_indice = cfvals["resource_index"]
-            self.group_indice = cfvals["group_index"]
-            pos = int(0.5 +
-                  float(max(0, cfvals["current_pos"])) / self.pos_mul)
+            self.media_indice = cfvals[_T("resource_index")]
+            self.group_indice = cfvals[_T("group_index")]
+            pos = cfvals[_T("current_pos")]
+            pos = int(0.5 + float(max(0, pos)) / self.pos_mul)
 
             if pos < 0:
                 pos = 0
@@ -5263,7 +5268,7 @@ class TopWnd(wx.Frame):
                         self.load_func = None
 
             self.set_tb_combos()
-            wx.CallAfter(_st_aft, self, pos, cfvals["playing"])
+            wx.CallAfter(_st_aft, self, pos, cfvals[_T("playing")])
 
 
     def do_arg_list(self, files,
@@ -7780,20 +7785,20 @@ class TopWnd(wx.Frame):
             return
 
         self.can_use_proxy = config.ReadBool(
-                             "use_proxy", self.can_use_proxy)
+                             _T("use_proxy"), self.can_use_proxy)
         self.opt_tray_icon = config.ReadBool(
-                             "use_trayicon", self.opt_tray_icon)
+                             _T("use_trayicon"), self.opt_tray_icon)
 
         vmap = {
-            "resource_index" : 0,     # self.media_indice
-            "group_index"    : 0,     # group index in self.reslist
-            "group_desc"     : "",    # current AVGroup.desc
-            "volume"         : 50,    # volume on quit,  0-100
-            "current_pos"    : -1,    # media.Tell() on quit if bounded
-            "playing"        : False, # was playing on quit
-            "loop_play"      : False, # loop current track menu opt
-            "auto_advance"   : True,  # on track end advance to next
-            "res_restart"    : True   # on start resume last state
+            _T("resource_index") : 0,     # self.media_indice
+            _T("group_index")    : 0,     # group index in self.reslist
+            _T("group_desc")     : _T(""),# current AVGroup.desc
+            _T("volume")         : 50,    # volume on quit,  0-100
+            _T("current_pos")    : -1,    # media.Tell() if bounded
+            _T("playing")        : False, # was playing on quit
+            _T("loop_play")      : False, # loop current track menu opt
+            _T("auto_advance")   : True,  # on track end advance to next
+            _T("res_restart")    : True   # on start resume last state
         }
 
         for k in vmap.keys():
@@ -7817,12 +7822,12 @@ class TopWnd(wx.Frame):
             return
 
         grp, gi = self.get_res_group_with_index(self.media_indice)
-        config.WriteInt("resource_index", self.media_indice)
+        config.WriteInt(_T("resource_index"), self.media_indice)
         gi = self.reslist.index(grp) if grp else 0
-        config.WriteInt("group_index", gi)
-        gdesc = grp.desc if (grp and grp.has_unique_desc()) else ""
-        config.Write("group_desc", gdesc)
-        config.WriteInt("volume", self.vol_cur)
+        config.WriteInt(_T("group_index"), gi)
+        gdesc = grp.desc if (grp and grp.has_unique_desc()) else _T("")
+        config.Write(_T("group_desc"), gdesc)
+        config.WriteInt(_T("volume"), self.vol_cur)
         st = self.get_medi_state()
         cur = self.medi.Length()
         if (st == wx.media.MEDIASTATE_PLAYING or
@@ -7830,35 +7835,43 @@ class TopWnd(wx.Frame):
             cur = int(float(self.pos_mul) * self.medi.Tell() + 0.5)
         else:
             cur = -1
-        config.WriteInt("current_pos", cur)
+        config.WriteInt(_T("current_pos"), cur)
         cur = True if (st == wx.media.MEDIASTATE_PLAYING) else False
-        config.WriteBool("playing", cur)
+        config.WriteBool(_T("playing"), cur)
         cur = self.mctrl.IsChecked(self.mctrl_loop)
-        config.WriteBool("loop_play", cur)
+        config.WriteBool(_T("loop_play"), cur)
         cur = self.mctrl.IsChecked(self.mctrl_advance)
-        config.WriteBool("auto_advance", cur)
+        config.WriteBool(_T("auto_advance"), cur)
         cur = self.mopts.IsChecked(self.mopts_trayicon)
-        config.WriteBool("use_trayicon", cur)
+        config.WriteBool(_T("use_trayicon"), cur)
         cur = self.mopts.IsChecked(self.mopts_proxy)
-        config.WriteBool("use_proxy", cur)
+        config.WriteBool(_T("use_proxy"), cur)
 
-        mn = 0
-        if self.IsIconized():
-            mn = 1
-        mx = 0
-        if self.IsMaximized():
-            mx = 1
+        mn = True if self.IsIconized()  else False
+        config.WriteBool(_T("iconized"),  mn)
+        if mn:
+            self.Iconize(False)
+        mx = True if self.IsMaximized() else False
+        config.WriteBool(_T("maximized"), mx)
+        if mx:
+            self.Maximize(False)
 
-        config.WriteInt(_T("iconized"), mn)
-        config.WriteInt(_T("maximized"), mx)
+        w, h = self.GetSize()
+        x, y = self.GetPosition()
+        config.WriteInt(_T("x"), max(x, 0))
+        config.WriteInt(_T("y"), max(y, 0))
+        config.WriteInt(_T("w"), w)
+        config.WriteInt(_T("h"), h)
 
-        if mn == 0 and mx == 0:
-            w, h = self.GetSize()
-            x, y = self.GetPosition()
-            config.WriteInt(_T("x"), max(x, 0))
-            config.WriteInt(_T("y"), max(y, 0))
-            config.WriteInt(_T("w"), w)
-            config.WriteInt(_T("h"), h)
+        if mn:
+            self.Iconize(True)
+        if mx:
+            self.Maximize(True)
+
+        self.prdbg(
+            _T("config_wr: iconized: {} -- maximized: {}\n"
+               "\tposition {} -- size {}").format(
+                                            mn, mx, (x, y), (w, h)))
 
 
     def on_quit(self, event):

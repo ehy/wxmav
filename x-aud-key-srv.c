@@ -130,11 +130,11 @@ const char *prog = PROGRAM_DEFNAME;
     } while (0)
 
 #define KEY_SETUP(dsp, wnd) \
-    DoKeyGrabs(dsp, wnd); \
+    do_key_grabs(dsp, wnd); \
     XSelectInput(dsp, wnd, KeyPressMask | KeyReleaseMask);
 #define KEY_SETDOWN(dsp, wnd) \
     XSelectInput(dsp, wnd, 0); \
-    DoKeyUnGrabs(dsp, wnd);
+    do_key_ungrabs(dsp, wnd);
 
 static void
 setup_prog(const char *av0);
@@ -143,36 +143,32 @@ usage(void);
 static void
 print_version(void);
 static void
-SignalDefault(int sig);
+common_signal_handler(int sig);
 static const char *
-HandleKey(int type, XKeyEvent *xkey);
+handle_key(int type, XKeyEvent *xkey);
 static void
-DoKeyGrabs(Display *dpy, Window w);
+do_key_grabs(Display *dpy, Window w);
 static void
-DoKeyUnGrabs(Display *dpy, Window w);
+do_key_ungrabs(Display *dpy, Window w);
 static Bool
-WriteGrabs(int fd);
+write_grabs(int fd);
 static int
-TheErrorProc(Display *dpy, XErrorEvent *err);
+x_error_proc(Display *dpy, XErrorEvent *err);
 ssize_t
-InputLine(int fd, char *buf, size_t buf_sz);
+input_line(int fd, char *buf, size_t buf_sz);
 int
-ClientInput(int fd);
+client_input(int fd);
 ssize_t
-ClientOutput(int fd, const void *buf, size_t buf_sz);
+client_output(int fd, const void *buf, size_t buf_sz);
 ssize_t
-ClientOutputStr(int fd, const char *str);
+client_output_str(int fd, const char *str);
 Bool
-GrabNewWindow(Display *dpy,
-              Window *pwold,
-              Window wnew);
+grab_new_window(Display *dpy, Window *pwold, Window wnew);
 Bool
-InputAndReply(Display *dpy,
-              Window *pw,
-              int client_in,
-              int client_out);
+input_and_reply(Display *dpy, Window *pw,
+                int client_in, int client_out);
 Window
-WindowByName(Display *dpy, Window top, const char *name);
+window_by_name(Display *dpy, Window top, const char *name);
 /* system(3) with result message */
 int
 do_system_call(const char *buf);
@@ -239,7 +235,7 @@ int sigpipe[] = { -1, -1 };
 #define PIPE_WFD sigpipe[PIPE_WFD_INDEX]
 
 static void
-SignalDefault(int sig)
+common_signal_handler(int sig)
 {
     got_common_signal = sig;
 
@@ -250,7 +246,7 @@ SignalDefault(int sig)
 }
 
 static int
-TheErrorProc(Display *dpy, XErrorEvent *err)
+x_error_proc(Display *dpy, XErrorEvent *err)
 {
     char buf[MAX_LINEIN_SIZE];
     int l;
@@ -300,7 +296,7 @@ const size_t ssym_off = sizeof("XF86XK");
 #define _KEYNAME(kdat) ((kdat).ssym + ssym_off)
 
 static const char *
-HandleKey(int type, XKeyEvent *xkey)
+handle_key(int type, XKeyEvent *xkey)
 {
     if ( ! ( type == KeyPress || type == KeyRelease ) ) {
         return NULL;
@@ -323,7 +319,7 @@ HandleKey(int type, XKeyEvent *xkey)
 }
 
 static void
-DoKeyGrabs(Display *dpy, Window w)
+do_key_grabs(Display *dpy, Window w)
 {
     int i;
     unsigned int mk = AnyModifier;
@@ -373,7 +369,7 @@ DoKeyGrabs(Display *dpy, Window w)
 }
 
 static void
-DoKeyUnGrabs(Display *dpy, Window w)
+do_key_ungrabs(Display *dpy, Window w)
 {
     int i;
 
@@ -392,9 +388,7 @@ DoKeyUnGrabs(Display *dpy, Window w)
 }
 
 Bool
-GrabNewWindow(Display *dpy,
-              Window *pwold,
-              Window wnew)
+grab_new_window(Display *dpy, Window *pwold, Window wnew)
 {
     Window w;
 
@@ -408,7 +402,7 @@ GrabNewWindow(Display *dpy,
 }
 
 static Bool
-WriteGrabs(int fd)
+write_grabs(int fd)
 {
     char buf[MAX_LINEOUT_SIZE];
     int i;
@@ -422,7 +416,7 @@ WriteGrabs(int fd)
 
         TERMINATE_CHARBUF(buf, l);
 
-        if ( ClientOutputStr(fd, buf) < 0 ) {
+        if ( client_output_str(fd, buf) < 0 ) {
             return False;
         }
     }
@@ -431,7 +425,7 @@ WriteGrabs(int fd)
 }
 
 ssize_t
-InputLine(int fd, char *buf, size_t buf_sz)
+input_line(int fd, char *buf, size_t buf_sz)
 {
     char     *p;
     ssize_t  res;
@@ -463,7 +457,7 @@ InputLine(int fd, char *buf, size_t buf_sz)
 #endif
 
 ssize_t
-ClientOutput(int fd, const void *buf, size_t buf_sz)
+client_output(int fd, const void *buf, size_t buf_sz)
 {
     ssize_t  res, cnt;
 
@@ -492,9 +486,9 @@ ClientOutput(int fd, const void *buf, size_t buf_sz)
 }
 
 ssize_t
-ClientOutputStr(int fd, const char *str)
+client_output_str(int fd, const char *str)
 {
-    return ClientOutput(fd, str, strlen(str));
+    return client_output(fd, str, strlen(str));
 }
 
 /* request strings */
@@ -518,12 +512,12 @@ ClientOutputStr(int fd, const char *str)
 #define GOT_SSOFFMSG       64
 #define GOT_SNAMEMSG       128
 int
-ClientInput(int fd)
+client_input(int fd)
 {
     char buf[MAX_LINEIN_SIZE];
     int  res;
 
-    if ( InputLine(fd, buf, sizeof(buf)) < 0 ) {
+    if ( input_line(fd, buf, sizeof(buf)) < 0 ) {
         return GOT_RDERR;
     }
 
@@ -572,19 +566,17 @@ ClientInput(int fd)
 }
 
 Bool
-InputAndReply(Display *dpy,
-              Window *pw,
-              int client_in,
-              int client_out)
+input_and_reply(Display *dpy, Window *pw,
+                int client_in, int client_out)
 {
     char buf[64];
     const char *msg = NULL;
-    int imsg = ClientInput(client_in);
+    int imsg = client_input(client_in);
 
     if ( imsg == GOT_QUITMSG || imsg == GOT_RDERR ) {
         return False;
     } else if ( imsg == GOT_QUERYMSG ) {
-        return WriteGrabs(client_out);
+        return write_grabs(client_out);
     } else if ( imsg == GOT_MAXLNMSG ) {
         int l = MAX_LINEIN_SIZE;
 
@@ -596,7 +588,7 @@ InputAndReply(Display *dpy,
     } else if ( imsg == GOT_WNAMEMSG ) {
         Window wnew = client_name.wid;
 
-        if ( wnew && GrabNewWindow(dpy, pw, wnew) ) {
+        if ( wnew && grab_new_window(dpy, pw, wnew) ) {
             msg = "Y:" _WNAMEMSG "\n";
         } else {
             fprintf(stderr,
@@ -606,7 +598,7 @@ InputAndReply(Display *dpy,
     } else if ( imsg == GOT_SNAMEMSG ) {
         char  *pbuf = client_name.buf;
         size_t  bsz = sizeof(client_name.buf);
-        ssize_t res = InputLine(client_in, pbuf, bsz);
+        ssize_t res = input_line(client_in, pbuf, bsz);
 
         if ( res < 0 ) {
             return False;
@@ -619,7 +611,7 @@ InputAndReply(Display *dpy,
             Window wnew;
 
             wnew = RootWindow(dpy, 0);
-            wnew = WindowByName(dpy, wnew, pbuf);
+            wnew = window_by_name(dpy, wnew, pbuf);
 
             if ( wnew ) {
                 client_name.wid = wnew;
@@ -639,7 +631,7 @@ InputAndReply(Display *dpy,
     } else if ( imsg == GOT_WROOTMSG ) {
         Window wnew = RootWindow(dpy, 0);
 
-        if ( wnew && GrabNewWindow(dpy, pw, wnew) ) {
+        if ( wnew && grab_new_window(dpy, pw, wnew) ) {
             msg = "Y:" _WROOTMSG "\n";
         } else {
             fprintf(stderr,
@@ -654,7 +646,7 @@ InputAndReply(Display *dpy,
         msg = "Y:" _SS_ONMSG "\n";
     }
 
-    if ( msg != NULL && ClientOutputStr(client_out, msg) < 0 ) {
+    if ( msg != NULL && client_output_str(client_out, msg) < 0 ) {
         fprintf(stderr, "%s: error on client write '%s'\n",
             prog, msg);
         return False;
@@ -731,10 +723,10 @@ setup_prog(const char *av0)
 }
 
 Window
-WindowByName(Display *dpy, Window top, const char *name)
+window_by_name(Display *dpy, Window top, const char *name)
 {
-    Window *wp = NULL;
     Window wroot, wparent, ret = 0;
+    Window *wp = NULL;
     char   *nm = NULL;
     Status st;
     unsigned int i, nwp;
@@ -761,7 +753,7 @@ WindowByName(Display *dpy, Window top, const char *name)
     }
 
     for ( i = 0; i < nwp; i++ ) {
-        if ( (ret = WindowByName(dpy, wp[i], name)) != 0 ) {
+        if ( (ret = window_by_name(dpy, wp[i], name)) != 0 ) {
             break;
         }
     }
@@ -1234,13 +1226,13 @@ init_poll_data(void)
 int
 check_poll_data_error(void)
 {
+#   define _REVENTS_ERR (POLLERR|POLLHUP|POLLNVAL)
     size_t i;
     for ( i = 0; i < A_SIZE(poll_fds); i++ ) {
         if ( poll_fds[i].fd < 0 ) {
             continue;
         }
-        if ( (poll_fds[i].revents & POLLHUP) ||
-             (poll_fds[i].revents & POLLERR) ) {
+        if ( poll_fds[i].revents & _REVENTS_ERR ) {
             return (int)i + 1;
         }
     }
@@ -1258,10 +1250,23 @@ main(int argc, char **argv)
     int               c, dpy_fd;
     const char        *display = NULL, *byname = NULL;
     int               (*orig_err)(Display *, XErrorEvent *);
-    static const char opt_str[] = "asd:n:w:hv";
+
+    static const char opt_str[] = "d:w:n:ashv";
+    static struct option opts[] = {
+        { "display",      1, NULL, 'd' },
+        { "window",       1, NULL, 'w' },
+        { "name",         1, NULL, 'n' },
+        { "xautolock",    0, NULL, 'a' },
+        { "xscreensaver", 0, NULL, 's' },
+        { "help",         0, NULL, 'h' },
+        { "version",      0, NULL, 'v' },
+        { 0,              0, NULL, 0 }
+    };
 
 #   if HAVE_SETLOCALE
-    /* all IO in ascii */
+    /* all IO in ascii, except perhaps window titles,
+     * which are only be subject to byte-wise comparison
+     */
     setlocale(LC_ALL, "C");
 #   endif
 
@@ -1274,17 +1279,6 @@ main(int argc, char **argv)
      */
     c = chdir("/");
 #    endif
-
-    static struct option opts[] = {
-        { "display",      1, NULL, 'd' },
-        { "window",       1, NULL, 'w' },
-        { "name",         1, NULL, 'n' },
-        { "xautolock",    0, NULL, 'a' },
-        { "xscreensaver", 0, NULL, 's' },
-        { "help",         0, NULL, 'h' },
-        { "version",      0, NULL, 'v' },
-        { 0,              0, NULL, 0 }
-    };
 
     setup_prog(argv[0]);
 
@@ -1357,16 +1351,16 @@ main(int argc, char **argv)
     client_out = STDOUT_FILENO;
 
     for ( c = 0; c < A_SIZE(common_signals); c++ ) {
-        signal(common_signals[c], SignalDefault);
+        signal(common_signals[c], common_signal_handler);
     }
 
     /* setup error handler or KeyGrab() might be fatal */
-    orig_err = XSetErrorHandler(TheErrorProc);
+    orig_err = XSetErrorHandler(x_error_proc);
 
     if ( w == 0 ) {
         w = RootWindow(dpy, 0);
         if ( byname != NULL ) {
-            if ( (w = WindowByName(dpy, w, byname)) == 0 ) {
+            if ( (w = window_by_name(dpy, w, byname)) == 0 ) {
                 fprintf(stderr,
                     "%s: cannot find window with name '%s'\n",
                     prog, byname);
@@ -1399,7 +1393,7 @@ main(int argc, char **argv)
             case KeyPress:
                 /* fall through */
             case KeyRelease:
-                key_str = HandleKey(ev.type, &ev.xkey);
+                key_str = handle_key(ev.type, &ev.xkey);
                 #if _DEBUG
                 fprintf(stderr, "%s: got key '%s'\n",
                      prog, key_str ? key_str : "[unknown]");
@@ -1422,7 +1416,7 @@ main(int argc, char **argv)
         }
 
         if ( c > 0 && (poll_fds[0].revents & POLLIN) ) {
-            if ( ! InputAndReply(dpy, &w, client_in, client_out) ) {
+            if ( ! input_and_reply(dpy, &w, client_in, client_out) ) {
                 break;
             }
 
@@ -1450,7 +1444,7 @@ main(int argc, char **argv)
         }
 
         if ( poll_fds[0].revents & POLLIN ) {
-            if ( ! InputAndReply(dpy, &w, client_in, client_out) ) {
+            if ( ! input_and_reply(dpy, &w, client_in, client_out) ) {
                 break;
             }
         }
@@ -1463,7 +1457,7 @@ main(int argc, char **argv)
             TERMINATE_CHARBUF(buf, l);
 
             /* TODO error check */
-            if ( ClientOutputStr(client_out, buf) < 0 ) {
+            if ( client_output_str(client_out, buf) < 0 ) {
                 fprintf(stderr, "%s: error on client write '%s'\n",
                     prog, buf);
                 break;
