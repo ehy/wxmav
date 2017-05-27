@@ -6847,13 +6847,22 @@ class TopWnd(wx.Frame):
         # pause duration limit hack invalid now
         self.pause_ticks = -1
 
-        dn, med, des, com, err, lth = self.get_reslist_item_tup()
+        # TODO: cannot use current index in a message here, because
+        # if a next/previous op led us here it has been adjusted
+        # already and the message is wrong -- so the todo is:
+        # fix this.
+        if False:
+            dn, med, des, com, err, lth = self.get_reslist_item_tup()
 
-        nm = _T(des or dn or med)
-        self.prdbg(_T("on_media_stop: user stop {}").format(nm))
+            nm = _T(des or dn or med)
+            self.prdbg(_T("on_media_stop: user stop {}").format(nm))
 
-        self.set_statusbar(
-            _("Stopped '{}'").format(des or med), 0, notify = True)
+            self.set_statusbar(
+                _("Stopped '{}'").format(des or med), 0, notify = True)
+        else:
+            self.prdbg(_T("on_media_stop: user stop medium"))
+            self.set_statusbar(_("Stopped medium"), 0, notify = True)
+
         self.set_statusbar(_T("  "), 1)
 
         self.in_play = False
