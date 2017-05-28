@@ -4923,6 +4923,8 @@ class TopWnd(wx.Frame):
         # options vars:
         # show the tray/taskbar icon?
         self.opt_tray_icon = True
+        # show notification popups
+        self.opt_notifymsg = True
         # load with proxy has been failing, silently
         self.can_use_proxy = False
         self.proxies = {}
@@ -5574,12 +5576,15 @@ class TopWnd(wx.Frame):
             return self.del_taskbar_object()
 
     def set_taskbar_tooltip(self, tip = "", ico = None, notify = False):
-        tob = self.get_taskbar_object(make_if_needed = False)
+        if self.opt_tray_icon:
+            tob = self.get_taskbar_object(make_if_needed = False)
+        else:
+            tob = None
 
-        if tob == None:
+        if tob == None and not notify:
             return
 
-        if ico == None:
+        if ico == None and tob:
             if _in_msw:
                 ico = getwxmav_16Icon()
             else:
@@ -5587,18 +5592,23 @@ class TopWnd(wx.Frame):
 
         nam = _T(self.GetTitle())
         ts = _T(tip).strip()
-        if ts:
+        if ts and tob:
             t = _T("{}\n\n{}").format(nam, ts)
         else:
             t = nam
 
-        tob.SetIcon(ico, t)
+        if tob:
+            tob.SetIcon(ico, t)
 
+        if notify:
+            self.do_notification_message(nam, ts)
+
+    def do_notification_message(self, title, message, force = False):
         # notification popup follows (but not if in fullscreen)
         if self.IsFullScreen():
             return
 
-        if True and notify == True:
+        if self.opt_notifymsg:
             if _in_msw and True:
                 # these are doc'd by wxWidgets, but not by
                 # wxPython, so they might not be implemented
@@ -5608,8 +5618,8 @@ class TopWnd(wx.Frame):
                 except:
                     pass
             n = wxadv.NotificationMessage()
-            n.SetTitle(_T(nam))
-            n.SetMessage(ts)
+            n.SetTitle(_T(title))
+            n.SetMessage(_T(message))
             n.Show()
 
 
@@ -5767,6 +5777,12 @@ class TopWnd(wx.Frame):
                         _("Show or hide the system tray icon and menu"),
                         wx.ITEM_CHECK)
         mopts.Check(self.mopts_trayicon, self.opt_tray_icon)
+        # show notification popups?
+        self.mopts_notifymsg = cur = I()
+        mopts.Append(cur, _("Notice &Message Popups"),
+                        _("Show notification temporary popup messages"),
+                        wx.ITEM_CHECK)
+        mopts.Check(self.mopts_notifymsg, self.opt_notifymsg)
         # use proxe for media URI? self.can_use_proxy
         self.mopts_proxy = cur = I()
         mopts.Append(cur, _("Use &URL Proxy"),
@@ -6382,6 +6398,9 @@ class TopWnd(wx.Frame):
             t = self.mopts.IsChecked(self.mopts_trayicon)
             self.opt_tray_icon = t
             self.set_taskbar_object()
+        elif i == self.mopts_notifymsg:
+            t = self.mopts.IsChecked(self.mopts_notifymsg)
+            self.opt_notifymsg = t
         elif i == self.mopts_proxy:
             t = self.mopts.IsChecked(self.mopts_proxy)
             self.can_use_proxy = t
@@ -7801,6 +7820,8 @@ class TopWnd(wx.Frame):
                              _T("use_proxy"), self.can_use_proxy)
         self.opt_tray_icon = config.ReadBool(
                              _T("use_trayicon"), self.opt_tray_icon)
+        self.opt_notifymsg = config.ReadBool(
+                             _T("use_notifymsg"), self.opt_notifymsg)
 
         vmap = {
             _T("resource_index") : 0,     # self.media_indice
@@ -7857,6 +7878,8 @@ class TopWnd(wx.Frame):
         config.WriteBool(_T("auto_advance"), cur)
         cur = self.mopts.IsChecked(self.mopts_trayicon)
         config.WriteBool(_T("use_trayicon"), cur)
+        cur = self.mopts.IsChecked(self.mopts_notifymsg)
+        config.WriteBool(_T("use_notifymsg"), cur)
         cur = self.mopts.IsChecked(self.mopts_proxy)
         config.WriteBool(_T("use_proxy"), cur)
 
