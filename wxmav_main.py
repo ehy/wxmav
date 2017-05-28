@@ -5585,14 +5585,18 @@ class TopWnd(wx.Frame):
             else:
                 ico = getwxmav_24Icon()
 
-        nam = self.GetTitle()
+        nam = _T(self.GetTitle())
         ts = _T(tip).strip()
         if ts:
-            t = _T("{}\n\n{}").format(_T(nam), ts)
+            t = _T("{}\n\n{}").format(nam, ts)
         else:
-            t = _T(nam)
+            t = nam
 
         tob.SetIcon(ico, t)
+
+        # notification popup follows (but not if in fullscreen)
+        if self.IsFullScreen():
+            return
 
         if True and notify == True:
             if _in_msw and True:
