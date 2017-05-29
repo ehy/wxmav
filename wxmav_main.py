@@ -5608,19 +5608,21 @@ class TopWnd(wx.Frame):
         if self.IsFullScreen():
             return
 
-        if self.opt_notifymsg:
-            if _in_msw and True:
-                # these are doc'd by wxWidgets, but not by
-                # wxPython, so they might not be implemented
-                try:
-                    wxadv.NotificationMessage.UseTaskBarIcon(tob)
-                    wxadv.NotificationMessage.MSWUseToasts()
-                except:
-                    pass
-            n = wxadv.NotificationMessage()
-            n.SetTitle(_T(title))
-            n.SetMessage(_T(message))
-            n.Show()
+        if not (self.opt_notifymsg or force):
+            return
+
+        if _in_msw:
+            # these are added in wxWidgets 3.1, but currently (2017)
+            # wxPython uses 3.0.x, so they are not implemented
+            try:
+                wxadv.NotificationMessage.UseTaskBarIcon(tob)
+                wxadv.NotificationMessage.MSWUseToasts()
+            except:
+                pass
+        n = wxadv.NotificationMessage()
+        n.SetTitle(_T(title))
+        n.SetMessage(_T(message))
+        n.Show()
 
 
     def make_menu_bar(self):
