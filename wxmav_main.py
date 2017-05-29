@@ -5577,7 +5577,7 @@ class TopWnd(wx.Frame):
 
     def set_taskbar_tooltip(self, tip = "", ico = None, notify = False):
         if self.opt_tray_icon:
-            tob = self.get_taskbar_object(make_if_needed = False)
+            tob = self.get_taskbar_object(make_if_needed = True)
         else:
             tob = None
 
@@ -5604,7 +5604,7 @@ class TopWnd(wx.Frame):
             self.do_notification_message(nam, ts)
 
     def do_notification_message(self, title, message, force = False):
-        # notification popup follows (but not if in fullscreen)
+        # notification popup (but not if in fullscreen)
         if self.IsFullScreen():
             return
 
@@ -5612,13 +5612,20 @@ class TopWnd(wx.Frame):
             return
 
         if _in_msw:
+            if self.opt_tray_icon:
+                tob = self.get_taskbar_object(make_if_needed = True)
+            else:
+                tob = None
+
             # these are added in wxWidgets 3.1, but currently (2017)
             # wxPython uses 3.0.x, so they are not implemented
             try:
-                wxadv.NotificationMessage.UseTaskBarIcon(tob)
+                if tob:
+                    wxadv.NotificationMessage.UseTaskBarIcon(tob)
                 wxadv.NotificationMessage.MSWUseToasts()
             except:
                 pass
+
         n = wxadv.NotificationMessage()
         n.SetTitle(_T(title))
         n.SetMessage(_T(message))
