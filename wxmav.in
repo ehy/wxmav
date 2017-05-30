@@ -22,14 +22,14 @@
 #  MA 02110-1301, USA.
 #
 
-_inst_py_dir = "@pythondir@"
+_inst_py_dir = r"@pythondir@"
 
 import sys
 
-if not _inst_py_dir in sys.path:
-    sys.path.append(_inst_py_dir)
+if _inst_py_dir != sys.path[0]:
+    sys.path.insert(0, _inst_py_dir)
 
 import wxmav_main as _mainmod
 
 if __name__ == '__main__':
-    _mainmod.wxmav_main(argv = sys.argv, x_help_path = "@XHELPERPATH@")
+    _mainmod.wxmav_main(argv = sys.argv, x_help_path = r"@XHELPERPATH@")
