@@ -7650,14 +7650,14 @@ class TopWnd(wx.Frame):
         # try to keep focus on media control
         self.focus_medi_opt()
 
-        st = self.get_medi_state()
-        if st != wx.media.MEDIASTATE_STOPPED:
-            self.medi.Stop()
-
         if from_user:
             self.in_stop = True
             self.in_play = False
             self.set_play_label()
+
+        st = self.get_medi_state()
+        if st != wx.media.MEDIASTATE_STOPPED:
+            self.medi.Stop()
 
     def do_setwname(self):
         if self.tittime > 0:
