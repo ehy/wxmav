@@ -6901,9 +6901,25 @@ class TopWnd(wx.Frame):
         self.in_stop = True
         self.set_play_label()
 
-        ln = 0 #self.medi.Length()
-        self.medi.Seek(ln)
-        self.pos_sld.SetValue(ln)
+        # at least w/ gtk/gstreamer stop(), with or without seek(0),
+        # will not work as expected[*] with an unbounded stream, but
+        # instead on play() will play buffered data no matter how old
+        # until exhausted, then issue a 'finished' event
+        # [*] expectation is that on stop() will discard buffer and
+        # on play() will befin the unbounded stream as if first
+        # connecting -- behavior with bounded media works as
+        # expect since seek(0) is effective and subsequent play() is
+        # from the start;
+        # so . . .
+        if self.medi.Length() > 0:
+            # bounded, seek to 0 (start)
+            self.medi.Seek(0)
+        else:
+            # unbounded, force backend to disassociate from current
+            # resource; is a play() follows the resource will be
+            # loaded again
+            self.unload_media(force = True)
+        self.pos_sld.SetValue(0)
 
     # old wxpython sample comment says that MSW backends do not
     # post loaded event -- I have not observed that with MSW 7 and
