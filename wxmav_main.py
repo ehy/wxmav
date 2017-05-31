@@ -5591,7 +5591,12 @@ class TopWnd(wx.Frame):
                 ico = getwxmav_24Icon()
 
         nam = _T(self.GetTitle())
+        # the strip() here is important: this is usually called
+        # from set_statusbar(), and that sometimes gets a string
+        # of whitespace to clear a field (since an empty string
+        # might not work).  so, strip and test
         ts = _T(tip).strip()
+
         if ts and tob:
             t = _T("{}\n\n{}").format(nam, ts)
         else:
@@ -6906,18 +6911,20 @@ class TopWnd(wx.Frame):
         # instead on play() will play buffered data no matter how old
         # until exhausted, then issue a 'finished' event
         # [*] expectation is that on stop() will discard buffer and
-        # on play() will befin the unbounded stream as if first
+        # on play() will restart the unbounded stream as if first
         # connecting -- behavior with bounded media works as
-        # expect since seek(0) is effective and subsequent play() is
-        # from the start;
+        # expected since seek(0) is effective and subsequent play()
+        # is from the start;
         # so . . .
         if self.medi.Length() > 0:
             # bounded, seek to 0 (start)
             self.medi.Seek(0)
         else:
             # unbounded, force backend to disassociate from current
-            # resource; is a play() follows the resource will be
-            # loaded again
+            # resource; if a play() op follows the resource will be
+            # loaded again, fresh and new and shiny -- note force =
+            # True; else, only flags are set but backend is not
+            # forced to unload (which is another hack)
             self.unload_media(force = True)
         self.pos_sld.SetValue(0)
 
