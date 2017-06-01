@@ -4876,8 +4876,9 @@ class TaskBarObject(wxadv.TaskBarIcon):
         self.wnd.do_taskbar_click(event)
 
 """
-The main top-level window class, also suffused with the bulk
-of the program logic
+The main top-level window class; stuffing composed of the bulk
+of the program logic -- this has grown to be larger than it would
+have been had it been smaller than it is
 """
 class TopWnd(wx.Frame):
     about_info = None
@@ -6998,6 +6999,7 @@ class TopWnd(wx.Frame):
         cur = tel if (pos == None) else pos
         self.pos_sld.SetRange(0, rng)
         self.pos_sld.SetValue(cur)
+        self.pos_sld.Layout()
 
         if ln > 0:
             self.set_statusbar(self.get_time_str(tm = ln), 1)
