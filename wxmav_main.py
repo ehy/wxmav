@@ -7004,8 +7004,10 @@ class TopWnd(wx.Frame):
             # digit is required, the number is clipped -- trying
             # to find a workaround for MSWindowsishness here . . .
             self.pos_sld.Layout()
-            self.pos_sld.SetSize(self.pos_sld.GetBestSize())
-            self.pos_sld.Layout()
+            w, h = self.pos_sld.GetSize()
+            self.pos_sld.SetSize((w - 1, h - 1))
+            self.pos_sld.Refresh()
+            self.pos_sld.SetSize((w, h))
             self.pos_sld.Refresh(True)
 
         if ln > 0:
