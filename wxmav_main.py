@@ -6999,7 +6999,14 @@ class TopWnd(wx.Frame):
         cur = tel if (pos == None) else pos
         self.pos_sld.SetRange(0, rng)
         self.pos_sld.SetValue(cur)
-        self.pos_sld.Layout()
+        if _in_msw:
+            # MSW: if range has increased so that another decimal
+            # digit is required, the number is clipped -- trying
+            # to find a workaround for MSWindowsishness here . . .
+            self.pos_sld.Layout()
+            self.pos_sld.SetSize(self.pos_sld.GetBestSize())
+            self.pos_sld.Layout()
+            self.pos_sld.Refresh(True)
 
         if ln > 0:
             self.set_statusbar(self.get_time_str(tm = ln), 1)
