@@ -2292,11 +2292,20 @@ elif _in_xws:
             return o
 
     class XWSHelperProcClass:
+        common_signals = [
+            signal.SIGHUP, signal.SIGINT, signal.SIGQUIT,
+            signal.SIGTERM, signal.SIGUSR1, signal.SIGUSR2
+        ]
+
         def __init__(self, app, procargs = None, go = False):
             self.thd = self.pwr = self.ch_proc = self.linemax = None
             self.quitting = False
 
             self.app = app
+
+            sig_lamb = lambda s, t: self._handle_common_signal(s, t)
+            for sig in self.common_signals:
+                signal.signal(sig, sig_lamb)
 
             self.xhelperargs = procargs or [_T('wxmav-x-helper'),
                                             _T('--xautolock'),
@@ -2306,6 +2315,9 @@ elif _in_xws:
             if go:
                 self.do_keystart(self.xhelperargs)
 
+
+        def _handle_common_signal(self, signum, stack_frame):
+            self.app._on_signal(signum)
 
         def go(self):
             if self.status == None:
@@ -2920,6 +2932,18 @@ class TheAppClass(wx.App):
 
         return True
 
+
+    def _on_signal(self, signum):
+        """This should only be called from a platform helper
+        oblect -- the X Window System helper presently --
+        and we should *only* set an (atomic) flag here, since
+        it is meant to be called from a signal handler.
+        """
+        if self.frame:
+            self.frame._quit_signal = signum
+        else:
+            self._quit_signal = signum
+            wx.Exit()
 
     def get_prog_name(self):
         return self.prog
@@ -5129,8 +5153,12 @@ class TopWnd(wx.Frame):
         #    when un-minimized after a long time minimized --
         #    so wxIconizeEvent is handled to try workaround
         #    hacks to force an interface paint job
-        if _in_gtk:
-            self.Bind(wx.EVT_ICONIZE, self.on_iconize_event)
+        # -- all: use max/iconize events to record current
+        #    windowed size/pos for reference in e.g. config_wr
+        self.window_size = wx.Size(size)
+        self.window_pos  = wx.Point(pos)
+        self.Bind(wx.EVT_ICONIZE, self.on_iconize_event)
+        self.Bind(wx.EVT_MAXIMIZE, self.on_maximize_event)
 
         # MSW, to get multimedia 'hotkeys' -- note MS does
         # not have VK_ definition for pause, only for
@@ -6588,11 +6616,27 @@ class TopWnd(wx.Frame):
         self.mctrl.Enable(self.mctrl_stop, True)
 
     # see comment in ctor, where this is Bind()ed
-    if _in_gtk:
-        def on_iconize_event(self, event):
-            # if restored from minimized state:
-            if not event.IsIconized():
+    def on_iconize_event(self, event):
+        # if restored from minimized state:
+        if not event.IsIconized():
+            if _in_gtk:
                 wx.CallAfter(self.Layout)
+        else:
+            # record windowed size
+            self.window_size = sz = wx.Size(self.GetSize())
+            self.window_pos  = pt = wx.Point(self.GetPosition())
+            self.err_msg(_T("On Minimize {} at {}").format(
+                (sz.width, sz.height), (pt.x, pt.y)))
+
+    # see comment in ctor, where this is Bind()ed
+    def on_maximize_event(self, event):
+        # if restored from minimized state:
+        if self.IsMaximized():
+            # record windowed size
+            self.window_size = sz = wx.Size(self.GetSize())
+            self.window_pos  = pt = wx.Point(self.GetPosition())
+            self.err_msg(_T("On Maximize {} at {}").format(
+                (sz.width, sz.height), (pt.x, pt.y)))
 
     def on_idle(self, event):
         if self.do_setwname_done == False:
@@ -7760,6 +7804,19 @@ class TopWnd(wx.Frame):
             self.SetCursor(select_cursor(wx.CURSOR_BLANK))
 
     def do_timep(self, timer):
+        # test a member that does not exist _unless_
+        # the App object sets it, which means close up
+        # shop (e.g. exit signal was caught)
+        try:
+            if self._quit_signal != 0:
+                self._quit_signal = 0
+                wx.CallAfter(self.Close, True)
+                self.prdbg("SIGNAL NUMBER {}".format(self._quit_signal))
+        except AttributeError:
+            self._quit_signal = 0
+        except:
+            pass
+
         if self.pos_seek_paused <= 0:
             # unfortunately, it proves necessary to call
             # check_set_media_meta(True) and slider_setup()
@@ -7928,24 +7985,20 @@ class TopWnd(wx.Frame):
 
         mn = True if self.IsIconized()  else False
         config.WriteBool(_T("iconized"),  mn)
-        if mn:
-            self.Iconize(False)
         mx = True if self.IsMaximized() else False
         config.WriteBool(_T("maximized"), mx)
-        if mx:
-            self.Maximize(False)
 
         w, h = self.GetSize()
         x, y = self.GetPosition()
+        if mn or mx:
+            w = self.window_size.width
+            h = self.window_size.height
+            x = self.window_pos.x
+            y = self.window_pos.y
         config.WriteInt(_T("x"), max(x, 0))
         config.WriteInt(_T("y"), max(y, 0))
         config.WriteInt(_T("w"), w)
         config.WriteInt(_T("h"), h)
-
-        if mn:
-            self.Iconize(True)
-        if mx:
-            self.Maximize(True)
 
         self.prdbg(
             _T("config_wr: iconized: {} -- maximized: {}\n"
@@ -7961,10 +8014,9 @@ class TopWnd(wx.Frame):
 
     def on_close(self, event):
         wx.GetApp().set_reslist(self.reslist)
+        self.config_wr()
 
         if event.CanVeto():
-            self.config_wr()
-
             rs = wx.MessageBox(
                 _("Do you really want to quit?"),
                 _("Confirm Quit"),
@@ -7989,6 +8041,7 @@ class TopWnd(wx.Frame):
                 self.prdbg(_T("DID Veto 2"))
         else:
             self.cmd_on_stop()
+            wx.GetApp().test_exit()
             self.register_ms_hotkeys(False)
             self.Show(False)
 
