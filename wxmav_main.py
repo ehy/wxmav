@@ -5155,8 +5155,18 @@ class TopWnd(wx.Frame):
         #    hacks to force an interface paint job
         # -- all: use max/iconize events to record current
         #    windowed size/pos for reference in e.g. config_wr
-        self.window_size = wx.Size(size)
-        self.window_pos  = wx.Point(pos)
+        if isinstance(size, tuple):
+            self.window_size = wx.Size(size[0], size[1])
+        elif isinstance(size, wx.Size):
+            self.window_size = wx.Size(size.width, size.height)
+        else:
+            self.window_size = wx.Size(800, 600)
+        if isinstance(pos, tuple):
+            self.window_pos  = wx.Point(pos[0], pos[1])
+        elif isinstance(pos, wx.Point):
+            self.window_pos  = wx.Point(pos.x, pos.y)
+        else:
+            self.window_pos  = wx.Point(0, 0)
         self.Bind(wx.EVT_ICONIZE, self.on_iconize_event)
         self.Bind(wx.EVT_MAXIMIZE, self.on_maximize_event)
 
@@ -6623,8 +6633,8 @@ class TopWnd(wx.Frame):
                 wx.CallAfter(self.Layout)
         else:
             # record windowed size
-            self.window_size = sz = wx.Size(self.GetSize())
-            self.window_pos  = pt = wx.Point(self.GetPosition())
+            self.window_size = sz = self.GetSize()
+            self.window_pos  = pt = self.GetPosition()
             self.err_msg(_T("On Minimize {} at {}").format(
                 (sz.width, sz.height), (pt.x, pt.y)))
 
@@ -6633,8 +6643,8 @@ class TopWnd(wx.Frame):
         # if restored from minimized state:
         if self.IsMaximized():
             # record windowed size
-            self.window_size = sz = wx.Size(self.GetSize())
-            self.window_pos  = pt = wx.Point(self.GetPosition())
+            self.window_size = sz = self.GetSize()
+            self.window_pos  = pt = self.GetPosition()
             self.err_msg(_T("On Maximize {} at {}").format(
                 (sz.width, sz.height), (pt.x, pt.y)))
 
