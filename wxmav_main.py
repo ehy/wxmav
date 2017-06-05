@@ -3015,6 +3015,10 @@ class TheAppClass(wx.App):
         with argument True meaning cannot veto, do not query
         user, just close down
         """
+        if not _in_msw:
+            # in msw, this is done in on_query_*
+            self.save_self_state()
+
         try:
             self.frame.Close(True)
         except:
@@ -3032,9 +3036,9 @@ class TheAppClass(wx.App):
 
     def save_self_state(self):
         """Save state here, prefereably such that next start
-        can restore store equivalent state -- call from
+        can restore equivalent state -- call from
         *_ENDSESSION events (MSW) of SmcSaveYourselfProc
-        (X, using x-helper program [if implemented]
+        (X, using x-helper program [if implemented])
         """
         try:
             self.reslist = self.frame.get_reslist()
