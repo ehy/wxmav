@@ -65,7 +65,8 @@ include_msvcrt=true
 packages=appnamemain
     mutagen
     six
-pypi_wheels=wxPython==4.0.0a2
+pypi_wheels=wxPython==4.0.0a3
+;pypi_wheels=wxPython==4.0.0a2
 ; Other files and folders that should be installed
 ;files = ../COPYING > $INSTDIR
 ;    ../LICENSE.gpl,v2 > $INSTDIR
