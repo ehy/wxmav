@@ -3028,6 +3028,14 @@ class TheAppClass(wx.App):
         so this event is merely taken as a sign that data should be
         written
         """
+        self.save_self_state()
+
+    def save_self_state(self):
+        """Save state here, prefereably such that next start
+        can restore store equivalent state -- call from
+        *_ENDSESSION events (MSW) of SmcSaveYourselfProc
+        (X, using x-helper program [if implemented]
+        """
         try:
             self.reslist = self.frame.get_reslist()
         except:
