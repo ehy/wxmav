@@ -6649,7 +6649,7 @@ class TopWnd(wx.Frame):
     # see comment in ctor, where this is Bind()ed
     def on_maximize_event(self, event):
         # if restored from minimized state:
-        if self.IsMaximized():
+        if not self.IsMaximized():
             # record windowed size
             self.window_size = sz = self.GetSize()
             self.window_pos  = pt = self.GetPosition()
