@@ -5165,10 +5165,8 @@ class TopWnd(wx.Frame):
         self.hiders["vszr"] = vszr
         self.hiders["hszr"] = hszr
 
-        # hack: because top window is not using a panel, exposed
-        # areas might differ in color from panels, which is not wanted
-        self.SetOwnBackgroundColour(
-            self.pos_panel.GetBackgroundColour())
+        # any interface color adjustment should be in this proc
+        self.color_hacks()
 
         # fundamental event bindings
         self.Bind(wx.EVT_CLOSE, self.on_close)
@@ -5703,6 +5701,13 @@ class TopWnd(wx.Frame):
         n.Show()
 
 
+    def color_hacks(self):
+        # hack: because top window is not using a panel, exposed
+        # areas might differ in color from panels, which is not wanted
+        self.SetOwnBackgroundColour(
+            self.pos_panel.GetBackgroundColour())
+
+
     def make_menu_bar(self):
         I = wx.NewId
         mb = wx.MenuBar()
@@ -5871,8 +5876,8 @@ class TopWnd(wx.Frame):
         mopts.Check(self.mopts_proxy, self.can_use_proxy)
         # use SetThemeEnabled and handle change event
         self.mopts_themeok = cur = I()
-        # theme support: option has no effect of GTK
-        if not _in_gtk:
+        # theme support: option has no effect in GTK or MSW
+        if False:
             # separator
             mopts.AppendSeparator()
             mopts.Append(cur, _("Use Theme &Support"),
@@ -6690,6 +6695,7 @@ class TopWnd(wx.Frame):
     def on_sys_color(self, event):
         f = lambda wnd: self._color_proc_per_child(wnd)
         invoke_proc_for_window_children(self, f)
+        self.color_hacks()
 
         if self.theme_support:
             self.Refresh(True)
@@ -8056,8 +8062,8 @@ class TopWnd(wx.Frame):
         config.WriteBool(_T("use_notifymsg"), cur)
         cur = self.mopts.IsChecked(self.mopts_proxy)
         config.WriteBool(_T("use_proxy"), cur)
-        # theme support: option has no effect of GTK
-        if not _in_gtk:
+        # theme support: option has no effect in GTK or MSW
+        if False:
             cur = self.mopts.IsChecked(self.mopts_themeok)
         else:
             cur = self.theme_support
