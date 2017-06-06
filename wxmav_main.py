@@ -4916,6 +4916,16 @@ The main top-level window class; stuffing composed of the bulk
 of the program logic -- this has grown to be larger than it would
 have been had it been smaller than it is
 """
+
+# utility for wx window objects with children: invoke a procedure
+# on window's children, and their children, recursivley -- procedure
+# must take window object parameter
+def invoke_proc_for_window_children(window, proc):
+    proc(window)
+    for wnd in window.GetChildren():
+        invoke_proc_for_window_children(wnd, proc)
+
+
 class TopWnd(wx.Frame):
     about_info = None
 
@@ -5034,8 +5044,13 @@ class TopWnd(wx.Frame):
                 max(self.vol_cur, self.vol_min), self.vol_max)
 
         # use theme glitz?
-        # TODO: make this an option (and test)
-        self.SetThemeEnabled(True)
+        self.theme_support = True
+        if cfvals:
+            self.theme_support = cfvals[_T("theme_support")]
+        self.SetThemeEnabled(self.theme_support)
+
+        # handle color event, to refresh etc.
+        self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.on_sys_color)
 
         szr = wx.BoxSizer(wx.VERTICAL)
 
@@ -5848,12 +5863,22 @@ class TopWnd(wx.Frame):
                         _("Show notification temporary popup messages"),
                         wx.ITEM_CHECK)
         mopts.Check(self.mopts_notifymsg, self.opt_notifymsg)
-        # use proxe for media URI? self.can_use_proxy
+        # use proxy for media URI? self.can_use_proxy
         self.mopts_proxy = cur = I()
         mopts.Append(cur, _("Use &URL Proxy"),
                     _("Use a proxy per protocol if available for URLs"),
                         wx.ITEM_CHECK)
         mopts.Check(self.mopts_proxy, self.can_use_proxy)
+        # use SetThemeEnabled and handle change event
+        self.mopts_themeok = cur = I()
+        # theme support: option has no effect of GTK
+        if not _in_gtk:
+            # separator
+            mopts.AppendSeparator()
+            mopts.Append(cur, _("Use Theme &Support"),
+                        _("Support desktop theme style changes"),
+                            wx.ITEM_CHECK)
+            mopts.Check(self.mopts_themeok, self.theme_support)
 
         # add options menu
         mb.Append(mopts, _("&Options"))
@@ -5943,7 +5968,6 @@ class TopWnd(wx.Frame):
         tb.SetMargins((2, 2))
         tb.SetToolPacking(2)
         tb.SetToolSeparation(5)
-        tb.SetThemeEnabled(True)
 
         def _mi_tup(mnu, mid):
             mi = mnu.FindItemById(mid)
@@ -6469,6 +6493,9 @@ class TopWnd(wx.Frame):
         elif i == self.mopts_proxy:
             t = self.mopts.IsChecked(self.mopts_proxy)
             self.can_use_proxy = t
+        elif i == self.mopts_themeok:
+            t = self.mopts.IsChecked(self.mopts_themeok)
+            self.theme_support = t
         # Help menu
         elif i == self.mhelp_ckver:
             self.do_version_dialog()
@@ -6659,6 +6686,30 @@ class TopWnd(wx.Frame):
             self.window_pos  = pt = self.GetPosition()
             self.err_msg(_T("On Maximize {} at {}").format(
                 (sz.width, sz.height), (pt.x, pt.y)))
+
+    def on_sys_color(self, event):
+        f = lambda wnd: self._color_proc_per_child(wnd)
+        invoke_proc_for_window_children(self, f)
+
+        if self.theme_support:
+            self.Refresh(True)
+        else:
+            event.Skip()
+
+    def _color_proc_per_child(self, wnd):
+        wnd.SetThemeEnabled(self.theme_support)
+
+        if not self.theme_support:
+            return
+
+        try:
+            wnd.SetOwnForegroundColour(wx.NullColour)
+        except:
+            wnd.SetForegroundColour(wx.NullColour)
+        try:
+            wnd.SetOwnBackgroundColour(wx.NullColour)
+        except:
+            wnd.SetBackgroundColour(wx.NullColour)
 
     def on_idle(self, event):
         if self.do_setwname_done == False:
@@ -7954,6 +8005,7 @@ class TopWnd(wx.Frame):
             _T("playing")        : False, # was playing on quit
             _T("loop_play")      : False, # loop current track menu opt
             _T("auto_advance")   : True,  # on track end advance to next
+            _T("theme_support")  : True,  # employ theme support
             _T("res_restart")    : True   # on start resume last state
         }
 
@@ -8004,6 +8056,12 @@ class TopWnd(wx.Frame):
         config.WriteBool(_T("use_notifymsg"), cur)
         cur = self.mopts.IsChecked(self.mopts_proxy)
         config.WriteBool(_T("use_proxy"), cur)
+        # theme support: option has no effect of GTK
+        if not _in_gtk:
+            cur = self.mopts.IsChecked(self.mopts_themeok)
+        else:
+            cur = self.theme_support
+        config.WriteBool(_T("theme_support"), cur)
 
         mn = True if self.IsIconized()  else False
         config.WriteBool(_T("iconized"),  mn)
