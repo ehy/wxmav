@@ -1,8 +1,8 @@
 #! python
 # coding=utf-8
 #
-# Small program to be installed in e.g. PATH, while real
-# program is in a python package directory and accessible
+# Small program to be installed in a program directory, while real
+# program is in a python package subdirectory and accessible
 # by import -- this version is written for MSWindows and
 # should have suffix .pyw or be interpreted with pythonw.exe.
 #
