@@ -144,9 +144,7 @@ _in_psx = (os.name == 'posix')
 _in_xws = (_in_psx and ('DISPLAY' in os.environ))
 
 # will often need to know whether interpreter is Python 3
-py_v_is_3 = False
-if sys.version_info.major >= 3:
-    py_v_is_3 = True
+py_v_is_3 = (sys.version_info.major >= 3)
 
 if py_v_is_3:
     def p_filt(*args):
