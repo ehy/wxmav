@@ -1613,10 +1613,14 @@ def wr_xpls_file(out, group, do_close = True, put_desc = True):
 
     dat = p_filt(lambda i: i.resname != None, group.data)
 
+    # for errors; optional
+    errf = wx.GetApp().err_msg
+
     num = len(dat) if dat else 0
     ver = 2
 
     if num < 1:
+        errf(_T("Found empty group '{}'").format(group.desc))
         return False
 
     fd.write(_U("[playlist]\n"))
@@ -1637,7 +1641,7 @@ def wr_xpls_file(out, group, do_close = True, put_desc = True):
         try:
             fd.write(_U("File{:d}={}\n").format(n, _U(it.resname)))
         except:
-            print("Python cannot write a file name of unexpected type")
+            errf("Python cannot write file name of unexpected type")
             err_sub += 1
             num -= 1
             continue
@@ -7546,8 +7550,9 @@ class TopWnd(wx.Frame):
             mst = _T(msg)
             if msg[:len(mt)] == mt or msg[:len(ms)] == ms:
                 self.msg_grep = msg
-                print("FRAME do_filter_msg, time {} - msg '{}'".format(
-                    evt_time, msg))
+                self.err_msg(
+                    "FRAME do_filter_msg, time {} - msg '{}'".format(
+                        evt_time, msg))
 
     def do_command_button(self, button_id):
         btn = self.get_obj_by_id(button_id)
