@@ -207,7 +207,8 @@ def wxmav_main(argv = None, x_help_path = None):
 
     app = TheAppClass(ac = len(argv), av = argv)
     app.MainLoop()
-
+    # FPO: not reached
+    return 0
 
 
 """

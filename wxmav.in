@@ -1,8 +1,10 @@
 #! @PYTHON@
+# coding=utf-8
 #
 # Small program to be installed in e.g. PATH, while real
 # program is in a python package directory and accessible
-# by import
+# by import -- this version is written for Unix-like systems
+# that grok the shebang ("#! /path/interpreter").
 #
 # Copyright (C) 2017 Ed Hynan
 #
@@ -23,13 +25,14 @@
 #
 
 _inst_py_dir = r"@pythondir@"
+_x_help_path = r"@XHELPERPATH@"
 
 import sys
 
 if _inst_py_dir != sys.path[0]:
     sys.path.insert(0, _inst_py_dir)
 
-import wxmav_main as _mainmod
+from wxmav_main import wxmav_main
 
 if __name__ == '__main__':
-    _mainmod.wxmav_main(argv = sys.argv, x_help_path = r"@XHELPERPATH@")
+    sys.exit(wxmav_main(argv = sys.argv, x_help_path = _x_help_path))

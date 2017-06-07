@@ -1,8 +1,10 @@
 #! python
+# coding=utf-8
 #
 # Small program to be installed in e.g. PATH, while real
 # program is in a python package directory and accessible
-# by import
+# by import -- this version is written for MSWindows and
+# should have suffix .pyw or be interpreted with pythonw.exe.
 #
 # Copyright (C) 2017 Ed Hynan
 #
@@ -31,7 +33,7 @@ _script_pkgs = os.path.join(_script_dir, 'pkgs')
 
 sys.path.insert(0, _script_pkgs)
 
-import wxmav_main as _mainmod
+from wxmav_main import wxmav_main
 
 if __name__ == '__main__':
-    _mainmod.wxmav_main(argv = sys.argv)
+    sys.exit(wxmav_main(argv = sys.argv))
