@@ -6910,6 +6910,13 @@ class TopWnd(wx.Frame):
         dn, med, des, com, err, lth = self.get_reslist_item_tup()
         nm = _T(des or dn or med)
 
+        # pause hack -- at least w/ gstreamer, this pause
+        # call must happen before the Seek() (below), else
+        # the pause event might not be delivered, and we do
+        # not know our state
+        if self.seek_and_pause_hack > 0:
+            self.medi.Pause()
+
         if self.seek_and_play_hack >= 0:
             seek_pos = self.seek_and_play_hack
             self.seek_and_play_hack = -1
@@ -6932,8 +6939,9 @@ class TopWnd(wx.Frame):
                 # stop event; also, there would be little reason not
                 # to simply stop since position needn't be preserved
                 if seek_op == 1 and seek_pos > 0:
+                    #XXX commented pause, see '# pause hack' above
                     #self.medi_pause()
-                    wx.CallAfter(self.cmd_on_pause, from_user = True)
+                    #wx.CallAfter(self.cmd_on_pause, from_user = True)
                     self.prdbg(_T("HACK: PAUSED pos {}").format(
                                                 seek_pos))
                 elif seek_op == 2 or seek_pos <= 0:
@@ -8107,7 +8115,6 @@ class TopWnd(wx.Frame):
 
     def on_close(self, event):
         wx.GetApp().set_reslist(self.reslist)
-        self.config_wr()
 
         if event.CanVeto():
             rs = wx.MessageBox(
@@ -8120,11 +8127,11 @@ class TopWnd(wx.Frame):
                 self.prdbg(_T("DID Veto 1"))
                 return
 
-            self.cmd_on_stop()
-            self.unload_media(True)
-            self.register_ms_hotkeys(False)
-
             if wx.GetApp().test_exit():
+                self.config_wr()
+                self.cmd_on_stop()
+                self.unload_media(True)
+                self.register_ms_hotkeys(False)
                 self.del_taskbar_object()
                 self.main_timer.Stop()
                 self.Show(False)
@@ -8133,7 +8140,9 @@ class TopWnd(wx.Frame):
                 event.Veto(True)
                 self.prdbg(_T("DID Veto 2"))
         else:
+            self.config_wr()
             self.cmd_on_stop()
+            self.unload_media(True)
             wx.GetApp().test_exit()
             self.register_ms_hotkeys(False)
             self.Show(False)
