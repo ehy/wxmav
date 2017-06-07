@@ -522,7 +522,7 @@ program_devs    = [maintainer_name]
 
 
 """
-some useful standalones
+some useful standalone functions
 """
 
 # make a typical hr:mn:ss string; arg 'tm' must be in milliseconds,
@@ -655,7 +655,7 @@ def fd2linelist(fd,
 
     return flst if wantblanks else p_filt(len, flst)
 
-# get fd from uri -- should catch Exception
+# get fd from uri -- caller should catch Exception
 def uri_open_fd(nm, prx = False):
     fd = None
 
@@ -820,6 +820,8 @@ if have_mutagen:
             return None
 
 
+# return a media tags object -- possibly one that merely
+# fails if tags module was not loaded
 def get_media_tags_obj(fname):
     if have_mutagen:
         return media_tags_mutagen(fname)
@@ -881,7 +883,7 @@ def get_processed_title(tags, tr_wid = 2, tr_sep = '. '):
 """
 
 class AVItem:
-    """Structure for an a/v resourse which, it is hoped,
+    """Structure for an a/v resource which, it is hoped,
     will be found agreeable by the wxMediaCtrl backend in use
     -- all data members are public, use as {l,r}values at will
     """
@@ -927,10 +929,11 @@ def res_lst_to_avitem_lst(lst):
     return [AVItem(desc = i, resname = i)
                 for i in p_filt(len, lst)] if lst else None
 
+# filename suffixes suggesting a known A/V medium file type . . .
 # will always need editing, mostly additions, possibly removals
 av_ext_default = [
     "flac", "shn", "shnf",
-    "ogg", "ogv", "mp3",
+    "ogg", "oga", "ogv", "mp3",
     "mp4", "mpg4", "mpeg4", "mp2", "m4v", "m4a",
     "mpg", "mpeg", "mjpeg", "mjpg", "mpa",
     "webm", "vp8", "vp9",
