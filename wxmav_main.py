@@ -4974,6 +4974,8 @@ class TopWnd(wx.Frame):
         self.vol_cur = 50
 
         # options vars:
+        # query confirmation with message box on quit?
+        self.opt_quit_query = False
         # show the tray/taskbar icon?
         self.opt_tray_icon = True
         # show notification popups
@@ -5802,13 +5804,13 @@ class TopWnd(wx.Frame):
         mctrl.Append(cur, _("L&oop"),
                         _("Play current source in a loop"),
                         wx.ITEM_CHECK)
-        mctrl.Check(self.mctrl_loop, self.loop_track)
+        mctrl.Check(cur, self.loop_track)
         # auto advance to next track and play
         self.mctrl_advance = cur = I()
         mctrl.Append(cur, _("Ad&vance to next"),
                         _("Auto play next track after current"),
                         wx.ITEM_CHECK)
-        mctrl.Check(self.mctrl_advance, self.adv_track)
+        mctrl.Check(cur, self.adv_track)
         # separator
         mctrl.AppendSeparator()
         # play
@@ -5862,24 +5864,32 @@ class TopWnd(wx.Frame):
         # Options menu
         #
         self.mopts = mopts = wx.Menu()
+        # show quit confirm message box?
+        self.mopts_quitquery = cur = I()
+        mopts.Append(cur, _("&Confirm On Quit"),
+                        _("Prompt for confirmation on quitting"),
+                        wx.ITEM_CHECK)
+        mopts.Check(cur, self.opt_quit_query)
+        # separator
+        mopts.AppendSeparator()
         # show taskbar/tray icon?
         self.mopts_trayicon = cur = I()
         mopts.Append(cur, _("Use &Tray Icon"),
                         _("Show or hide the system tray icon and menu"),
                         wx.ITEM_CHECK)
-        mopts.Check(self.mopts_trayicon, self.opt_tray_icon)
+        mopts.Check(cur, self.opt_tray_icon)
         # show notification popups?
         self.mopts_notifymsg = cur = I()
         mopts.Append(cur, _("Notice &Message Popups"),
                         _("Show notification temporary popup messages"),
                         wx.ITEM_CHECK)
-        mopts.Check(self.mopts_notifymsg, self.opt_notifymsg)
+        mopts.Check(cur, self.opt_notifymsg)
         # use proxy for media URI? self.can_use_proxy
         self.mopts_proxy = cur = I()
         mopts.Append(cur, _("Use &URL Proxy"),
                     _("Use a proxy per protocol if available for URLs"),
                         wx.ITEM_CHECK)
-        mopts.Check(self.mopts_proxy, self.can_use_proxy)
+        mopts.Check(cur, self.can_use_proxy)
         # use SetThemeEnabled and handle change event
         self.mopts_themeok = cur = I()
         # theme support: option has no effect in GTK or MSW
@@ -5889,7 +5899,7 @@ class TopWnd(wx.Frame):
             mopts.Append(cur, _("Use Theme &Support"),
                         _("Support desktop theme style changes"),
                             wx.ITEM_CHECK)
-            mopts.Check(self.mopts_themeok, self.theme_support)
+            mopts.Check(cur, self.theme_support)
 
         # add options menu
         mb.Append(mopts, _("&Options"))
@@ -6494,6 +6504,9 @@ class TopWnd(wx.Frame):
         elif i == self.mctrl_last_grp:
             self.cmd_last_grp()
         # Options menu
+        elif i == self.mopts_quitquery:
+            t = self.mopts.IsChecked(self.mopts_quitquery)
+            self.opt_quit_query = t
         elif i == self.mopts_trayicon:
             t = self.mopts.IsChecked(self.mopts_trayicon)
             self.opt_tray_icon = t
@@ -8010,12 +8023,14 @@ class TopWnd(wx.Frame):
         if not config:
             return
 
-        self.can_use_proxy = config.ReadBool(
-                             _T("use_proxy"), self.can_use_proxy)
-        self.opt_tray_icon = config.ReadBool(
+        self.opt_quit_query = config.ReadBool(
+                             _T("do_quitquery"), self.opt_quit_query)
+        self.opt_tray_icon  = config.ReadBool(
                              _T("use_trayicon"), self.opt_tray_icon)
-        self.opt_notifymsg = config.ReadBool(
+        self.opt_notifymsg  = config.ReadBool(
                              _T("use_notifymsg"), self.opt_notifymsg)
+        self.can_use_proxy  = config.ReadBool(
+                             _T("use_proxy"), self.can_use_proxy)
 
         vmap = {
             _T("resource_index") : 0,     # self.media_indice
@@ -8071,6 +8086,8 @@ class TopWnd(wx.Frame):
         config.WriteBool(_T("loop_play"), cur)
         cur = self.mctrl.IsChecked(self.mctrl_advance)
         config.WriteBool(_T("auto_advance"), cur)
+        cur = self.mopts.IsChecked(self.mopts_quitquery)
+        config.WriteBool(_T("do_quitquery"), cur)
         cur = self.mopts.IsChecked(self.mopts_trayicon)
         config.WriteBool(_T("use_trayicon"), cur)
         cur = self.mopts.IsChecked(self.mopts_notifymsg)
@@ -8117,15 +8134,16 @@ class TopWnd(wx.Frame):
         wx.GetApp().set_reslist(self.reslist)
 
         if event.CanVeto():
-            rs = wx.MessageBox(
-                _("Do you really want to quit?"),
-                _("Confirm Quit"),
-                wx.YES_NO | wx.ICON_QUESTION, self)
+            if self.opt_quit_query:
+                rs = wx.MessageBox(
+                    _("Do you really want to quit?"),
+                    _("Confirm Quit"),
+                    wx.YES_NO | wx.ICON_QUESTION, self)
 
-            if rs != wx.YES:
-                event.Veto(True)
-                self.prdbg(_T("DID Veto 1"))
-                return
+                if rs != wx.YES:
+                    event.Veto(True)
+                    self.prdbg(_T("DID Veto 1"))
+                    return
 
             if wx.GetApp().test_exit():
                 self.config_wr()
