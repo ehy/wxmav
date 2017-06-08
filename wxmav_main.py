@@ -7419,7 +7419,8 @@ class TopWnd(wx.Frame):
         it.media_indice = self.media_indice
         it.group_indice = self.group_indice
         it.media_state  = self.get_medi_state()
-        it.media_pos    = self.medi.Tell()
+        it.media_len    = self.medi.Length()
+        it.media_pos    = 0 if (it.media_len < 1) else self.medi.Tell()
 
         if is_redo:
             self.undo_redo.push_redo(it)
