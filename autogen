@@ -1,0 +1,26 @@
+#! /bin/sh
+#
+# Attempt to boot the autoconf system, making the configure
+# script and makefile input template.
+#
+# License inherited from enclosing/including source package.
+#
+
+PROG=${0##*/}
+
+: ${ALLDIRS:="."}
+
+e2 () { printf '%s: %s\n' "$PROG" "$*" 1>&2; }
+fail () { e2 "$@"; exit 1; }
+
+AREC='autoreconf -fiv --no-recursive'
+
+splay () {
+	( cd "$1" && $AREC ) || \
+		fail failed \"$AREC\" in \""$1"\"
+}
+
+for D in $ALLDIRS ; do
+	splay "$D"
+done
+
