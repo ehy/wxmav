@@ -21,6 +21,7 @@ splay () {
 }
 
 for D in $ALLDIRS ; do
-	splay "$D"
+	e2 running \"$AREC\" in \""$D"\"
+    splay "$D"
 done
 
