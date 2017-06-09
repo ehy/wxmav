@@ -2,6 +2,10 @@
 if WITH_X_HELPER
 #bin_PROGRAMS=
 
+wxmav_x_helper_LDADD   =
+wxmav_x_helper_CFLAGS  =
+wxmav_x_helper_LDFLAGS =
+
 # XHELPERNAME is set to wxmav-x-helper with AC_SUBST in configure.ac,
 # but automake cannot take the AC substitution as a value for
 # libexec_PROGRAMS, so the literal reappears here
@@ -9,6 +13,13 @@ libexec_PROGRAMS = wxmav-x-helper
 
 # As above, *_SOURCES requires literals
 wxmav_x_helper_SOURCES = x-aud-key-srv.c aclocal.m4
+
+if USE_GIO2
+wxmav_x_helper_SOURCES+=dbus_gio.c
+wxmav_x_helper_LDADD  += $(GIO2_LIBS)
+wxmav_x_helper_CFLAGS += $(GIO2_CFLAGS)
+wxmav_x_helper_LDFLAGS+= $(GIO2_LDFLAGS)
+endif
 
 if NEED_GETOPT_C
 wxmav_x_helper_SOURCES+=gngetopt.h getopt.c
@@ -23,7 +34,7 @@ endif
 #wxmav_x_helper_CFLAGS = @X_CFLAGS@
 #wxmav_x_helper_LDFLAGS = @X_LIBS@
 
-wxmav_x_helper_LDADD = $(X_PRE_LIBS) $(X_EXTRA_LIBS)
+wxmav_x_helper_LDADD += $(X_PRE_LIBS) $(X_EXTRA_LIBS)
 
 # if WITH_X_HELPER
 endif

@@ -239,6 +239,43 @@ dnl getopt{,_long}
 AM_CONDITIONAL([NEED_GETOPT_C], [test x$ac_cv_func_getopt != xyes && test x$ac_cv_func_getopt != xtrue])
 AM_CONDITIONAL([NEED_GETOPT_LONG_C], [test x$ac_cv_func_getopt_long != xyes && test x$ac_cv_func_getopt_long != xtrue])
 
+dnl check here for gio/dbus and anything else placed in x-helper --
+dnl even if X headers/libs might not be strictly needed.
+dnl
+dnl Now, checks for pkg-config; 1st acoording to comments in
+dnl share/aclocal/pkg.m4, installed by pkgconfig package --
+dnl check version of these macros (for development):
+m4_ifndef([PKG_PREREQ],
+    [m4_fatal([must install pkg-config 0.29 or later before running autoconf/autogen])])
+PKG_PREREQ(0.29)
+dnl Now, set the PKG_CONFIG variable to first in path -- optional
+dnl version arg defaults to 0.9.0
+PKG_PROG_PKG_CONFIG
+if test X = X"$PKG_CONFIG"; then
+    tst_pkgconf_ok=no
+else
+    tst_pkgconf_ok=yes
+fi
+# if $PKG_CONFIG is OK, proceed with further package checks:
+if test X"$tst_pkgconf_ok" = Xyes ; then
+    dnl check gio-2.0 for dbus+glib hacks
+    PKG_CHECK_MODULES([GIO2], [gio-2.0], [
+      AC_CHECK_HEADERS([gio/gio.h], [
+        tst_gio_ok=yes], [
+        tst_gio_ok=no])
+    ],[tst_gio_ok=no])
+    # if gio/dbus is OK
+    if test X"$tst_gio_ok" = Xyes ; then
+    :
+    # else if gio/dbus is OK
+    else
+      AC_MSG_WARN([
+      Cannot use dbus for media keys etc. (if needed: gnome, mate ...)])
+    # end if gio/dbus is OK
+    fi
+# end if X"$tst_pkgconf_ok" = Xyes
+fi
+
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_SIZE_T
@@ -256,6 +293,7 @@ AM_CONDITIONAL([NEED_GETOPT_LONG_C], [test X = Y])
 fi
 
 AM_CONDITIONAL([WITH_X_HELPER], [test X"$no_x" != Xyes])
+AM_CONDITIONAL([USE_GIO2], [test X"$tst_gio_ok" = Xyes])
 
 dnl subdir configures
 dnl AC_CONFIG_SUBDIRS(lib_misc wxmavpkg)

@@ -20,6 +20,8 @@ splay () {
 		fail failed \"$AREC\" in \""$1"\"
 }
 
+rm -rf autom4te.cache
+
 for D in $ALLDIRS ; do
 	e2 running \"$AREC\" in \""$D"\"
     splay "$D"
