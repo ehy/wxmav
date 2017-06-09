@@ -5022,7 +5022,8 @@ class TopWnd(wx.Frame):
         # will set a time (Unix epoch, seconds) to limit the pause
         # condition (non-local) and some sensible behavior can
         # be attempted
-        self.pause_ticks_interval = 60 * 3 # minutes; needs testing
+        # NOTE: tried 3 minutes; n.g., try 2
+        self.pause_ticks_interval = 60 * 2 # minutes; needs testing
         # set at pause event and checked in tick and play handlers
         self.pause_ticks = -1 # -1 == off, 0 == expired, else time
         # long pause seek position, from MediaCtrl.Tell() --
