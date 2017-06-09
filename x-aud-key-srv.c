@@ -38,7 +38,11 @@
 #endif
 
 #include <errno.h>
+#if HAVE_GETOPT_H
 #include <getopt.h>
+#else
+#include "gngetopt.h"
+#endif
 #include <limits.h>
 #include <locale.h>
 #include <poll.h>
@@ -59,6 +63,11 @@
 #endif
 #if HAVE_XSSAVEREXT && HAVE_X11_EXTENSIONS_SCRNSAVER_H
 #include <X11/extensions/scrnsaver.h>
+#endif
+
+/* if configure found glib dbus io support: */
+#if HAVE_GIO20
+#include "dbus_gio.h"
 #endif
 
 /* XDG command line utility for controlling
@@ -167,6 +176,10 @@ grab_new_window(Display *dpy, Window *pwold, Window wnew);
 Bool
 input_and_reply(Display *dpy, Window *pw,
                 int client_in, int client_out);
+Bool
+dbus_proc_relay(int dbus_fd, int client_out);
+Bool
+dbus_proc_relay_write(int client_out, char *msgbuf);
 Window
 window_by_name(Display *dpy, Window top, const char *name);
 /* system(3) with result message */
@@ -563,6 +576,31 @@ client_input(int fd)
 
     /* unexpected or empty input is ignored */
     return GOT_NOISE;
+}
+
+Bool
+dbus_proc_relay(int dbus_fd, int client_out)
+{
+    char buf[MAX_LINEIN_SIZE];
+
+    if ( input_line(dbus_fd, buf, sizeof(buf)) < 0 ) {
+        return False;
+    }
+
+    return dbus_proc_relay_write(client_out, buf);
+}
+
+Bool
+dbus_proc_relay_write(int client_out, char *msgbuf)
+{
+    char buf[MAX_LINEIN_SIZE];
+    int  l;
+
+    l = snprintf(buf, sizeof(buf), "dbus:%s\n", msgbuf);
+
+    TERMINATE_CHARBUF(buf, l);
+
+    return client_output_str(client_out, buf) > 0 ? True : False;
 }
 
 Bool
@@ -1188,8 +1226,10 @@ ssave_disable(Display *dpy)
  * - client out
  * - X connection descriptor
  * - signal pipe hack read end
+ * - dbus handler coprocess (when available)
  */
-#define _POLL_FD_CNT 4
+#define _POLL_FD_CNT 5
+#define DBUS_PROC_POLL_IDX 4
 struct pollfd poll_fds[_POLL_FD_CNT];
 nfds_t poll_fds_idx;
 
@@ -1240,6 +1280,84 @@ check_poll_data_error(void)
 }
 
 
+/* these are associated with macro HAVE_GIO20,
+ * but define them for unconditional use
+ */
+int dbus_proc_status = -1;
+int dbus_fd = -1;
+#if HAVE_GIO20
+dbus_proc_out dbus_out;
+dbus_proc_in  dbus_in;
+#ifndef DBUS_PROC_QUIT_SIG
+#define DBUS_PROC_QUIT_SIG SIGQUIT
+#endif
+#endif /* HAVE_GIO20 */
+
+static int
+do_dbus_proc(void)
+{
+#if HAVE_GIO20
+    dbus_in.quit_sig = DBUS_PROC_QUIT_SIG;
+    dbus_in.def_sig  = common_signals;
+    dbus_in.num_sig  = A_SIZE(common_signals);
+    dbus_in.fd_wr    = -1;
+    dbus_in.progname = prog;
+
+    dbus_proc_status = start_dbus_gio_proc(&dbus_in, &dbus_out);
+    /* assignment will be -1 on error, check not needed */
+    dbus_fd = dbus_out.fd_rd;
+#endif /* HAVE_GIO20 */
+
+    return dbus_proc_status;
+}
+
+static int
+collect_dbus_proc(void)
+{
+#if HAVE_GIO20
+    int p, st;
+
+    if ( dbus_fd >= 0 ) {
+        close(dbus_fd);
+    }
+
+    if ( dbus_proc_status ) {
+        return 1;
+    }
+
+    p = waitpid(dbus_out.proc_pid, &st, WNOHANG);
+    if ( ! p ) {
+        st = kill(dbus_out.proc_pid, DBUS_PROC_QUIT_SIG);
+        if ( st ) {
+            /* give up */
+            return 1;
+        }
+
+        p = waitpid(dbus_out.proc_pid, &st, 0);
+        if ( ! p ) {
+            /* gone already */
+            return 1;
+        }
+    }
+
+    if ( WIFSIGNALED(st) ) {
+        /* OK */
+        return WTERMSIG(st);
+    }
+
+    if ( ! WIFEXITED(st) ) {
+        /* WTF */
+        return 1;
+    }
+
+    return WEXITSTATUS(st);
+#else  /* HAVE_GIO20 */
+
+    return 1;
+#endif /* HAVE_GIO20 */
+}
+
+
 int
 main(int argc, char **argv)
 {
@@ -1247,7 +1365,7 @@ main(int argc, char **argv)
     Window            w;
     XEvent            ev;
     int               client_in, client_out;
-    int               c, dpy_fd;
+    int               c, dpy_fd, poll_err_fd;
     const char        *display = NULL, *byname = NULL;
     int               (*orig_err)(Display *, XErrorEvent *);
 
@@ -1376,6 +1494,8 @@ main(int argc, char **argv)
 
     KEY_SETUP(dpy, w);
 
+    c = do_dbus_proc();
+
     for (;;) {
         const char *key_str = NULL;
         Bool got_one = False;
@@ -1409,10 +1529,27 @@ main(int argc, char **argv)
         ADD_POLL_RD(PIPE_RFD);
         ADD_POLL_RD(-1);
         ADD_POLL_WR(client_out);
+        ADD_POLL_RD(dbus_fd); /* might be -1, which is OK */
         DO_POLL_NOW(c, 0);
 
-        if ( got_common_signal || check_poll_data_error() ) {
+        if ( got_common_signal ) {
             break;
+        }
+        if ( (poll_err_fd = check_poll_data_error()) != 0 ) {
+            poll_err_fd--;
+            if ( poll_err_fd == dbus_fd ) {
+                close(dbus_fd);
+                dbus_fd = -1;
+                fprintf(stderr, "%s: error dbus coprocess\n", prog);
+            } else {
+                break;
+            }
+        }
+
+        if ( c > 0 && poll_fds[DBUS_PROC_POLL_IDX].revents & POLLIN ) {
+            if ( ! dbus_proc_relay(dbus_fd, client_out) ) {
+                break;
+            }
         }
 
         if ( c > 0 && (poll_fds[0].revents & POLLIN) ) {
@@ -1433,14 +1570,31 @@ main(int argc, char **argv)
         ADD_POLL_RD(PIPE_RFD);
         ADD_POLL_RD(dpy_fd);
         ADD_POLL_WR(key_str == NULL ? -1 : client_out);
+        ADD_POLL_RD(dbus_fd); /* might be -1, which is OK */
         DO_POLL_NOW(c, -1);
 
-        if ( got_common_signal || check_poll_data_error() ) {
+        if ( got_common_signal ) {
             break;
+        }
+        if ( (poll_err_fd = check_poll_data_error()) != 0 ) {
+            poll_err_fd--;
+            if ( poll_err_fd == dbus_fd ) {
+                close(dbus_fd);
+                dbus_fd = -1;
+                fprintf(stderr, "%s: error dbus coprocess\n", prog);
+            } else {
+                break;
+            }
         }
 
         if ( c < 1 ) {
             continue;
+        }
+
+        if ( poll_fds[DBUS_PROC_POLL_IDX].revents & POLLIN ) {
+            if ( ! dbus_proc_relay(dbus_fd, client_out) ) {
+                break;
+            }
         }
 
         if ( poll_fds[0].revents & POLLIN ) {
@@ -1464,6 +1618,8 @@ main(int argc, char **argv)
             }
         }
     } /* end for (;;) */
+
+    c = collect_dbus_proc();
 
     ssave_enable();
     XSetErrorHandler(orig_err);

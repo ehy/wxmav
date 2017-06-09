@@ -23,6 +23,10 @@ export ACCEPT_INFERIOR_RM_PROGRAM
 
 AM_INIT_AUTOMAKE([-Wall -Werror])
 
+dnl autoheader template, macro indication of pkg-config gio-2.0
+AH_TEMPLATE([HAVE_GIO20], [Define if pkg-config --cflags gio-2.0,
+    pkg-config --libs gio-2.0 succeed])
+
 dnl create a config.h file (Automake will add -DHAVE_CONFIG_H)
 AC_CONFIG_HEADERS(config.h)
 
@@ -260,9 +264,8 @@ fi
 if test X"$tst_pkgconf_ok" = Xyes ; then
     dnl check gio-2.0 for dbus+glib hacks
     PKG_CHECK_MODULES([GIO2], [gio-2.0], [
-      AC_CHECK_HEADERS([gio/gio.h], [
-        tst_gio_ok=yes], [
-        tst_gio_ok=no])
+      AC_DEFINE([HAVE_GIO20], [1])
+      tst_gio_ok=yes
     ],[tst_gio_ok=no])
     # if gio/dbus is OK
     if test X"$tst_gio_ok" = Xyes ; then
