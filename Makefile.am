@@ -15,7 +15,7 @@ libexec_PROGRAMS = wxmav-x-helper
 wxmav_x_helper_SOURCES = x-aud-key-srv.c aclocal.m4
 
 if USE_GIO2
-wxmav_x_helper_SOURCES+=dbus_gio.c
+wxmav_x_helper_SOURCES+= dbus_gio.h dbus_gio.c
 wxmav_x_helper_LDADD  += $(GIO2_LIBS)
 wxmav_x_helper_CFLAGS += $(GIO2_CFLAGS)
 wxmav_x_helper_LDFLAGS+= $(GIO2_LDFLAGS)
