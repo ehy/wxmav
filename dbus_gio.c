@@ -52,10 +52,13 @@
  * (system signal, not glib)
  */
 volatile sig_atomic_t got_quit_signal = 0;
-int glib_set_signal = SIGTERM;
 static void
 handle_quit_signal(int s);
-/* signal handler for glib signals */
+/* signal handler for glib (app arbitrary) quit signals */
+int glib_quit_signal = SIGTERM;
+static void
+on_glib_quit_signal(gpointer user_data);
+/* signal handler for glib signals (i.e., callback) */
 static void
 on_glib_signal(GDBusProxy *proxy,
                gchar      *sender_name,
@@ -67,7 +70,7 @@ static int
 dbus_gio_main(const char *prog);
 
 
-/* EXTERNAL:
+/* EXTERNAL API:
  * start (fork) coprocess to handle glib2 gio loop for
  * dbus signals (e.g., keys that some X desktop envs grab
  * and dole out through dbus)
@@ -87,6 +90,9 @@ start_dbus_gio_proc(const dbus_proc_in *in, dbus_proc_out *out)
         return -1;
     }
 
+    /* pipe write end may be set by caller,
+     * but if it is not, pipe is made here
+     */
     if ( in->fd_wr < 0 ) {
         int s;
 
@@ -110,7 +116,7 @@ start_dbus_gio_proc(const dbus_proc_in *in, dbus_proc_out *out)
     } else if ( out->proc_pid < 0 ) {
         out->err_no = errno;
 
-        if ( p[0] > 0 ) {
+        if ( p[0] >= 0 || p[1] >= 0 ) {
             close(p[0]);
             close(p[1]);
             out->fd_rd = -1;
@@ -126,7 +132,7 @@ start_dbus_gio_proc(const dbus_proc_in *in, dbus_proc_out *out)
     }
 
     if ( in->quit_sig == SIGTERM ) {
-        glib_set_signal = SIGINT;
+        glib_quit_signal = SIGINT;
     }
 
     if ( in->quit_sig > 0 ) {
@@ -175,12 +181,22 @@ handle_quit_signal(int s)
     /* for form, or future */
     got_quit_signal = s;
 
-    /* not working: */
-    kill(getpid(), glib_set_signal);
-    _exit(1);
+    /* this is working with on_glib_quit_signal() below */
+    kill(getpid(), glib_quit_signal);
+    /* need to exit unless it is possible to
+     * interrupt the glib main loop
+     * _exit(1); */
 }
 
 const gchar *signal_wanted = "MediaPlayerKeyPressed";
+
+/* signal handler for glib (app arbitrary) quit signals */
+static void
+on_glib_quit_signal(gpointer user_data)
+{
+    GMainLoop *loop = (GMainLoop *)user_data;
+    g_main_loop_quit(loop);
+}
 
 /* signal handler for glib signals */
 static void
@@ -190,10 +206,10 @@ on_glib_signal(GDBusProxy *proxy,
                GVariant   *params,
                gpointer    user_data)
 {
-    size_t len;
+    size_t  len;
     ssize_t wret, tot;
-    gchar  *param_str = NULL;
-    int fd = (int)(ptrdiff_t)user_data;
+    gchar   *param_str = NULL;
+    int     fd = (int)(ptrdiff_t)user_data;
 
     if ( strcasecmp(signal_wanted, signal_name) ) {
         return;
@@ -249,11 +265,14 @@ on_glib_signal(GDBusProxy *proxy,
 #define _PUT_DBUS_PATH_ETC(v) { \
      "org." v ".SettingsDaemon", \
     "/org/" v "/SettingsDaemon/MediaKeys", \
-     "org." v ".SettingsDaemon.MediaKeys" }
+     "org." v ".SettingsDaemon.MediaKeys", \
+            v \
+    }
 struct {
     const gchar *m1;
     const gchar *m2;
     const gchar *m3;
+    const  char *nm;
 } path_attempts[] = {
     _PUT_DBUS_PATH_ETC("xfce"),
     _PUT_DBUS_PATH_ETC("unity"),
@@ -274,7 +293,7 @@ dbus_gio_main(const char *prog)
     GError          *error = NULL;
 
     int dt_idx = -1;
-    int outfd = 1; /* standard output */
+    int outfd  =  1; /* standard output */
 
     loop = g_main_loop_new(NULL, FALSE);
     if ( loop == NULL ) {
@@ -296,7 +315,7 @@ dbus_gio_main(const char *prog)
         if ( error || proxy == NULL ) {
             if ( prog ) {
                 fprintf(stderr, "%s: failed proxy for '%s'\n",
-                    prog, path_attempts[i].m2);
+                    prog, path_attempts[i].nm);
             }
             proxy_all[i] = NULL;
             continue;
@@ -315,7 +334,8 @@ dbus_gio_main(const char *prog)
               NULL, NULL, NULL);
     }
 
-    g_unix_signal_source_new(glib_set_signal);
+    g_unix_signal_add(glib_quit_signal, on_glib_quit_signal,
+                      (gpointer)loop);
 
     g_main_loop_run(loop);
 
@@ -329,7 +349,7 @@ dbus_gio_main(const char *prog)
         }
 
         g_dbus_proxy_call(proxy, "ReleaseMediaPlayerKeys",
-                   g_variant_new("(ss)", "wxmav", 0),
+                   g_variant_new("(su)", "wxmav", 0),
                    G_DBUS_CALL_FLAGS_NO_AUTO_START,
                    -1,
                    NULL, NULL, NULL);
