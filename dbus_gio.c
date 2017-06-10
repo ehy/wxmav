@@ -36,6 +36,7 @@
 #include <unistd.h>
 
 #include <gio/gio.h>
+#include <glib-unix.h>
 
 #include "dbus_gio.h"
 
@@ -54,7 +55,7 @@ static void
 handle_quit_signal(int s);
 /* signal handler for glib (app arbitrary) quit signals */
 int glib_quit_signal = SIGTERM;
-static void
+static gboolean
 on_glib_quit_signal(gpointer user_data);
 /* signal handler for glib signals (i.e., callback) */
 static void
@@ -189,11 +190,12 @@ handle_quit_signal(int s)
 const gchar *signal_wanted = "MediaPlayerKeyPressed";
 
 /* signal handler for glib (app arbitrary) quit signals */
-static void
+static gboolean
 on_glib_quit_signal(gpointer user_data)
 {
     GMainLoop *loop = (GMainLoop *)user_data;
     g_main_loop_quit(loop);
+    return TRUE;
 }
 
 /* signal handler for glib signals */
