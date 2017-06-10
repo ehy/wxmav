@@ -253,8 +253,14 @@ on_glib_signal(GDBusProxy *proxy,
      * UPDATE: docs at glib site,
      *     https://developer.gnome.org/glib/stable/glib-GVariant.html
      * do not say that return should be g_free()'d.
+     * UPDATE: docs at
+     *     https://developer.gnome.org/glib/stable/
+     *      gvariant-format-strings.html
+     * state that g_variant_get with format "s" returns alloc'd
+     * string that should be g_free()'d (g_variant_get_child
+     * uses g_variant_get)
      */
-    /* g_free(param_str); */
+    g_free(param_str);
 }
 
 #define _PUT_DBUS_PATH_ETC(v) { \
