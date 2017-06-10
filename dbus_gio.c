@@ -68,7 +68,6 @@ on_glib_signal(GDBusProxy *proxy,
 static int
 dbus_gio_main(const char *prog);
 
-
 /* EXTERNAL API:
  * start (fork) coprocess to handle glib2 gio loop for
  * dbus signals (e.g., keys that some X desktop envs grab
@@ -187,8 +186,6 @@ handle_quit_signal(int s)
      * _exit(1); */
 }
 
-const gchar *signal_wanted = "MediaPlayerKeyPressed";
-
 /* signal handler for glib (app arbitrary) quit signals */
 static gboolean
 on_glib_quit_signal(gpointer user_data)
@@ -197,6 +194,8 @@ on_glib_quit_signal(gpointer user_data)
     g_main_loop_quit(loop);
     return TRUE;
 }
+
+const gchar *signal_wanted = "MediaPlayerKeyPressed";
 
 /* signal handler for glib signals */
 static void
@@ -315,7 +314,7 @@ dbus_gio_main(const char *prog)
             NULL, /* GCancellable */
             &error);
 
-        if ( error || proxy == NULL ) {
+        if ( error != NULL || proxy == NULL ) {
             if ( prog != NULL ) {
                 fprintf(stderr, "%s: failed proxy for '%s'\n",
                         prog, path_attempts[i].nm);
