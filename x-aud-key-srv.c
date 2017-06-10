@@ -1628,8 +1628,10 @@ main(int argc, char **argv)
 
     if ( got_common_signal ) {
         fprintf(stderr,
-            "%s: exiting on signal %d\n",
+            "%s: caught and re-raising signal %d\n",
             prog, (int)got_common_signal);
+        signal((int)got_common_signal, SIG_DFL);
+        raise((int)got_common_signal);
     }
 
     return 0;
