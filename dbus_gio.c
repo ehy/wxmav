@@ -269,10 +269,12 @@ struct {
     const gchar *m3;
     const  char *nm;
 } path_attempts[] = {
-    _PUT_DBUS_PATH_ETC("xfce"),
-    _PUT_DBUS_PATH_ETC("unity"),
-    _PUT_DBUS_PATH_ETC("mate"),
-    _PUT_DBUS_PATH_ETC("gnome")
+    _PUT_DBUS_PATH_ETC("freedesktop"), /* found in xdg-screensaver */
+    _PUT_DBUS_PATH_ETC("xfce"),        /* just a guess */
+    _PUT_DBUS_PATH_ETC("unity"),       /* just a guess */
+    _PUT_DBUS_PATH_ETC("mate"),        /* found in xdg-screensaver */
+    _PUT_DBUS_PATH_ETC("cinnamon"),    /* found in xdg-screensaver */
+    _PUT_DBUS_PATH_ETC("gnome")        /* found in xdg-screensaver */
 };
 
 GDBusProxy *proxy_all[A_SIZE(path_attempts)];
