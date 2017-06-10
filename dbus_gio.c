@@ -43,10 +43,16 @@
 #define EWOULDBLOCK EAGAIN
 #endif
 
+#ifdef A_SIZE
+#undef A_SIZE
+#endif
+#define A_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
 /* signal handler for specified quit signal,
  * (system signal, not glib)
  */
 volatile sig_atomic_t got_quit_signal = 0;
+int glib_set_signal = SIGTERM;
 static void
 handle_quit_signal(int s);
 /* signal handler for glib signals */
@@ -119,6 +125,10 @@ start_dbus_gio_proc(const dbus_proc_in *in, dbus_proc_out *out)
         signal(in->def_sig[i], SIG_DFL);
     }
 
+    if ( in->quit_sig == SIGTERM ) {
+        glib_set_signal = SIGINT;
+    }
+
     if ( in->quit_sig > 0 ) {
         signal(in->quit_sig, handle_quit_signal);
     }
@@ -164,27 +174,43 @@ handle_quit_signal(int s)
 {
     /* for form, or future */
     got_quit_signal = s;
+
+    /* not working: */
+    kill(getpid(), glib_set_signal);
     _exit(1);
 }
+
+const gchar *signal_wanted = "MediaPlayerKeyPressed";
 
 /* signal handler for glib signals */
 static void
 on_glib_signal(GDBusProxy *proxy,
                gchar      *sender_name,
                gchar      *signal_name,
-               GVariant   *parameters,
+               GVariant   *params,
                gpointer    user_data)
 {
-    gchar *param_str;
     size_t len;
-    ssize_t wret, tot = 0;
-    int   fd = (int)(ptrdiff_t)user_data;
+    ssize_t wret, tot;
+    gchar  *param_str = NULL;
+    int fd = (int)(ptrdiff_t)user_data;
 
-    param_str = g_variant_print(parameters, TRUE);
+    if ( strcasecmp(signal_wanted, signal_name) ) {
+        return;
+    }
+
+    g_variant_get_child(params, 1, "s", &param_str);
+
+    if ( param_str == NULL ) {
+        return;
+    }
+
     len = strlen(param_str);
 
-    /* g_print("%s: %s\n", signal_name, param_str); */
-    for (;;) {
+    /*fprintf(stderr, "SIG: sender='%s', signal='%s' str='%s'\n",
+        sender_name, signal_name, (char*)param_str);
+    */
+    for ( tot = 0;; ) {
         wret = write(fd, param_str + tot, len - tot);
         if ( wret < 0 ) {
             if ( errno != EINTR ) {
@@ -203,125 +229,112 @@ on_glib_signal(GDBusProxy *proxy,
             } else {
                 _exit(1);
             }
-        } else {
-            break;
         }
+
+        break;
     }
 
-    g_free(param_str);
+    /*
+     * glib headers do not document whether an alloc'd string is
+     * returned by g_variant_get_child, but that makes the most
+     * sense, particularly since that funk takes a format arg.
+     * TODO: find docs and confirm.
+     * UPDATE: docs at glib site,
+     *     https://developer.gnome.org/glib/stable/glib-GVariant.html
+     * do not say that return should be g_free()'d.
+     */
+    /* g_free(param_str); */
 }
+
+#define _PUT_DBUS_PATH_ETC(v) { \
+     "org." v ".SettingsDaemon", \
+    "/org/" v "/SettingsDaemon/MediaKeys", \
+     "org." v ".SettingsDaemon.MediaKeys" }
+struct {
+    const gchar *m1;
+    const gchar *m2;
+    const gchar *m3;
+} path_attempts[] = {
+    _PUT_DBUS_PATH_ETC("xfce"),
+    _PUT_DBUS_PATH_ETC("unity"),
+    _PUT_DBUS_PATH_ETC("mate"),
+    _PUT_DBUS_PATH_ETC("gnome")
+};
+
+GDBusProxy *proxy_all[A_SIZE(path_attempts)];
 
 /* main procedure for dbus gio coprocess */
 static int
 dbus_gio_main(const char *prog)
 {
+    size_t          i;
     GDBusProxy      *proxy;
-    GDBusProxyFlags flags;
-    GMainLoop       *loop = NULL;
+    GDBusProxyFlags flags  = 0;
+    GMainLoop       *loop  = NULL;
     GError          *error = NULL;
 
     int dt_idx = -1;
     int outfd = 1; /* standard output */
 
     loop = g_main_loop_new(NULL, FALSE);
+    if ( loop == NULL ) {
+        return 1;
+    }
 
-    proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
-        flags,
-        NULL, /* GDBusInterfaceInfo */
-        "org.xfce.SettingsDaemon",
-        "/org/xfce/SettingsDaemon/MediaKeys",
-        "org.xfce.SettingsDaemon.MediaKeys",
-        NULL, /* GCancellable */
-        &error);
-
-    if ( error ) {
-        if ( prog ) {
-            fprintf(stderr, "%s: failed proxy 'xfce'\n",
-                prog);
-        }
-
+    for ( i = 0; i < A_SIZE(path_attempts); i++ ) {
         error = NULL;
+
         proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
             flags,
             NULL, /* GDBusInterfaceInfo */
-            "org.mate.SettingsDaemon",
-            "/org/mate/SettingsDaemon/MediaKeys",
-            "org.mate.SettingsDaemon.MediaKeys",
+            path_attempts[i].m1,
+            path_attempts[i].m2,
+            path_attempts[i].m3,
             NULL, /* GCancellable */
             &error);
 
-        if ( error ) {
+        if ( error || proxy == NULL ) {
             if ( prog ) {
-                fprintf(stderr, "%s: failed proxy 'mate'\n",
-                    prog);
+                fprintf(stderr, "%s: failed proxy for '%s'\n",
+                    prog, path_attempts[i].m2);
             }
-
-            error = NULL;
-            proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
-                flags,
-                NULL, /* GDBusInterfaceInfo */
-                "org.gnome.SettingsDaemon",
-                "/org/gnome/SettingsDaemon/MediaKeys",
-                "org.gnome.SettingsDaemon.MediaKeys",
-                NULL, /* GCancellable */
-                &error);
-
-            if ( error ) {
-                if ( prog ) {
-                    fprintf(stderr, "%s: failed gnome dbus, exiting\n",
-                        prog);
-                }
-                _exit(1);
-            } else {
-                dt_idx = 2;
-            }
-        } else {
-            dt_idx = 2;
+            proxy_all[i] = NULL;
+            continue;
         }
-    } else {
-        dt_idx = 1;
+
+        proxy_all[i] = proxy;
+
+        g_signal_connect(proxy, "g-signal",
+                        G_CALLBACK(on_glib_signal),
+                        (gpointer)(ptrdiff_t)outfd);
+
+        g_dbus_proxy_call(proxy, "GrabMediaPlayerKeys",
+              g_variant_new("(su)", "wxmav", 0),
+              G_DBUS_CALL_FLAGS_NO_AUTO_START,
+              -1,
+              NULL, NULL, NULL);
     }
 
-    g_signal_connect(proxy, "g-signal",
-                    G_CALLBACK(on_glib_signal),
-                    (gpointer)(ptrdiff_t)outfd);
-
-    g_dbus_proxy_call(proxy, "GrabMediaPlayerKeys",
-          g_variant_new("(su)", "wxmav", 0),
-          G_DBUS_CALL_FLAGS_NO_AUTO_START,
-          -1,
-          NULL, NULL, NULL);
+    g_unix_signal_source_new(glib_set_signal);
 
     g_main_loop_run(loop);
 
-    /* out: (Release may not be necessary) */
-    g_dbus_proxy_call(proxy, "ReleaseMediaPlayerKeys",
-               g_variant_new("(s)", "ExampleCCode"),
-               G_DBUS_CALL_FLAGS_NO_AUTO_START,
-               -1,
-               NULL, NULL, NULL);
+    g_main_loop_unref(loop);
 
-    if ( proxy != NULL ) {
+    for ( i = 0; i < A_SIZE(path_attempts); i++ ) {
+        proxy = proxy_all[i];
+
+        if ( proxy == NULL ) {
+            continue;
+        }
+
+        g_dbus_proxy_call(proxy, "ReleaseMediaPlayerKeys",
+                   g_variant_new("(ss)", "wxmav", 0),
+                   G_DBUS_CALL_FLAGS_NO_AUTO_START,
+                   -1,
+                   NULL, NULL, NULL);
+
         g_object_unref(proxy);
-    }
-
-    if ( loop != NULL ) {
-        g_main_loop_unref(loop);
-    }
-
-    switch ( dt_idx ) {
-    case 1:
-        g_free("org.xfce.SettingsDaemon");
-        g_free("/org/xfce/SettingsDaemon/MediaKeys");
-        g_free("org.xfce.SettingsDaemon.MediaKeys");
-    case 2:
-        g_free("org.mate.SettingsDaemon");
-        g_free("/org/mate/SettingsDaemon/MediaKeys");
-        g_free("org.mate.SettingsDaemon.MediaKeys");
-    case 3:
-        g_free("org.gnome.SettingsDaemon");
-        g_free("/org/gnome/SettingsDaemon/MediaKeys");
-        g_free("org.gnome.SettingsDaemon.MediaKeys");
     }
 
     return 0;
