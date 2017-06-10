@@ -236,7 +236,6 @@ volatile sig_atomic_t got_common_signal = 0;
 
 int common_signals[] = {
     SIGHUP, SIGINT, /* leave this alone: SIGQUIT, */
-    SIGTERM,
     /* SIGPIPE, client gone, but does Xlib want this? */
     SIGTERM, SIGUSR1, SIGUSR2
 };

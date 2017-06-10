@@ -2299,7 +2299,7 @@ elif _in_xws:
 
     class XWSHelperProcClass:
         common_signals = [
-            signal.SIGHUP, signal.SIGINT, signal.SIGQUIT,
+            signal.SIGHUP, signal.SIGINT, # leave out: signal.SIGQUIT,
             signal.SIGTERM, signal.SIGUSR1, signal.SIGUSR2
         ]
 
@@ -8225,23 +8225,25 @@ class TopWnd(wx.Frame):
             return
 
         p = _T("Audio")
+        q = _T("dbus:")
         l = len(p)
-        if dat[0:l] != p:
+        pfx = dat[0:l]
+        if pfx != p and pfx != q:
             self.prdbg(_T("CHILD STDOUT '{}'").format(_T(dat.rstrip())))
             return
 
-        c = dat[l:].rstrip()
+        c = dat[l:].rstrip().lower()
 
         # might not get pause, if play is a toggle -- see handlers
-        if c == _T("Play"):
+        if c == _T("play"):
             self.do_command_button(self.id_play)
-        elif c == _T("Prev"):
+        elif c == _T("prev") or c == _T("previous"):
             self.do_command_button(self.id_prev)
-        elif c == _T("Next"):
+        elif c == _T("next"):
             self.do_command_button(self.id_next)
-        elif c == _T("Stop"):
+        elif c == _T("stop"):
             self.do_command_button(self.id_stop)
-        elif c == _T("Pause"):
+        elif c == _T("pause"):
             self.do_command_button(self.id_play)
 
 
