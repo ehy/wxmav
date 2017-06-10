@@ -356,6 +356,17 @@ dbus_gio_main(const char *prog)
         g_object_unref(proxy);
     }
 
+    /* if got quit signal (got_quit_signal), reraise */
+    if ( got_quit_signal ) {
+        if ( prog != NULL ) {
+            fprintf(stderr,
+                "%s (dbus coproc): caught and re-raising signal %d\n",
+                prog, (int)got_quit_signal);
+        }
+        signal((int)got_quit_signal, SIG_DFL);
+        raise((int)got_quit_signal);
+    }
+
     return 0;
 }
 
