@@ -235,7 +235,8 @@ struct {
 volatile sig_atomic_t got_common_signal = 0;
 
 int common_signals[] = {
-    SIGHUP, SIGINT, SIGQUIT,
+    SIGHUP, SIGINT, /* leave this alone: SIGQUIT, */
+    SIGTERM,
     /* SIGPIPE, client gone, but does Xlib want this? */
     SIGTERM, SIGUSR1, SIGUSR2
 };
@@ -1289,7 +1290,7 @@ int dbus_fd = -1;
 dbus_proc_out dbus_out;
 dbus_proc_in  dbus_in;
 #ifndef DBUS_PROC_QUIT_SIG
-#define DBUS_PROC_QUIT_SIG SIGQUIT
+#define DBUS_PROC_QUIT_SIG SIGINT
 #endif
 #endif /* HAVE_GIO20 */
 
