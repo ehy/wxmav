@@ -43,9 +43,7 @@
 #define EWOULDBLOCK EAGAIN
 #endif
 
-#ifdef A_SIZE
 #undef A_SIZE
-#endif
 #define A_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 /* signal handler for specified quit signal,
@@ -78,8 +76,8 @@ dbus_gio_main(const char *prog);
 int
 start_dbus_gio_proc(const dbus_proc_in *in, dbus_proc_out *out)
 {
-    int p[2] = {-1, -1};
-    int dn, fd_wr;
+    int    p[2] = {-1, -1};
+    int    dn, fd_wr;
     size_t i;
 
     out->fd_rd = -1;
@@ -223,9 +221,6 @@ on_glib_signal(GDBusProxy *proxy,
 
     len = strlen(param_str);
 
-    /*fprintf(stderr, "SIG: sender='%s', signal='%s' str='%s'\n",
-        sender_name, signal_name, (char*)param_str);
-    */
     for ( tot = 0;; ) {
         wret = write(fd, param_str + tot, len - tot);
         if ( wret < 0 ) {
@@ -291,9 +286,7 @@ dbus_gio_main(const char *prog)
     GDBusProxyFlags flags  = 0;
     GMainLoop       *loop  = NULL;
     GError          *error = NULL;
-
-    int dt_idx = -1;
-    int outfd  =  1; /* standard output */
+    int             outfd  = 1; /* standard output */
 
     loop = g_main_loop_new(NULL, FALSE);
     if ( loop == NULL ) {
@@ -313,9 +306,9 @@ dbus_gio_main(const char *prog)
             &error);
 
         if ( error || proxy == NULL ) {
-            if ( prog ) {
+            if ( prog != NULL ) {
                 fprintf(stderr, "%s: failed proxy for '%s'\n",
-                    prog, path_attempts[i].nm);
+                        prog, path_attempts[i].nm);
             }
             proxy_all[i] = NULL;
             continue;
@@ -324,14 +317,13 @@ dbus_gio_main(const char *prog)
         proxy_all[i] = proxy;
 
         g_signal_connect(proxy, "g-signal",
-                        G_CALLBACK(on_glib_signal),
-                        (gpointer)(ptrdiff_t)outfd);
+                         G_CALLBACK(on_glib_signal),
+                         (gpointer)(ptrdiff_t)outfd);
 
         g_dbus_proxy_call(proxy, "GrabMediaPlayerKeys",
-              g_variant_new("(su)", "wxmav", 0),
-              G_DBUS_CALL_FLAGS_NO_AUTO_START,
-              -1,
-              NULL, NULL, NULL);
+                          g_variant_new("(su)", "wxmav", 0),
+                          G_DBUS_CALL_FLAGS_NO_AUTO_START,
+                          -1, NULL, NULL, NULL);
     }
 
     g_unix_signal_add(glib_quit_signal, on_glib_quit_signal,
@@ -349,10 +341,9 @@ dbus_gio_main(const char *prog)
         }
 
         g_dbus_proxy_call(proxy, "ReleaseMediaPlayerKeys",
-                   g_variant_new("(su)", "wxmav", 0),
-                   G_DBUS_CALL_FLAGS_NO_AUTO_START,
-                   -1,
-                   NULL, NULL, NULL);
+                          g_variant_new("(su)", "wxmav", 0),
+                          G_DBUS_CALL_FLAGS_NO_AUTO_START,
+                          -1, NULL, NULL, NULL);
 
         g_object_unref(proxy);
     }

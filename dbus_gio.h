@@ -33,13 +33,12 @@ typedef struct dbus_gio_proc_data_in {
     int     quit_sig; /* if > 0 handle this signal as quit command */
     int     *def_sig; /* signals to be set to default */
     size_t  num_sig;  /* count in def_sig */
-    int     fd_wr;    /* for proc stdout, if < 0 */
-                      /* then pipe() is called and read ends */
-                      /* are put in dbus_gio_proc_data_out.fd_rd */
-                      /* and dbus_gio_proc_data_out.fd_wr */
-                      /* (else they will be -1) */
+    int     fd_wr;    /* for proc stdout; if < 0 */
+                      /* then pipe() is called and read end */
+                      /* is put in dbus_gio_proc_data_out.fd_rd */
+                      /* (else it will be -1) */
     const
-    char    *progname;/* for error messages on stderr; */
+    char    *progname;/* for info messages on stderr; */
                       /* if NULL, no messages */
 } dbus_proc_in;
 
