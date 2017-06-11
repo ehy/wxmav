@@ -9,4 +9,4 @@ Comment=Play video and audio files and URLs
 TryExec=wxmav
 Exec=wxmav %U
 Icon=wxmav
-Categories=AudioVideo;Sound;Audio;Video;Multimedia;X-MandrivaLinux-Multimedia-Video;
+Categories=AudioVideo;Sound;Audio;Music;Video;Multimedia;X-MandrivaLinux-Multimedia-Video;
