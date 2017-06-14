@@ -12,7 +12,7 @@ wxmav_x_helper_LDFLAGS =
 libexec_PROGRAMS = wxmav-x-helper
 
 # As above, *_SOURCES requires literals
-wxmav_x_helper_SOURCES = x-aud-key-srv.c aclocal.m4
+wxmav_x_helper_SOURCES = x-aud-key-srv.c x-aud-key-srv.h aclocal.m4
 
 if USE_GIO2
 wxmav_x_helper_SOURCES+= dbus_gio.h dbus_gio.c
