@@ -38,19 +38,16 @@
 #include <gio/gio.h>
 #include <glib-unix.h>
 
+#include "x-aud-key-srv.h"
 #include "dbus_gio.h"
 
 #ifndef EWOULDBLOCK
 #define EWOULDBLOCK EAGAIN
 #endif
 
-#undef A_SIZE
-#define A_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-
 /* signal handler for specified quit signal,
  * (system signal, not glib)
  */
-volatile sig_atomic_t got_quit_signal = 0;
 static void
 handle_quit_signal(int s);
 /* signal handler for glib (app arbitrary) quit signals */
@@ -74,7 +71,7 @@ dbus_gio_main(const char *prog);
  * and dole out through dbus)
  */
 int
-start_dbus_gio_proc(const dbus_proc_in *in, dbus_proc_out *out)
+start_dbus_coproc(const dbus_proc_in *in, dbus_proc_out *out)
 {
     int    p[2] = {-1, -1};
     int    dn, fd_wr;
@@ -92,16 +89,14 @@ start_dbus_gio_proc(const dbus_proc_in *in, dbus_proc_out *out)
      * but if it is not, pipe is made here
      */
     if ( in->fd_wr < 0 ) {
-        int s;
-
-        if ( (s = pipe(p)) != 0 ) {
+        if ( pipe(p) != 0 ) {
             out->err_no = errno;
             close(dn);
             return -1;
         }
 
-        out->fd_rd = p[0];
-        fd_wr = p[1];
+        out->fd_rd = p[PIPE_RFD_INDEX];
+        fd_wr      = p[PIPE_WFD_INDEX];
     } else {
         fd_wr = in->fd_wr;
     }
@@ -177,7 +172,7 @@ static void
 handle_quit_signal(int s)
 {
     /* for form, or future */
-    got_quit_signal = s;
+    got_common_signal = s;
 
     /* this is working with on_glib_quit_signal() below */
     kill(getpid(), glib_quit_signal);
@@ -220,41 +215,14 @@ on_glib_signal(GDBusProxy *proxy,
         return;
     }
 
+    fprintf(stderr,"GSIG sender=='%s' - key=='%s'\n", sender_name, param_str);
     len = strlen(param_str);
-
-    for ( tot = 0;; ) {
-        wret = write(fd, param_str + tot, len - tot);
-        if ( wret < 0 ) {
-            if ( errno != EINTR ) {
-                continue;
-            }
-            /* fatal */
-            _exit(1);
-        }
-
-        tot += wret;
-        if ( tot < len ) {
-            if ( errno == EAGAIN || errno == EWOULDBLOCK ) {
-                /* sleep(1); */
-                poll(NULL, 0, 500);
-                continue;
-            } else {
-                _exit(1);
-            }
-        }
-
-        break;
+    if ( client_output(fd, param_str, len) != len ) {
+        _exit(1);
     }
 
     /*
-     * glib headers do not document whether an alloc'd string is
-     * returned by g_variant_get_child, but that makes the most
-     * sense, particularly since that funk takes a format arg.
-     * TODO: find docs and confirm.
-     * UPDATE: docs at glib site,
-     *     https://developer.gnome.org/glib/stable/glib-GVariant.html
-     * do not say that return should be g_free()'d.
-     * UPDATE: docs at
+     * docs at
      *     https://developer.gnome.org/glib/stable/
      *      gvariant-format-strings.html
      * state that g_variant_get with format "s" returns alloc'd
@@ -303,6 +271,7 @@ dbus_gio_main(const char *prog)
     }
 
     for ( i = 0; i < A_SIZE(path_attempts); i++ ) {
+        const char *nm = path_attempts[i].nm;
         error = NULL;
 
         proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
@@ -317,7 +286,7 @@ dbus_gio_main(const char *prog)
         if ( error != NULL || proxy == NULL ) {
             if ( prog != NULL ) {
                 fprintf(stderr, "%s: failed proxy for '%s'\n",
-                        prog, path_attempts[i].nm);
+                        prog, nm);
             }
             proxy_all[i] = NULL;
             continue;
@@ -343,6 +312,7 @@ dbus_gio_main(const char *prog)
     g_main_loop_unref(loop);
 
     for ( i = 0; i < A_SIZE(path_attempts); i++ ) {
+        const char *nm = path_attempts[i].nm;
         proxy = proxy_all[i];
 
         if ( proxy == NULL ) {
@@ -357,15 +327,15 @@ dbus_gio_main(const char *prog)
         g_object_unref(proxy);
     }
 
-    /* if got quit signal (got_quit_signal), reraise */
-    if ( got_quit_signal ) {
+    /* if got quit signal (got_common_signal), reraise */
+    if ( got_common_signal ) {
         if ( prog != NULL ) {
             fprintf(stderr,
                 "%s (dbus coproc): caught and re-raising signal %d\n",
-                prog, (int)got_quit_signal);
+                prog, (int)got_common_signal);
         }
-        signal((int)got_quit_signal, SIG_DFL);
-        raise((int)got_quit_signal);
+        signal((int)got_common_signal, SIG_DFL);
+        raise((int)got_common_signal);
     }
 
     return 0;

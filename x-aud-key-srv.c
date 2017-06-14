@@ -38,7 +38,7 @@
 #endif
 
 #include <errno.h>
-#if HAVE_GETOPT_H
+#if HAVE_GETOPT_H && HAVE_GETOPT_LONG
 #include <getopt.h>
 #else
 #include "gngetopt.h"
@@ -46,7 +46,6 @@
 #include <limits.h>
 #include <locale.h>
 #include <poll.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -64,6 +63,8 @@
 #if HAVE_XSSAVEREXT && HAVE_X11_EXTENSIONS_SCRNSAVER_H
 #include <X11/extensions/scrnsaver.h>
 #endif
+
+#include "x-aud-key-srv.h"
 
 /* if configure found glib dbus io support: */
 #if HAVE_GIO20
@@ -89,13 +90,6 @@
 #ifndef XSCREENSAVER
 #define XSCREENSAVER "xscreensaver-command"
 #endif
-
-#undef MIN
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#undef MAX
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-
-#define A_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 #if defined(_POSIX_PIPE_BUF)
 #    define MAX_RW_SIZE     _POSIX_PIPE_BUF
@@ -134,10 +128,6 @@
 
 const char *prog = PROGRAM_DEFNAME;
 
-#define TERMINATE_CHARBUF(buf, contentlen) do { \
-        buf[MIN(contentlen, sizeof(buf) - 1)] = '\0'; \
-    } while (0)
-
 #define KEY_SETUP(dsp, wnd) \
     do_key_grabs(dsp, wnd); \
     XSelectInput(dsp, wnd, KeyPressMask | KeyReleaseMask);
@@ -153,6 +143,7 @@ static void
 print_version(void);
 static void
 common_signal_handler(int sig);
+
 static const char *
 handle_key(int type, XKeyEvent *xkey);
 static void
@@ -161,40 +152,33 @@ static void
 do_key_ungrabs(Display *dpy, Window w);
 static Bool
 write_grabs(int fd);
+
 static int
-x_error_proc(Display *dpy, XErrorEvent *err);
-ssize_t
-input_line(int fd, char *buf, size_t buf_sz);
-int
 client_input(int fd);
-ssize_t
-client_output(int fd, const void *buf, size_t buf_sz);
-ssize_t
-client_output_str(int fd, const char *str);
-Bool
+static Bool
 grab_new_window(Display *dpy, Window *pwold, Window wnew);
-Bool
+static Bool
 input_and_reply(Display *dpy, Window *pw,
                 int client_in, int client_out);
-Bool
+static Bool
 dbus_proc_relay(int dbus_fd, int client_out);
-Bool
+static Bool
 dbus_proc_relay_write(int client_out, char *msgbuf);
-Window
+static Window
 window_by_name(Display *dpy, Window top, const char *name);
-/* system(3) with result message */
-int
-do_system_call(const char *buf);
+static int
+x_error_proc(Display *dpy, XErrorEvent *err);
+
 /* screensaver diddlers */
 #if HAVE_XEXT
-void
+static void
 _DPMI_off(Display *dpy);
-void
+static void
 _DPMI_on(void);
 #endif
-void
+static void
 _ssave_off(Display *dpy);
-void
+static void
 _ssave_on(void);
 /* X screensaver methods likely fail in complex desktop systems
  * that each do things their own idiosyncratic ways -- XDG
@@ -204,26 +188,26 @@ _ssave_on(void);
  * argument, so using program must first have set that in
  * client_name.wid with "setwname" message
  */
-int
+static int
 _xdg_ssave(Bool disable);
 /* the following two are used herein to try to control
  * the screensaver; the protos _DPMI*, _ssave*, and _xdg*
  * above are only for use within the two following procedures
  */
-void
+static void
 ssave_disable(Display *dpy);
-void
+static void
 ssave_enable(void);
 
 /* by invocation option, try xautolock -{dis,en}able
  */
-int
+static int
 _xautolock(Bool disable);
 Bool try_xautolock = False;
 
 /* by invocation option, try xscreensaver -{dis,en}able
  */
-int
+static int
 _xscreensaver(Bool disable);
 Bool try_xscreensaver = False;
 
@@ -242,8 +226,6 @@ int common_signals[] = {
 
 /* for pipe-write-in-signal-handler hack */
 int sigpipe[] = { -1, -1 };
-#define PIPE_RFD_INDEX 0
-#define PIPE_WFD_INDEX 1
 #define PIPE_RFD sigpipe[PIPE_RFD_INDEX]
 #define PIPE_WFD sigpipe[PIPE_WFD_INDEX]
 
@@ -400,7 +382,7 @@ do_key_ungrabs(Display *dpy, Window w)
     }
 }
 
-Bool
+static Bool
 grab_new_window(Display *dpy, Window *pwold, Window wnew)
 {
     Window w;
@@ -438,7 +420,7 @@ write_grabs(int fd)
 }
 
 ssize_t
-input_line(int fd, char *buf, size_t buf_sz)
+input_read(int fd, char *buf, size_t buf_sz, int strip)
 {
     char     *p;
     ssize_t  res;
@@ -458,8 +440,10 @@ input_line(int fd, char *buf, size_t buf_sz)
     res = MIN(res, buf_sz - 1);
     buf[res] = '\0';
 
-    while ( res > 0 && buf[res - 1] == '\n' ) {
-        buf[--res] = '\0';
+    if ( strip != 0 ) {
+        while ( res > 0 && buf[res - 1] == '\n' ) {
+            buf[--res] = '\0';
+        }
     }
 
     return res;
@@ -524,13 +508,13 @@ client_output_str(int fd, const char *str)
 #define GOT_SS_ONMSG       32
 #define GOT_SSOFFMSG       64
 #define GOT_SNAMEMSG       128
-int
+static int
 client_input(int fd)
 {
     char buf[MAX_LINEIN_SIZE];
     int  res;
 
-    if ( input_line(fd, buf, sizeof(buf)) < 0 ) {
+    if ( input_read(fd, buf, sizeof(buf), 1) < 0 ) {
         return GOT_RDERR;
     }
 
@@ -578,19 +562,19 @@ client_input(int fd)
     return GOT_NOISE;
 }
 
-Bool
+static Bool
 dbus_proc_relay(int dbus_fd, int client_out)
 {
     char buf[MAX_LINEIN_SIZE];
 
-    if ( input_line(dbus_fd, buf, sizeof(buf)) < 0 ) {
+    if ( input_read(dbus_fd, buf, sizeof(buf), 1) < 0 ) {
         return False;
     }
 
     return dbus_proc_relay_write(client_out, buf);
 }
 
-Bool
+static Bool
 dbus_proc_relay_write(int client_out, char *msgbuf)
 {
     char buf[MAX_LINEIN_SIZE];
@@ -603,7 +587,7 @@ dbus_proc_relay_write(int client_out, char *msgbuf)
     return client_output_str(client_out, buf) > 0 ? True : False;
 }
 
-Bool
+static Bool
 input_and_reply(Display *dpy, Window *pw,
                 int client_in, int client_out)
 {
@@ -636,7 +620,7 @@ input_and_reply(Display *dpy, Window *pw,
     } else if ( imsg == GOT_SNAMEMSG ) {
         char  *pbuf = client_name.buf;
         size_t  bsz = sizeof(client_name.buf);
-        ssize_t res = input_line(client_in, pbuf, bsz);
+        ssize_t res = input_read(client_in, pbuf, bsz, 1);
 
         if ( res < 0 ) {
             return False;
@@ -760,7 +744,7 @@ setup_prog(const char *av0)
     }
 }
 
-Window
+static Window
 window_by_name(Display *dpy, Window top, const char *name)
 {
     Window wroot, wparent, ret = 0;
@@ -810,7 +794,7 @@ struct {
     BOOL      state;
 } DPMIstate = { NULL, 0, False };
 
-void
+static void
 _DPMI_off(Display *dpy)
 {
     Status stat;
@@ -831,7 +815,7 @@ _DPMI_off(Display *dpy)
     }
 }
 
-void
+static void
 _DPMI_on(void)
 {
     if ( DPMIstate.display == NULL ) {
@@ -852,7 +836,7 @@ struct {
     int       timeout, interval, blanking, exposures;
 } ssavestate = { NULL, 0, 0, 0, 0 };
 
-void
+static void
 _ssave_off(Display *dpy)
 {
     int stat;
@@ -894,7 +878,7 @@ _ssave_off(Display *dpy)
     }
 }
 
-void
+static void
 _ssave_on(void)
 {
     Display *dpy;
@@ -940,7 +924,7 @@ _ssave_on(void)
  * argument, so using program must first have set that in
  * client_name.wid with "setwname" message
  */
-int
+static int
 _xdg_ssave(Bool disable)
 {
     static const char xdgprog[] = XDG_SCREENSAVER;
@@ -969,7 +953,7 @@ _xdg_ssave(Bool disable)
     return do_system_call(buf);
 }
 
-int
+static int
 _xautolock(Bool disable)
 {
     static const char xpr[] = XAUTOLOCK;
@@ -1005,7 +989,7 @@ _xautolock(Bool disable)
 
 pid_t _child_xscreensaver_pid = 0;
 
-int
+static int
 _child_xscreensaver(void)
 {
     static const char cmd[] = XSCREENSAVER " -deactivate " _SH_REDIR;
@@ -1063,7 +1047,7 @@ _child_xscreensaver(void)
     return i;
 }
 
-int
+static int
 _xscreensaver(Bool disable)
 {
     pid_t p;
@@ -1146,7 +1130,7 @@ Display *_xssave_dpy = NULL;
 
 Bool did_ssave_disable = False;
 
-void
+static void
 ssave_enable(void)
 {
     if ( did_ssave_disable == False ) {
@@ -1183,7 +1167,7 @@ ssave_enable(void)
 #endif
 }
 
-void
+static void
 ssave_disable(Display *dpy)
 {
     if ( did_ssave_disable == True ) {
@@ -1249,7 +1233,7 @@ nfds_t poll_fds_idx;
         retval = poll(poll_fds, poll_fds_idx, timval); \
     } while (0)
 
-void
+static void
 init_poll_data(void)
 {
     size_t i;
@@ -1263,7 +1247,7 @@ init_poll_data(void)
 /* check poll data for POLLHUP or POLLERR in revents;
  * return zero if not found, else array index + 1
  */
-int
+static int
 check_poll_data_error(void)
 {
 #   define _REVENTS_ERR (POLLERR|POLLHUP|POLLNVAL)
@@ -1303,7 +1287,7 @@ do_dbus_proc(void)
     dbus_in.fd_wr    = -1;
     dbus_in.progname = prog;
 
-    dbus_proc_status = start_dbus_gio_proc(&dbus_in, &dbus_out);
+    dbus_proc_status = start_dbus_coproc(&dbus_in, &dbus_out);
     /* assignment will be -1 on error, check not needed */
     dbus_fd = dbus_out.fd_rd;
 #endif /* HAVE_GIO20 */

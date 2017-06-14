@@ -48,5 +48,5 @@ typedef struct dbus_gio_proc_data_in {
  * and dole out through dbus)
  */
 int
-start_dbus_gio_proc(const dbus_proc_in *in, dbus_proc_out *out);
+start_dbus_coproc(const dbus_proc_in *in, dbus_proc_out *out);
 
