@@ -40,13 +40,22 @@ typedef struct dbus_gio_proc_data_in {
     const
     char    *progname;/* for info messages on stderr; */
                       /* if NULL, no messages */
+    const
+    char    *app_name;/* name of the application this process serves, */
+                      /* required by some methods called over dbus */
 } dbus_proc_in;
 
 /*
  * start (fork) coprocess to handle glib2 gio loop for
  * dbus signals (e.g., keys that some X desktop envs grab
- * and dole out through dbus)
+ * and dole out through dbus) -- and MPRIS2 dbus hackery --
+ * args in and out are described above; arg av may be NULL,
+ * else it should be argv from main, so that the coprocess may
+ * alter argv[0] in an informative way (if that is supported by
+ * the system)
  */
 int
-start_dbus_coproc(const dbus_proc_in *in, dbus_proc_out *out);
+start_dbus_coproc(const dbus_proc_in *in,
+                  dbus_proc_out *out,
+                  char **av);
 

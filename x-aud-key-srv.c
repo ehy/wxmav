@@ -43,6 +43,7 @@
 #else
 #include "gngetopt.h"
 #endif
+#include <fcntl.h>
 #include <limits.h>
 #include <locale.h>
 #include <poll.h>
@@ -127,6 +128,12 @@
 #endif /* PROGRAM_DEFNAME */
 
 const char *prog = PROGRAM_DEFNAME;
+const char *appname;
+
+/* p_exit should be assigned exit in main(), and _exit in the
+ * entry procedure of coprocesses, and any func. that exits
+ * use p_exit */
+void (*p_exit)(int) = NULL;
 
 #define KEY_SETUP(dsp, wnd) \
     do_key_grabs(dsp, wnd); \
@@ -422,13 +429,15 @@ write_grabs(int fd)
 ssize_t
 input_read(int fd, char *buf, size_t buf_sz, int strip)
 {
-    char     *p;
     ssize_t  res;
 
     for (;;) {
         res = read(fd, buf, buf_sz);
 
         if ( res < 0 ) {
+            if ( errno == EAGAIN ) {
+                return res;
+            }
             if ( got_common_signal || errno != EINTR ) {
                 return res;
             }
@@ -437,7 +446,7 @@ input_read(int fd, char *buf, size_t buf_sz, int strip)
         }
     }
 
-    res = MIN(res, buf_sz - 1);
+    res = MIN(res, MAX(buf_sz, 1) - 1);
     buf[res] = '\0';
 
     if ( strip != 0 ) {
@@ -698,6 +707,9 @@ usage(void)
     "  --display\n"
     "   -d       X display string; default is from environment\n"
     "\n"
+    "  --appname\n"
+    "   -a       name of application; useful for dbus\n"
+    "\n"
     "  --name\n"
     "   -n       name of X Window to grab keys from;"
                  " default is root window\n"
@@ -707,7 +719,7 @@ usage(void)
                  " default is root window\n"
     "\n"
     "  --xautolock\n"
-    "   -a       try invoking " XAUTOLOCK " screen saver suspend\n"
+    "   -l       try invoking " XAUTOLOCK " screen saver suspend\n"
     "\n"
     "  --xscreensaver\n"
     "   -s       try invoking " XSCREENSAVER " screen saver suspend\n"
@@ -1122,6 +1134,60 @@ do_system_call(const char *buf)
     return i;
 }
 
+/*
+ * utility: if the modest memory requirements here
+ * cannot be met, simply report and exit
+ */
+void *
+xcalloc(size_t nmemb, size_t szmemb)
+{
+    void *p = calloc(nmemb, szmemb);
+    if ( p == NULL ) {
+        fprintf(stderr, "%s: memory allocation failure\n", prog);
+        p_exit(1);
+    }
+    return p;
+}
+void *
+xrealloc(void *ptr, size_t sz)
+{
+    void *p = realloc(ptr, sz);
+    if ( p == NULL ) {
+        fprintf(stderr, "%s: memory reallocation failure\n", prog);
+        p_exit(1);
+    }
+    return p;
+}
+
+#if ! HAVE_STRLCPY
+/*
+ * this implementation might be suboptimal -- systems with a C library
+ * too lame to have strlcpy will have to take the hit
+ */
+size_t
+strlcpy(char* dst, const char* src, size_t cnt)
+{
+    size_t n = cnt;
+    char* d = dst;
+    const char* s = src;
+
+    while ( n && (*d++ = *s++) ) {
+        --n;
+    }
+
+    if ( !n ) {
+        if ( cnt ) {
+            *--d = '\0';
+        }
+        while ( *s++ ) {
+            ;
+        }
+    }
+
+    return --s - src;
+}
+#endif /* ! HAVE_STRLCPY */
+
 int _xdg_ok = -1;
 #if HAVE_XSSAVEREXT
 int _xssave = -1;
@@ -1269,6 +1335,8 @@ check_poll_data_error(void)
  */
 int dbus_proc_status = -1;
 int dbus_fd = -1;
+int mpris_fd_write = -1;
+int mpris_fd_read  = -1;
 #if HAVE_GIO20
 dbus_proc_out dbus_out;
 dbus_proc_in  dbus_in;
@@ -1278,7 +1346,7 @@ dbus_proc_in  dbus_in;
 #endif /* HAVE_GIO20 */
 
 static int
-do_dbus_proc(void)
+do_dbus_proc(char *av[])
 {
 #if HAVE_GIO20
     dbus_in.quit_sig = DBUS_PROC_QUIT_SIG;
@@ -1286,11 +1354,20 @@ do_dbus_proc(void)
     dbus_in.num_sig  = A_SIZE(common_signals);
     dbus_in.fd_wr    = -1;
     dbus_in.progname = prog;
+    dbus_in.app_name = appname;
 
-    dbus_proc_status = start_dbus_coproc(&dbus_in, &dbus_out);
+    dbus_proc_status = start_dbus_coproc(&dbus_in, &dbus_out, av);
     /* assignment will be -1 on error, check not needed */
     dbus_fd = dbus_out.fd_rd;
 #endif /* HAVE_GIO20 */
+
+    /* child only */
+    if ( mpris_fd_write >= 0 ) {
+        close(mpris_fd_write);
+    }
+    if ( mpris_fd_read >= 0 ) {
+        close(mpris_fd_read);
+    }
 
     return dbus_proc_status;
 }
@@ -1353,17 +1430,22 @@ main(int argc, char **argv)
     const char        *display = NULL, *byname = NULL;
     int               (*orig_err)(Display *, XErrorEvent *);
 
-    static const char opt_str[] = "d:w:n:ashv";
+    static const char opt_str[] = "d:w:a:n:lshvR:W:";
     static struct option opts[] = {
-        { "display",      1, NULL, 'd' },
-        { "window",       1, NULL, 'w' },
-        { "name",         1, NULL, 'n' },
-        { "xautolock",    0, NULL, 'a' },
-        { "xscreensaver", 0, NULL, 's' },
-        { "help",         0, NULL, 'h' },
-        { "version",      0, NULL, 'v' },
+        { "display",            1, NULL, 'd' },
+        { "window",             1, NULL, 'w' },
+        { "appname",            1, NULL, 'a' },
+        { "name",               1, NULL, 'n' },
+        { "xautolock",          0, NULL, 'l' },
+        { "xscreensaver",       0, NULL, 's' },
+        { "help",               0, NULL, 'h' },
+        { "version",            0, NULL, 'v' },
+        { "mpris2-fd-read",     1, NULL, 'R' },
+        { "mpris2-fd-write",    1, NULL, 'W' },
         { 0,              0, NULL, 0 }
     };
+
+    p_exit = exit;
 
 #   if HAVE_SETLOCALE
     /* all IO in ascii, except perhaps window titles,
@@ -1383,13 +1465,33 @@ main(int argc, char **argv)
 #    endif
 
     setup_prog(argv[0]);
+    appname = prog;
 
     w = 0;
 
     while ((c = getopt_long(argc, argv, opt_str, opts, NULL)) != -1) {
         switch (c) {
+        case 'R': /* fall through */
+        case 'W': {
+                int mfd, fl, r = sscanf(optarg, "%d", &mfd);
+                if( r != 1 || (fl = fcntl(mfd, F_GETFL, 0)) == -1 ) {
+                    fprintf(stderr,
+                        "%s: bad -%c argument '%s'\n", prog, c, optarg);
+                    usage();
+                    exit(1);
+                }
+                if ( c == 'R' ) {
+                    mpris_fd_read  = mfd;
+                } else {
+                    mpris_fd_write = mfd;
+                }
+            }
+            break;
         case 'd':
             display = optarg;
+            break;
+        case 'a':
+            appname = optarg;
             break;
         case 'n':
             byname = optarg;
@@ -1414,7 +1516,7 @@ main(int argc, char **argv)
                 w = (Window)ul;
             }
             break;
-        case 'a':
+        case 'l':
             try_xautolock = True;
             break;
         case 's':
@@ -1478,7 +1580,7 @@ main(int argc, char **argv)
 
     KEY_SETUP(dpy, w);
 
-    c = do_dbus_proc();
+    c = do_dbus_proc(argv);
 
     for (;;) {
         const char *key_str = NULL;

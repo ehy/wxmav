@@ -197,11 +197,11 @@ AC_CHECK_HEADERS([X11/extensions/dpms.h],[], [],
 [[#include <X11/Xlib.h>
 ]])
 
-AC_CHECK_FUNCS(getopt getopt_long setlocale)
+AC_CHECK_FUNCS(getopt getopt_long setlocale strlcpy getdelim)
 dnl autoconf info doc says
 dnl '... each FUNCTION enumerated in the blank-or-newline-separated ...'
 dnl but newlines are raising syntax errors; hence, the repeats:
-AC_CHECK_FUNCS(fork pipe poll system waitpid chdir,
+AC_CHECK_FUNCS(fork pipe fcntl poll system waitpid chdir,
     [], [
     no_x=yes;
     AC_MSG_WARN([

@@ -37,6 +37,11 @@
         buf[MIN(contentlen, sizeof(buf) - 1)] = '\0'; \
     } while (0)
 
+/* string equivalence - Case Sensitive */
+#define S_CS_EQ(s1, s2) (strcmp(s1, s2) == 0)
+/* string equivalence - Case Insensitive */
+#define S_CI_EQ(s1, s2) (strcasecmp(s1, s2) == 0)
+
 /* memory aid for pipe(2) */
 #define PIPE_RFD_INDEX 0
 #define PIPE_WFD_INDEX 1
@@ -51,12 +56,38 @@ client_output_str(int fd, const char *str);
 /* system(3) with result message printed on stderr */
 int
 do_system_call(const char *buf);
+/*
+ * utility: if the modest memory requirements here
+ * cannot be met, simply report and exit
+ */
+void *
+xcalloc(size_t nmemb, size_t szmemb);
+#define xmalloc(sz) xcalloc(sz, 1)
+void *
+xrealloc(void *ptr, size_t sz);
+#if ! HAVE_STRLCPY
+size_t
+strlcpy(char* dst, const char* src, size_t cnt);
+#endif /* ! HAVE_STRLCPY */
 
 /* external global vars */
 /* e.g., argv[0] basename */
 extern const char *prog;
 
+/* p_exit should be assigned exit in main(), and _exit in the
+ * entry procedure of coprocesses, and any func. that exits
+ * use p_exit */
+extern void (*p_exit)(int);
+
+/* name of application being served, passed by argument; */
+/* if not given, then prog is used */
+extern const char *appname;
+
 /* set if common exit signals are caught -- RO! */
 extern volatile sig_atomic_t got_common_signal;
+
+/* for MPRIS2 support (if available) */
+extern int mpris_fd_read;
+extern int mpris_fd_write;
 
 #endif /* _X_AUD_KEY_H_INCL */
