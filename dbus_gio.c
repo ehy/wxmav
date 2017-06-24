@@ -77,7 +77,10 @@ static gboolean
 on_mpris_fd_read(gint fd, GIOCondition condition, gpointer user_data);
 /* read a line from a pipe, persistently until '\n' appears */
 static ssize_t
-read_line(char **buf, size_t *bs, FILE *fptr);
+read_line(char **buf, size_t *bs, FILE *fptr);\
+/* remove trailing '\n' */
+static int
+unnl(char *p);
 /* main procedure for dbus gio coprocess */
 static int
 dbus_gio_main(const dbus_proc_in *in);
@@ -430,6 +433,9 @@ dbus_gio_main(const dbus_proc_in *in)
         g_object_unref(proxy);
     }
 
+    /* ensure MPRIS2 support is stopped */
+    stop_mpris_service();
+
     /* if got quit signal (got_common_signal), reraise */
     if ( got_common_signal ) {
         if ( prg != NULL ) {
@@ -439,6 +445,11 @@ dbus_gio_main(const dbus_proc_in *in)
         }
         signal((int)got_common_signal, SIG_DFL);
         raise((int)got_common_signal);
+    }
+
+    if ( prg != NULL ) {
+        fprintf(stderr,
+            "%s (dbus coproc): return from main (exit)\n", prg);
     }
 
     return 0;
@@ -598,6 +609,19 @@ read_line_dat(mpris_data_struct *dat)
     return read_line(&dat->buf, &dat->bufsz, dat->fprd);
 }
 
+static int
+unnl(char *p)
+{
+    size_t l;
+    if ( p == NULL ) return -1;
+    l = strlen(p);
+    if ( l && --l && p[l] == '\n' ) {
+        p[l] = '\0';
+        return 1;
+    }
+    return 0;
+}
+
 /* event on read end of client pipe */
 static gboolean
 on_mpris_fd_read(gint fd, GIOCondition condition, gpointer user_data)
@@ -606,7 +630,7 @@ on_mpris_fd_read(gint fd, GIOCondition condition, gpointer user_data)
     static size_t bufsz = 0;  /* buffer from dat not used, */
     static char  *buf = NULL; /* in case of reentrence */
     static const char  *pfx = "mpris:";
-    static const size_t pfxsz = sizeof(pfx) - 1;
+    static const size_t pfxsz = sizeof("mpris:") - 1;
 
     ssize_t rdlen;
     char    *p;
@@ -641,6 +665,10 @@ on_mpris_fd_read(gint fd, GIOCondition condition, gpointer user_data)
         return FALSE;
     }
 
+    unnl(buf);
+
+    fprintf(stderr, "%s: mpris client read: '%s'\n", prog, buf);
+
     /* not mpris prefix? */
     if ( strncasecmp(buf, pfx, pfxsz) ) {
         return TRUE;
@@ -648,10 +676,6 @@ on_mpris_fd_read(gint fd, GIOCondition condition, gpointer user_data)
 
     p = buf + pfxsz;
     rdlen -= pfxsz;
-
-    if ( *p && p[rdlen - 1] == '\n' ) {
-        p[--rdlen] = '\0';
-    }
 
     if ( S_CI_EQ(p, "on") ) {
         start_mpris_service();
@@ -666,6 +690,12 @@ on_mpris_fd_read(gint fd, GIOCondition condition, gpointer user_data)
 ** org.mpris.MediaPlayer2 [base]
 */
 
+/* a handshake proc for all procs that communicate with client */
+#define _EXCHGHS_WR_ERR -1
+#define _EXCHGHS_RD_ERR -2
+#define _EXCHGHS_ALL_OK  0
+#define _EXCHGHS_ACKREJ  1
+#define _EXCHGHS_ACK_NG  2
 static int
 _exchange_handshake(mpris_data_struct *dat,
                     const char        *ini,
@@ -673,44 +703,65 @@ _exchange_handshake(mpris_data_struct *dat,
                     const char        *property_name)
 {
     ssize_t rdlen;
+    int ret = _EXCHGHS_ALL_OK;
 
     fprintf(dat->fpwr, "%s\n", ini);
     fflush(dat->fpwr);
     if ( ferror(dat->fpwr) || feof(dat->fpwr) ) {
         fprintf(stderr, "%s error writing to mpris client (b)\n", prog);
-        return -1;
+        return _EXCHGHS_WR_ERR;
     }
+
+    fprintf(stderr, "%s sent ini '%s' to client\n",
+        prog, ini);
 
     rdlen = read_line_dat(dat);
     if ( rdlen < 1 ) {
         /* whether EOF or error, that's it for the other one */
         fprintf(stderr, "%s unexpected mpris read end (%ld) (b)\n",
             prog, (long int)rdlen);
-        return -1;
+        return _EXCHGHS_RD_ERR;
+    }
+
+    unnl(dat->buf);
+
+    fprintf(stderr, "%s got ack '%s' from client\n",
+        prog, dat->buf);
+
+    /* rejected? */
+    if ( strcmp(dat->buf, "UNSUPPORTED") == 0 ) {
+        fprintf(stderr, "%s mpris client ack for '%s' is '%s'\n",
+            prog, ini, dat->buf);
+        return _EXCHGHS_ACKREJ;
     }
 
     /* ack */
     if ( strcmp(dat->buf, ack) ) {
         fprintf(stderr, "%s unexpected mpris client ack '%s'\n",
             prog, dat->buf);
-        return -1;
+        ret |= _EXCHGHS_ACK_NG;
     }
+
+    fprintf(stderr, "%s writeing '%s' to client\n",
+        prog, property_name);
 
     fprintf(dat->fpwr, "%s\n", property_name);
     fflush(dat->fpwr);
     if ( ferror(dat->fpwr) || feof(dat->fpwr) ) {
         fprintf(stderr, "%s error writing to mpris client (c)\n", prog);
-        return -1;
+        return _EXCHGHS_WR_ERR;
     }
 
     rdlen = read_line_dat(dat);
     if ( rdlen < 1 ) {
         fprintf(stderr, "%s unexpected mpris read end (%ld) (c)\n",
             prog, (long int)rdlen);
-        return -1;
+        return _EXCHGHS_RD_ERR;
     }
 
-    return 0;
+    unnl(dat->buf);
+
+    return ret;
 }
 
 static void
@@ -728,18 +779,36 @@ _mpris_call_method(GDBusConnection *connection,
     mpris_data_struct *dat = (mpris_data_struct *)user_data;
     char *p, *p2;
     ssize_t rdlen;
+    int r;
 
-    if ( _exchange_handshake(dat, ini, ack, method_name) ) {
-        fprintf(stderr, "%s mpris handshake '%s' failure (b)\n",
-            prog, ini);
-        return;
+#define _EXCHGHS_WR_ERR -1
+#define _EXCHGHS_RD_ERR -2
+#define _EXCHGHS_ALL_OK  0
+#define _EXCHGHS_ACKREJ  1
+#define _EXCHGHS_ACK_NG  2
+    do {
+    r = _exchange_handshake(dat, ini, ack, method_name);
+    if ( r < 0 ) {
+        fprintf(stderr, "%s mpris handshake %s error (b)\n",
+            prog, r == _EXCHGHS_WR_ERR ? "write" : "read");
+        p2 = r == _EXCHGHS_WR_ERR ? "IO ERROR: w" : "IO ERROR: r";
+        break;
+    } else if ( r != _EXCHGHS_ALL_OK ) {
+        if ( r & _EXCHGHS_ACKREJ ) {
+            /* client actively reject and expects no more */
+            p2 = "ERROR: handshake rejected";
+        } else {
+            /* handshake wrong, client expects more */
+            p2 = "ERROR: handshake incorrect";
+        }
+        break;
     }
 
     p = strchr(dat->buf, _TSEPC);
     if ( p == NULL ) {
         fprintf(stderr, "%s unexpected mpris type (%s) (c)\n",
             prog, dat->buf);
-        return;
+        p2 = "ERROR: format(c)"; break;
     }
 
     p2 = p++;
@@ -821,23 +890,38 @@ _mpris_call_method(GDBusConnection *connection,
             fprintf(stderr,
                 "%s unexpected mpris read end (%ld) (d)\n",
                 prog, (long int)rdlen);
-            return;
+            p2 = "ERROR: read(d)"; break;
         }
+
+        unnl(dat->buf);
 
         p = strchr(dat->buf, _TSEPC);
         if ( p == NULL ) {
             fprintf(stderr, "%s unexpected mpris type (%s) (d)\n",
                 prog, dat->buf);
-            return;
+            p2 = "ERROR: type(d)"; break;
         }
 
         p2 = p++;
         *p2 = '\0';
         p2 = dat->buf;
 	}
+    } while ( 0 );
 
+	/* error herein */
+    if ( strncmp(p2, "IO ERROR: ", 10) == 0 ) {
+		g_dbus_method_invocation_return_error(
+            invocation, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
+            "'%s' while performing %s.%s call",
+            p2, interface_name, method_name);
+	/* error herein */
+    } else if ( strncmp(p2, "ERROR: ", 7) == 0 ) {
+		g_dbus_method_invocation_return_error(
+            invocation, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN,
+            "Error: internal I/O '%s' while performing %s.%s call",
+            p2, interface_name, method_name);
 	/* return type and value */
-    if ( S_CI_EQ(p2, "UNSUPPORTED") ) {
+    } else if ( S_CI_EQ(p2, "UNSUPPORTED") ) {
 		g_dbus_method_invocation_return_error(
             invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
             "Error: method %s.%s not supported",
@@ -845,8 +929,13 @@ _mpris_call_method(GDBusConnection *connection,
     } else if ( S_CI_EQ(p2, "VOID") ) {
 		g_dbus_method_invocation_return_value(invocation, NULL);
 	/* TODO: handle return types - before TrackList or Playlists
-    } else {
+    } else if (  ) {
     */
+    } else {
+		g_dbus_method_invocation_return_error(
+            invocation, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_METHOD,
+            "Error: method %s.%s unknown",
+            interface_name, method_name);
 	}
 }
 
@@ -905,10 +994,7 @@ _mpris_get_property(GDBusConnection *connection,
             }
 
             p2 = dat->buf;
-
-            if ( p2[rdlen - 1] == '\n' ) {
-                p2[--rdlen] = '\0';
-            }
+            unnl(dat->buf);
 
             if ( S_CS_EQ(p2, ":END ARRAY:") ) {
                 break;
@@ -1046,7 +1132,7 @@ cb_base_methods(GDBusConnection *connection,
                 gpointer    user_data)
 {
     static const char *ini = "base:method";
-    static const char *ack = "method\n";
+    static const char *ack = "method";
 
     _mpris_call_method(connection,
                        sender,
@@ -1069,7 +1155,7 @@ cb_base_get_property(GDBusConnection *connection,
                      gpointer    user_data)
 {
     static const char *ini = "base:getproperty";
-    static const char *ack = "getproperty\n";
+    static const char *ack = "getproperty";
 
     return _mpris_get_property(connection,
                                sender,
@@ -1092,7 +1178,7 @@ cb_base_set_property(GDBusConnection *connection,
                      gpointer    user_data)
 {
     static const char *ini = "base:setproperty";
-    static const char *ack = "setproperty\n";
+    static const char *ack = "setproperty";
 
     return _mpris_set_property(connection,
                                sender,
@@ -1127,7 +1213,7 @@ cb_player_methods(GDBusConnection *connection,
                   gpointer    user_data)
 {
     static const char *ini = "player:method";
-    static const char *ack = "method\n";
+    static const char *ack = "method";
 
     _mpris_call_method(connection,
                        sender,
@@ -1150,7 +1236,7 @@ cb_player_get_property(GDBusConnection *connection,
                        gpointer    user_data)
 {
     static const char *ini = "player:getproperty";
-    static const char *ack = "getproperty\n";
+    static const char *ack = "getproperty";
 
     return _mpris_get_property(connection,
                                sender,
@@ -1173,7 +1259,7 @@ cb_player_set_property(GDBusConnection *connection,
                        gpointer    user_data)
 {
     static const char *ini = "player:setproperty";
-    static const char *ack = "setproperty\n";
+    static const char *ack = "setproperty";
 
     return _mpris_set_property(connection,
                                sender,
@@ -1255,14 +1341,27 @@ start_mpris_service(void)
                                        (gpointer)&mpris_data,
                                        NULL);
 
+    fprintf(stderr, "%s: MPRIS2 start - name '%s' - bus id %d\n",
+            prog, mpris_thisname, mpris_data.bus_id);
+
     return 1; /* success */
 }
 
 static void
 stop_mpris_service(void)
 {
+    if ( mpris_data.bus_id == 0 && mpris_data.node_info == NULL ) {
+        fprintf(stderr, "%s: MPRIS2 stop -- NOT started\n", prog);
+        return;
+    }
+
 	g_bus_unown_name(mpris_data.bus_id);
 	g_dbus_node_info_unref(mpris_data.node_info);
+
+    mpris_data.bus_id = 0;
+    mpris_data.node_info = NULL;
+
+    fprintf(stderr, "%s: MPRIS2 stop\n", prog);
 }
 
 /* XML (blech) description of top node and children,

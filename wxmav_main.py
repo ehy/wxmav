@@ -441,7 +441,7 @@ else:
         return s
 
     def fd_write(fd, s):
-        os.write(fd, s.encode('utf_8'))
+        os.write(fd, _Tnec(s).encode('utf_8'))
 
 # use _T as necessary
 if not py_v_is_3:
@@ -966,6 +966,11 @@ if _in_xws:
         def get_fds(self):
             """Return tuple (read, write)"""
             return (self.fd_rd, self.fd_wr)
+
+        def set_fds(self, rd = -1, wr = -1):
+            """assign fds; e.g., -1, -1"""
+            self.fd_rd = rd
+            self.fd_wr = wr
 
 """
     classes for data type and file IO
@@ -2501,10 +2506,11 @@ elif _in_xws:
                 return False
             try:
                 m = "mpris:on\n".encode('ascii')
-                os.write(wr, m)
+                fd_write(wr, m)
             except (OSError, IOError) as e:
-                self.err_msg("MPRIS2 write '{m}' failed '{e}'").formtat(
-                                m = m, e = e.strerror)
+                self.err_msg(_T(
+                    "MPRIS2 write '{m}' failed '{e}'").format(
+                                m = m, e = e.strerror))
                 self.mpris2_parent = None
                 try:
                     os.close(wr)
@@ -2518,10 +2524,11 @@ elif _in_xws:
                 return False
             try:
                 m = "mpris:off\n".encode('ascii')
-                os.write(wr, m)
+                fd_write(wr, m)
             except (OSError, IOError) as e:
-                self.err_msg("MPRIS2 write '{m}' failed '{e}'").formtat(
-                                m = m, e = e.strerror)
+                self.err_msg(_T(
+                    "MPRIS2 write '{m}' failed '{e}'").format(
+                                m = m, e = e.strerror))
             self.mpris2_parent = None
             try:
                 os.close(wr)
@@ -2828,12 +2835,22 @@ elif _in_xws:
             mprd = mpwr = -1
             if self.mpris2_parent:
                 mprd, mpwr = self.mpris2_parent.get_fds()
+                # control pipe between this and main thread,
+                # for mpris pipe read end, which is removed from
+                # poll when signalled so that other thread may
+                # do multiple IO without interference from here;
+                # when that IO is done writing "poll" to this
+                # pipe will add the mpris pipe back in poll set
+                mpctrl = os.pipe()
 
             errbits = select.POLLERR|select.POLLHUP|select.POLLNVAL
             pl = select.poll()
             pl.register(flist[0], select.POLLIN|errbits)
             pl.register(flist[1], select.POLLIN|errbits)
             if mprd >= 0:
+                #flist.append(mpctrl[0])
+                pl.register(mpctrl[0], select.POLLIN|errbits)
+                flist.append(mprd)
                 pl.register(mprd, select.POLLIN|errbits)
 
             while True:
@@ -2852,13 +2869,39 @@ elif _in_xws:
 
                 lin = ""
                 for fd, bits in rl:
-                    if fd == fdr1:
+                    err = bits & errbits
+                    if err:
+                        flist.remove(fd)
+                        pl.unregister(fd)
+                        if fd == mprd and self.mpris2_parent:
+                            flist.remove(mpctrl[0])
+                            pl.unregister(mpctrl[0])
+                            try:
+                                os.close(mpctrl[0])
+                                os.close(mpctrl[1])
+                            except:
+                                pass
+                            self.mpris2_parent.poll_err = err
+                            put_thd_event(self.app,
+                                          AThreadEvent(_T("M"),
+                                         (lin, self.mpris2_parent, -1)))
+                        continue
+
+                    if fd == mpctrl[0]:
+                        lin = os.read(mpctrl[0], 128)
+                        if lin == "poll" and not mprd in flist:
+                            flist.append(mprd)
+                            pl.register(mprd, select.POLLIN|errbits)
+                        continue
+                    elif fd == fdr1:
                         pfx = _T("1")
                         fN = f1
                     elif fd == fdr2:
                         pfx = _T("2")
                         fN = f2
                     elif fd == mprd and fd >= 0:
+                        flist.remove(fd)
+                        pl.unregister(fd)
                         pfx = _T("M") # The MPRIS2 desc.
                         fN = None
                     else:
@@ -2868,9 +2911,16 @@ elif _in_xws:
                         if fN == None:
                             # The MPRIS2 desc., app will take
                             # the desciptor obj from this obj
+                            # *MUST* read a line here - if read is
+                            # left until event is delivered and
+                            # handled, then poll() in this thread
+                            # will spin until the handler eventually
+                            # reads
+                            lin = "" #os.read(mprd, 16384)
                             put_thd_event(self.app,
                                           AThreadEvent(pfx,
-                                            self.mpris2_parent))
+                                            (lin, self.mpris2_parent,
+                                             mpctrl[1])))
                             continue
 
                         lin = fN.readline(bufsize)
@@ -2879,11 +2929,11 @@ elif _in_xws:
                             put_thd_event(self.app,
                                           AThreadEvent(pfx, lin))
                         else:
-                            flist.remove(fd)
-                            pl.unregister(fd)
+                            pass
+                            #flist.remove(fd)
+                            #pl.unregister(fd)
                     else:
-                        flist.remove(fd)
-                        pl.unregister(fd)
+                        pass
 
                 if len(flist) == 0:
                     break
@@ -3308,6 +3358,30 @@ class TheAppClass(wx.App):
         eid = event.GetId()
 
         t, dat = event.get_content()
+
+        if t == _T("M"):
+            try:
+                lin, obj, donefd = dat
+                err = obj.poll_err
+                errbits = select.POLLERR|select.POLLHUP|select.POLLNVAL
+                if err & errbits:
+                    try:
+                        os.close(donefd)
+                        os.close(fd_rd)
+                        os.close(fd_wr)
+                    except:
+                        pass
+                    obj.set_fds()
+                    self.frame.mpris = False
+                    self.frame.mpris_fd_rd = -1
+                    self.frame.mpris_fd_wr = -1
+                    e = "closed" if (err & select.POLLHUP) else "error"
+                    self.err_msg(
+                        _T("X-mpris helper pipe: {}").format(e))
+                    self.xhelper.mpris_off()
+                    return
+            except AttributeError:
+                pass
 
         if t == _T("M") or t == _T('time period'):
             self.frame.on_chmsg(event)
@@ -8485,337 +8559,388 @@ class TopWnd(wx.Frame):
             elif kid == self.hotk_id_prev:
                 self.do_command_button(self.id_prev)
 
-    def mpris2_send_ack(fd_rd, fd_wr, ack):
-        if ack[-1] != '\n': ack += '\n'
-        try:
-            os.write(fd_wr, _T(ack))
-        except (IOError, OSError) as e:
-            self.prdbg(_T("MPRIS2 write error '{}'").format(e.strerror))
-            return False
-        except:
-            self.prdbg(_T("MPRIS2 write exception (unknown error)"))
-            return False
+    class _mpris2_handler:
+        def __init__(self, wnd, dat):
+            self.w      = wnd
+            self.line_1 = dat[0]
+            self.io_obj = dat[1]
+            self.donefd = dat[2]
 
-        return True
+        def go(self):
+            self.on_mpris2(self.line_1, self.io_obj)
 
-    def mpris2_send(fd_rd, fd_wr, ack, level):
-        if not self.mpris2_send_ack(fd_rd, fd_wr, ack):
-            return False
+        def done(self):
+            if self.donefd >= 0:
+                os.write(self.donefd, "poll".encode('ascii'))
 
-        if level == "base":
-            return self.mpris2_send_base(fd_rd, fd_wr)
-        if level == "player":
-            return self.mpris2_send_base(fd_rd, fd_wr)
+        def mpris2_send_ack(self, fd_rd, fd_wr, ack):
+            ack = ack.rstrip('\n') + '\n'
+            self.err_msg(_T("mpris2_send_ack '{}'").format(ack))
 
-        return False
+            try:
+                fd_write(fd_wr, _T(ack))
+                self.err_msg(_T("MPRIS2 after mpris2_send_ack"))
+            except (IOError, OSError) as e:
+                self.err_msg(_T("MPRIS2 write error '{}'").format(
+                    e.strerror))
+                return False
+            except:
+                return False
 
-    def mpris2_send_base(fd_rd, fd_wr):
-        prop = _T(os.read(fd_rd, 128)).rstrip("\n")
-        if False:
-            pass
-        elif prop == "CanQuit":
-            m = _T("b:true\n")
-            os.write(fd_wr, m)
-        elif prop == "Fullscreen":
-            t = "true" if self.IsFullScreen() else "false"
-            m = _T("s:{}\n").format(t)
-            os.write(fd_wr, m)
-        elif prop == "CanSetFullscreen":
-            m = _T("b:true\n")
-            os.write(fd_wr, m)
-        elif prop == "CanRaise":
-            m = _T("b:true\n")
-            os.write(fd_wr, m)
-        elif prop == "HasTrackList":
-            # TODO: set true when org.mpris.MediaPlayer2.TrackList done
-            m = _T("b:false\n")
-            os.write(fd_wr, m)
-        elif prop == "Identity":
-            t = "wxmav" # self.GetTitle()
-            m = _T("s:{}\n").format(t)
-            os.write(fd_wr, m)
-        elif prop == "DesktopEntry":
-            m = _T("s:wxmav\n")
-            os.write(fd_wr, m)
-        elif prop == "SupportedUriSchemes":
-            m = _T("as:\n")
-            os.write(fd_wr, m)
-            for s in gst_uri_schemes:
-                m = _T("{}\n").format(s)
-                os.write(fd_wr, m)
-            m = _T(":END ARRAY:\n")
-            os.write(fd_wr, m)
-        elif prop == "SupportedMimeTypes":
-            m = _T("as:\n")
-            os.write(fd_wr, m)
-            for s in gst_mime:
-                m = _T("{}\n").format(s)
-                os.write(fd_wr, m)
-            m = _T(":END ARRAY:\n")
-            os.write(fd_wr, m)
-        else:
-            m = _T("b:false\n")
-            os.write(fd_wr, m)
+            return True
+
+        def mpris2_send(self, fd_rd, fd_wr, ack, level):
+            if not self.mpris2_send_ack(fd_rd, fd_wr, ack):
+                return False
+
+            if level == "base":
+                return self.mpris2_send_base(fd_rd, fd_wr)
+            if level == "player":
+                return self.mpris2_send_base(fd_rd, fd_wr)
+
             return False
 
-        return True
-
-    def mpris2_send_player(fd_rd, fd_wr):
-        prop = _T(os.read(fd_rd, 128)).rstrip("\n")
-        if False:
-            pass
-        elif prop == "PlaybackStatus":
-            m = _T("s:{}\n").format(self.get_playback_state_string())
-            os.write(fd_wr, m)
-        elif prop == "LoopStatus":
-            t = "Track" if self.loop_track else "None"
-            m = _T("s:{}\n").format(t)
-            os.write(fd_wr, m)
-        elif prop == "Rate":
-            m = _T("d:1.0\n")
-            os.write(fd_wr, m)
-        elif prop == "Shuffle":
-            m = _T("b:false\n")
-            os.write(fd_wr, m)
-        elif prop == "Metadata":
-            # TODO: set true when metadata done
-            m = _T("b:false\n")
-            os.write(fd_wr, m)
-        elif prop == "Volume":
-            d = float(self.vol_max - self.vol_min)
-            v = float(self.vol_cur - self.vol_min) / d
-            m = _T("d:{:f}\n").format(v)
-            os.write(fd_wr, m)
-        elif prop == "Position":
-            v = 0 if (self.medi.Length() < 1) else (
-                self.medi.Tell() * 1000)
-            m = _T("x:{:d}\n").format(v)
-            os.write(fd_wr, m)
-        elif prop == "MinimumRate" or prop == "MaximumRate":
-            m = _T("d:1.0\n")
-            os.write(fd_wr, m)
-        elif prop == "CanGoNext":
-            m = _T("b:true\n")
-            if self.get_next_index() == None:
+        def mpris2_send_base(self, fd_rd, fd_wr):
+            prop = _T(os.read(fd_rd, 128)).rstrip("\n")
+            if False:
+                pass
+            elif prop == "CanQuit":
+                m = _T("b:true\n")
+                fd_write(fd_wr, m)
+            elif prop == "Fullscreen":
+                t = "true" if self.w.IsFullScreen() else "false"
+                m = _T("s:{}\n").format(t)
+                fd_write(fd_wr, m)
+            elif prop == "CanSetFullscreen":
+                m = _T("b:true\n")
+                fd_write(fd_wr, m)
+            elif prop == "CanRaise":
+                m = _T("b:true\n")
+                fd_write(fd_wr, m)
+            elif prop == "HasTrackList":
+                # TODO:
+                #set true when org.mpris.MediaPlayer2.TrackList done
                 m = _T("b:false\n")
-            os.write(fd_wr, m)
-        elif prop == "CanGoPrevious":
-            m = _T("b:true\n")
-            if self.get_prev_index() == None:
+                fd_write(fd_wr, m)
+            elif prop == "Identity":
+                t = "wxmav" # self.GetTitle()
+                m = _T("s:{}\n").format(t)
+                fd_write(fd_wr, m)
+            elif prop == "DesktopEntry":
+                m = _T("s:wxmav\n")
+                fd_write(fd_wr, m)
+            elif prop == "SupportedUriSchemes":
+                m = _T("as:\n")
+                fd_write(fd_wr, m)
+                for s in gst_uri_schemes:
+                    m = _T("{}\n").format(s)
+                    fd_write(fd_wr, m)
+                m = _T(":END ARRAY:\n")
+                fd_write(fd_wr, m)
+            elif prop == "SupportedMimeTypes":
+                m = _T("as:\n")
+                fd_write(fd_wr, m)
+                for s in gst_mime:
+                    m = _T("{}\n").format(s)
+                    fd_write(fd_wr, m)
+                m = _T(":END ARRAY:\n")
+                fd_write(fd_wr, m)
+            else:
                 m = _T("b:false\n")
-            os.write(fd_wr, m)
-        elif prop == "CanPlay" or prop == "CanPause":
-            m = _T("b:true\n")
-            if not self.reslist: m = _T("b:false\n")
-            os.write(fd_wr, m)
-        elif prop == "CanSeek":
-            m = _T("b:true\n")
-            if not (self.load_ok and self.medi.Length() > 0):
+                fd_write(fd_wr, m)
+                return False
+
+            return True
+
+        def mpris2_send_player(self, fd_rd, fd_wr):
+            prop = _T(os.read(fd_rd, 128)).rstrip("\n")
+            if False:
+                pass
+            elif prop == "PlaybackStatus":
+                m = _T("s:{}\n").format(
+                    self.w.get_playback_state_string())
+                fd_write(fd_wr, m)
+            elif prop == "LoopStatus":
+                t = "Track" if self.w.loop_track else "None"
+                m = _T("s:{}\n").format(t)
+                fd_write(fd_wr, m)
+            elif prop == "Rate":
+                m = _T("d:1.0\n")
+                fd_write(fd_wr, m)
+            elif prop == "Shuffle":
                 m = _T("b:false\n")
-            os.write(fd_wr, m)
-        elif prop == "CanControl":
-            m = _T("b:true\n")
-            os.write(fd_wr, m)
-        else:
-            m = _T("b:false\n")
-            os.write(fd_wr, m)
+                fd_write(fd_wr, m)
+            elif prop == "Metadata":
+                # TODO: set true when metadata done
+                m = _T("b:false\n")
+                fd_write(fd_wr, m)
+            elif prop == "Volume":
+                d = float(self.w.vol_max - self.w.vol_min)
+                v = float(self.w.vol_cur - self.w.vol_min) / d
+                m = _T("d:{:f}\n").format(v)
+                fd_write(fd_wr, m)
+            elif prop == "Position":
+                v = 0 if (self.w.medi.Length() < 1) else (
+                    self.w.medi.Tell() * 1000)
+                m = _T("x:{:d}\n").format(v)
+                fd_write(fd_wr, m)
+            elif prop == "MinimumRate" or prop == "MaximumRate":
+                m = _T("d:1.0\n")
+                fd_write(fd_wr, m)
+            elif prop == "CanGoNext":
+                m = _T("b:true\n")
+                if self.w.get_next_index() == None:
+                    m = _T("b:false\n")
+                fd_write(fd_wr, m)
+            elif prop == "CanGoPrevious":
+                m = _T("b:true\n")
+                if self.w.get_prev_index() == None:
+                    m = _T("b:false\n")
+                fd_write(fd_wr, m)
+            elif prop == "CanPlay" or prop == "CanPause":
+                m = _T("b:true\n")
+                if not self.w.reslist: m = _T("b:false\n")
+                fd_write(fd_wr, m)
+            elif prop == "CanSeek":
+                m = _T("b:true\n")
+                if not (self.w.load_ok and self.w.medi.Length() > 0):
+                    m = _T("b:false\n")
+                fd_write(fd_wr, m)
+            elif prop == "CanControl":
+                m = _T("b:true\n")
+                fd_write(fd_wr, m)
+            else:
+                m = _T("b:false\n")
+                fd_write(fd_wr, m)
+                return False
+
+            return True
+
+        def mpris2_recv(self, fd_rd, fd_wr, ack, level):
+            if not self.mpris2_send_ack(fd_rd, fd_wr, ack):
+                return False
+
+            if level == "base":
+                return self.mpris2_recv_base(fd_rd, fd_wr)
+            elif level == "player":
+                return self.mpris2_recv_player(fd_rd, fd_wr)
+
             return False
 
-        return True
+        def mpris2_recv_base(self, fd_rd, fd_wr):
+            def _propresp(t, ok):
+                m = _T("{t}:{s}\n").format(t = t,
+                    s = "ok" if ok else "ng")
+                fd_write(fd_wr, m)
 
-    def mpris2_recv(fd_rd, fd_wr, ack, level):
-        if not self.mpris2_send_ack(fd_rd, fd_wr, ack):
+            prop = _T(os.read(fd_rd, 128)).rstrip("\n")
+            if False:
+                pass
+            elif prop == "Fullscreen":
+                _propresp("b", True)
+                resp = _T(os.read(fd_rd, 128)).rstrip("\n")
+                off = True if s_ne(resp, "true") else False
+                self.w.do_fullscreen(off)
+            else:
+                _propresp("b", False)
+                return False
+
+            return True
+
+        def mpris2_recv_player(self, fd_rd, fd_wr):
+            def _propresp(t, ok):
+                m = _T("{t}:{s}\n").format(t = t,
+                    s = "ok" if ok else "ng")
+                fd_write(fd_wr, m)
+
+            prop = _T(os.read(fd_rd, 128)).rstrip("\n")
+            if False:
+                pass
+            elif prop == "LoopStatus":
+                _propresp("b", True)
+                resp = _T(os.read(fd_rd, 128)).rstrip("\n")
+                if s_eq(resp, "None"):
+                    self.w.loop_track = False
+                elif s_eq(resp, "Track"):
+                    self.w.loop_track = True
+            elif prop == "Rate":
+                _propresp("b", True)
+                resp = _T(os.read(fd_rd, 128)).rstrip("\n")
+                self.prdbg(_T("MPRIS2 set rate {}").format(resp))
+            elif prop == "Shuffle":
+                _propresp("b", True)
+                resp = _T(os.read(fd_rd, 128)).rstrip("\n")
+                self.prdbg(_T("MPRIS2 set shuffle {}").format(resp))
+            elif prop == "Volume":
+                _propresp("b", True)
+                resp = _T(os.read(fd_rd, 128)).rstrip("\n")
+                v = int(float(resp) * 100.0 + 0.5)
+                self.w.do_volume(v)
+                self.prdbg(_T("MPRIS2 set volume {}").format(v))
+            else:
+                _propresp("b", False)
+                return False
+
+            return True
+
+        def mpris2_meth(self, fd_rd, fd_wr, ack, level):
+            self.err_msg(_T("mpris2_meth '{}'").format(ack))
+            if not self.mpris2_send_ack(fd_rd, fd_wr, ack):
+                return False
+
+            if level == "base":
+                self.err_msg(_T("mpris2_meth {}").format(level))
+                return self.mpris2_meth_base(fd_rd, fd_wr)
+            elif level == "player":
+                return self.mpris2_meth_player(fd_rd, fd_wr)
+
             return False
 
-        if level == "base":
-            return self.mpris2_recv_base(fd_rd, fd_wr)
-        elif level == "player":
-            return self.mpris2_recv_player(fd_rd, fd_wr)
+        def mpris2_meth_base(self, fd_rd, fd_wr):
+            def _methresp(t, ok):
+                m = _T("{t}:{s}\n").format(t = t,
+                    s = "ok" if ok else "ng")
+                fd_write(fd_wr, m)
 
-        return False
+            self.err_msg(_T("MPRIS2 before mpris2_meth_base READ"))
+            meth = _T(os.read(fd_rd, 128)).rstrip("\n")
+            self.err_msg(_T("MPRIS2 after mpris2_meth_base READ"))
 
-    def mpris2_recv_base(fd_rd, fd_wr):
-        def _propresp(t, ok):
-            m = _T("{t}:{s}\n").format(t = t,
-                s = "ok" if ok else "ng")
-            os.write(fd_wr, m)
+            if False:
+                pass
+            # org.mpris.MediaPlayer2 [base] methods
+            elif s_eq(meth, "Quit"):
+                _methresp("VOID", True)
+                self.w.Close(False)
+            elif s_eq(meth, "Raise"):
+                _methresp("VOID", True)
+                self.w.Raise()
+            else:
+                _methresp("UNSUPPORTED", True)
 
-        prop = _T(os.read(fd_rd, 128)).rstrip("\n")
-        if False:
-            pass
-        elif prop == "Fullscreen":
-            _propresp("b", True)
-            resp = _T(os.read(fd_rd, 128)).rstrip("\n")
-            off = True if s_ne(resp, "true") else False
-            self.do_fullscreen(off)
-        else:
-            _propresp("b", False)
-            return False
+            return True
 
-        return True
+        def mpris2_meth_player(self, fd_rd, fd_wr):
+            def _methresp(t, ok):
+                m = _T("{t}:{s}\n").format(t = t,
+                    s = "ok" if ok else "ng")
+                fd_write(fd_wr, m)
 
-    def mpris2_recv_player(fd_rd, fd_wr):
-        def _propresp(t, ok):
-            m = _T("{t}:{s}\n").format(t = t,
-                s = "ok" if ok else "ng")
-            os.write(fd_wr, m)
+            meth = _T(os.read(fd_rd, 128)).rstrip("\n")
+            if False:
+                pass
+            # org.mpris.MediaPlayer2 [base] methods
+            elif s_eq(meth, "Next"):
+                _methresp("VOID", True)
+                self.w.cmd_on_next(True)
+            elif s_eq(meth, "Previous"):
+                _methresp("VOID", True)
+                self.w.cmd_on_prev(True)
+            elif s_eq(meth, "PlayPause"):
+                _methresp("VOID", True)
+                self.w.do_command_button(self.w.id_play)
+            elif s_eq(meth, "Stop"):
+                _methresp("VOID", True)
+                self.w.do_command_button(self.w.id_stop)
+            elif s_eq(meth, "Play"):
+                _methresp("VOID", True)
+                st = self.w.get_medi_state()
+                if st != wx.media.MEDIASTATE_PLAYING:
+                    self.w.do_command_button(self.w.id_play)
+            elif s_eq(meth, "Pause"):
+                _methresp("VOID", True)
+                st = self.w.get_medi_state()
+                if st == wx.media.MEDIASTATE_PLAYING:
+                    self.w.do_command_button(self.w.id_play)
+            elif s_eq(meth, "Seek"):
+                fd_write(fd_wr, _T("ARGS:x\n"))
+                val = _T(os.read(fd_rd, 128)).rstrip("\n")
+                if self.w.load_ok and self.w.medi.Length() > 0:
+                    self.w.medi.Seek(int(val) / 1000)
+                _methresp("VOID", True)
+            elif s_eq(meth, "SetPosition"):
+                # TODO when metadata etc. ready
+                _methresp("UNSUPPORTED", True)
+            elif s_eq(meth, "OpenUri"):
+                fd_write(fd_wr, _T("ARGS:s\n"))
+                val = _T(os.read(fd_rd, 1024)).rstrip("\n")
+                reslist, errs = self.w.do_arg_list([val],
+                                            append = append,
+                                            recurse = False,
+                                            play = False)
+                self.prdbg(
+                    _T("MPRIS2 OpenUri: errs == '{}'").format(errs))
+                _methresp("VOID", True)
+            else:
+                _methresp("UNSUPPORTED", True)
 
-        prop = _T(os.read(fd_rd, 128)).rstrip("\n")
-        if False:
-            pass
-        elif prop == "LoopStatus":
-            _propresp("b", True)
-            resp = _T(os.read(fd_rd, 128)).rstrip("\n")
-            if s_eq(resp, "None"):
-                self.loop_track = False
-            elif s_eq(resp, "Track"):
-                self.loop_track = True
-        elif prop == "Rate":
-            _propresp("b", True)
-            resp = _T(os.read(fd_rd, 128)).rstrip("\n")
-            self.prdbg(_T("MPRIS2 set rate {}").format(resp))
-        elif prop == "Shuffle":
-            _propresp("b", True)
-            resp = _T(os.read(fd_rd, 128)).rstrip("\n")
-            self.prdbg(_T("MPRIS2 set shuffle {}").format(resp))
-        elif prop == "Volume":
-            _propresp("b", True)
-            resp = _T(os.read(fd_rd, 128)).rstrip("\n")
-            v = int(float(resp) * 100.0 + 0.5)
-            self.do_volume(v)
-            self.prdbg(_T("MPRIS2 set volume {}").format(v))
-        else:
-            _propresp("b", False)
-            return False
+            return True
 
-        return True
+        def prdbg(self, m):
+            self.w.prdbg(m)
 
-    def mpris2_meth(fd_rd, fd_wr, ack, level):
-        if not self.mpris2_send_ack(fd_rd, fd_wr, ack):
-            return False
+        def err_msg(self, m):
+            self.w.err_msg(m)
 
-        if level == "base":
-            return self.mpris2_meth_base(fd_rd, fd_wr)
-        elif level == "player":
-            return self.mpris2_meth_player(fd_rd, fd_wr)
+        def on_mpris2(self, cmd, io_desc_pair):
+            fd_rd, fd_wr = io_desc_pair.get_fds()
 
-        return False
+            self.w.mpris = (fd_rd >= 0 and fd_wr >= 0)
+            self.w.mpris_fd_rd = fd_rd
+            self.w.mpris_fd_wr = fd_wr
 
-    def mpris2_meth_base(fd_rd, fd_wr):
-        def _methresp(t, ok):
-            m = _T("{t}:{s}\n").format(t = t,
-                s = "ok" if ok else "ng")
-            os.write(fd_wr, m)
+            self.err_msg(_T("self.w.mpris : {}").format(self.w.mpris))
+            if not self.w.mpris:
+                return False
 
-        meth = _T(os.read(fd_rd, 128)).rstrip("\n")
-        if False:
-            pass
-        # org.mpris.MediaPlayer2 [base] methods
-        elif s_eq(meth, "Quit"):
-            _methresp("VOID", True)
-            self.Close(False)
-        elif s_eq(meth, "Raise"):
-            _methresp("VOID", True)
-            self.Raise()
-        else:
-            _methresp("UNSUPPORTED", True)
+            if not cmd:
+                cmd = os.read(fd_rd, 128)
+            cmd = cmd.rstrip('\n')
+            self.err_msg(_T("on_mpris2 cmd '{}'").format(cmd))
 
-        return True
+            ret = False
 
-    def mpris2_meth_player(fd_rd, fd_wr):
-        def _methresp(t, ok):
-            m = _T("{t}:{s}\n").format(t = t,
-                s = "ok" if ok else "ng")
-            os.write(fd_wr, m)
+            if cmd[:5] == "base:":
+                cmd = cmd[5:]
+                if cmd == "getproperty":
+                    ret = self.mpris2_send(fd_rd, fd_wr, cmd, "base")
+                elif cmd == "setproperty":
+                    ret = self.mpris2_recv(fd_rd, fd_wr, cmd, "base")
+                elif cmd == "method":
+                    self.err_msg(_T("on_mpris2 > method"))
+                    ret = self.mpris2_meth(fd_rd, fd_wr, cmd, "base")
+            elif cmd[:7] == "player:":
+                cmd = cmd[7:]
+                if cmd == "getproperty":
+                    ret = self.mpris2_send(fd_rd, fd_wr, cmd, "player")
+                elif cmd == "setproperty":
+                    ret = self.mpris2_recv(fd_rd, fd_wr, cmd, "player")
+                elif cmd == "method":
+                    ret = self.mpris2_meth(fd_rd, fd_wr, cmd, "player")
+            else:
+                fd_write(fd_wr, _T("UNSUPPORTED\n"))
+                self.err_msg(_T("MPRIS cmd is unsupported"))
 
-        meth = _T(os.read(fd_rd, 128)).rstrip("\n")
-        if False:
-            pass
-        # org.mpris.MediaPlayer2 [base] methods
-        elif s_eq(meth, "Next"):
-            _methresp("VOID", True)
-            self.cmd_on_next(True)
-        elif s_eq(meth, "Previous"):
-            _methresp("VOID", True)
-            self.cmd_on_prev(True)
-        elif s_eq(meth, "PlayPause"):
-            _methresp("VOID", True)
-            self.do_command_button(self.id_play)
-        elif s_eq(meth, "Stop"):
-            _methresp("VOID", True)
-            self.do_command_button(self.id_stop)
-        elif s_eq(meth, "Play"):
-            _methresp("VOID", True)
-            self.do_command_button(self.id_stop)
-            st = self.get_medi_state()
-            if st != wx.media.MEDIASTATE_PLAYING:
-                self.do_command_button(self.id_play)
-        elif s_eq(meth, "Seek"):
-            os.write(fd_wr, _T("ARGS:x\n"))
-            val = _T(os.read(fd_rd, 128)).rstrip("\n")
-            if self.load_ok and self.medi.Length() > 0:
-                self.medi.Seek(int(val) / 1000)
-            _methresp("VOID", True)
-        elif s_eq(meth, "SetPosition"):
-            # TODO when metadata etc. ready
-            _methresp("UNSUPPORTED", True)
-        elif s_eq(meth, "OpenUri"):
-            os.write(fd_wr, _T("ARGS:s\n"))
-            val = _T(os.read(fd_rd, 1024)).rstrip("\n")
-            reslist, errs = self.do_arg_list([val],
-                                        append = append,
-                                        recurse = False,
-                                        play = False)
-            self.prdbg(_T("MPRIS2 OpenUri: errs == '{}'").format(errs))
-            _methresp("VOID", True)
-        else:
-            _methresp("UNSUPPORTED", True)
-
-        return True
-
-
-    def on_mpris2(self, io_desc_pair):
-        fd_rd, fd_wr = io_desc_pair.get_fds()
-        self.mpris = (fd_rd >= 0 and fd_wr >= 0)
-        self.mpris_fd_rd = fd_rd
-        self.mpris_fd_wr = fd_wr
-
-        if not self.mpris:
-            return False
-
-        try:
-            cmd = _T(os.read(fd_rd, 128))
-        except (IOError, OSError) as e:
-            self.prdbg(_T("MPRIS2 read error '{}'").format(e.strerror))
-            return False
-        except:
-            self.prdbg(_T("MPRIS2 read exception (unknown error)"))
-            return False
-
-        if cmd[:5] == "base:":
-            cmd = cmd[5:]
-            if cmd == "getproperty":
-                return self.mpris2_send(fd_rd, fd_wr, cmd, "base")
-            elif cmd == "setproperty":
-                return self.mpris2_recv(fd_rd, fd_wr, cmd, "base")
-            elif cmd == "method":
-                return self.mpris2_meth(fd_rd, fd_wr, cmd, "base")
-        elif cmd[:5] == "player:":
-            cmd = cmd[5:]
-            if cmd == "getproperty":
-                return self.mpris2_send(fd_rd, fd_wr, cmd, "player")
-            elif cmd == "setproperty":
-                return self.mpris2_recv(fd_rd, fd_wr, cmd, "player")
-            elif cmd == "method":
-                return self.mpris2_meth(fd_rd, fd_wr, cmd, "player")
-
-        return False
+            self.done()
+            return ret
 
     def on_chmsg(self, event):
         t, dat = event.get_content()
 
         if t == _T("M"):
-            return self.on_mpris2(dat)
+            try:
+                n = self.mpriscallcnt
+                self.mpriscallcnt += 1
+            except AttributeError:
+                self.mpriscallcnt = 1
+                n = 0
+            self.err_msg(_T("MPRIS call #{}").format(n))
+            tmh = self._mpris2_handler(self, dat)
+            if False:
+                wx.CallAfter(tmh.go)
+            else:
+                tmh.go()
+            return
 
         if t != _T('1'):
             self.prdbg(_T("MSG NOT STDOUT '{}'").format(
