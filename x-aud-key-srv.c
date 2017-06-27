@@ -135,6 +135,9 @@ const char *appname;
  * use p_exit */
 void (*p_exit)(int) = NULL;
 
+/* store parent pid for child coprocess */
+pid_t app_main_pid;
+
 #define KEY_SETUP(dsp, wnd) \
     do_key_grabs(dsp, wnd); \
     XSelectInput(dsp, wnd, KeyPressMask | KeyReleaseMask);
@@ -925,8 +928,6 @@ _ssave_on(void)
 
 /* for system(3), used below */
 #define _SH_REDIR ">/dev/null 2>/dev/null </dev/null"
-/* 64 bit decimal with sign can be 20 chars -- so lets use 32 */
-#define _FMT_BUF_PAD 32
 
 /* X screensaver methods likely fail in complex desktop systems
  * that each do things their own idiosyncratic ways -- XDG
@@ -1446,6 +1447,7 @@ main(int argc, char **argv)
     };
 
     p_exit = exit;
+    app_main_pid = getppid();
 
 #   if HAVE_SETLOCALE
     /* all IO in ascii, except perhaps window titles,

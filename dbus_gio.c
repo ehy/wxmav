@@ -28,10 +28,10 @@
 #include <locale.h>
 #include <poll.h>
 #include <signal.h>
-#include <stdlib.h>
 #include <stdio.h>
 /* SIZE_MAX might be in limits.h (BSD), or in stdint.h */
-#include <stdint.h>
+#include <stdint.h> /* TODO: test w/ configure, have alternatives */
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -55,6 +55,24 @@
 /* token separator for multi-token lines */
 #define _TSEPC ':'
 #define _TSEPS ":"
+
+typedef struct _mpris_data_struct {
+    /* glib items */
+    GMainLoop         *loop;
+    GDBusNodeInfo     *node_info;
+    gint              bus_id;
+    GDBusConnection   *connection;
+    /* IO with client */
+    char              *buf;
+    size_t            bufsz;
+    FILE              *fprd;
+    FILE              *fpwr;
+} mpris_data_struct;
+
+mpris_data_struct mpris_data = {
+    NULL, NULL, 0, NULL,
+    NULL, 0, NULL, NULL
+};
 
 /* signal handler for specified quit signal,
  * (system signal, not glib)
@@ -81,6 +99,20 @@ read_line(char **buf, size_t *bs, FILE *fptr);\
 /* remove trailing '\n' */
 static int
 unnl(char *p);
+/* make a glib variant from a type and value; for complex types
+ * (as, etc.) additional lines must be read, hence
+ * mpris_data_struct *dat -- type string must be suitable
+ * for producing one GVariant -- that is 's' or 'd' or
+ * 'aa{sv}' or '(b(oss))' are OK, but e.g. 'a{sv}(ox)' is NG */
+static GVariant*
+gvar_from_strings(char *type, char *value, mpris_data_struct *dat);
+/* make a glib variant from a type and value; complex types
+ * (as, etc.) are not permitted -- this is for something like
+ * b:true or d:0.5, already split at the colon if from a single
+ * string; in any case type should ba a char giving the data
+ * type, and value should be a convertible string */
+static GVariant*
+gvar_from_simple_type(int type, char *value, mpris_data_struct *dat);
 /* main procedure for dbus gio coprocess */
 static int
 dbus_gio_main(const dbus_proc_in *in);
@@ -95,24 +127,6 @@ stop_mpris_service(void);
 FILE *mpris_rfp = NULL;
 /* global FILE for writeing to client pipe */
 FILE *mpris_wfp = NULL;
-
-typedef struct _mpris_data_struct {
-    /* glib items */
-    GMainLoop         *loop;
-    GDBusNodeInfo     *node_info;
-    gint              bus_id;
-    GDBusConnection   *connection;
-    /* IO with client */
-    char              *buf;
-    size_t            bufsz;
-    FILE              *fprd;
-    FILE              *fpwr;
-} mpris_data_struct;
-
-mpris_data_struct mpris_data = {
-    NULL, NULL, 0, NULL,
-    NULL, 0, NULL, NULL
-};
 
 
 /* EXTERNAL API:
@@ -436,6 +450,9 @@ dbus_gio_main(const dbus_proc_in *in)
     /* ensure MPRIS2 support is stopped */
     stop_mpris_service();
 
+    fclose(mpris_rfp);
+    fclose(mpris_wfp);
+
     /* if got quit signal (got_common_signal), reraise */
     if ( got_common_signal ) {
         if ( prg != NULL ) {
@@ -477,11 +494,14 @@ const gchar *mpris_player  = "org.mpris.MediaPlayer2.Player";
 const gchar *fdesk_props   = "org.freedesktop.DBus.Properties";
 const gchar *mpris_thisname= NULL;
 #define MPRIS2_NAME_BASE "org.mpris.MediaPlayer2"
+#ifndef MPRIS2_INST_BASE
+#define MPRIS2_INST_BASE "instance"
+#endif /* MPRIS2_INST_BASE */
 
 static void
 put_mpris_thisname(const char *thisname)
 {
-    size_t len = sizeof(MPRIS2_NAME_BASE) + strlen(thisname) + 2;
+    size_t len = sizeof(MPRIS2_NAME_BASE) + sizeof(MPRIS2_INST_BASE);
     int    r;
     gchar  *p;
 
@@ -489,9 +509,13 @@ put_mpris_thisname(const char *thisname)
         free((void *)mpris_thisname);
     }
 
+    len += strlen(thisname) + _FMT_BUF_PAD;
+
     p = xmalloc(len);
 
-    r = snprintf(p, len, "%s.%s", MPRIS2_NAME_BASE, thisname);
+    r = snprintf(p, len, "%s.%s.%s%ld",
+                 MPRIS2_NAME_BASE, thisname,
+                 MPRIS2_INST_BASE, (long int)app_main_pid);
     p[len - 1] = '\0';
 
     mpris_thisname = p;
@@ -939,6 +963,333 @@ _mpris_call_method(GDBusConnection *connection,
 	}
 }
 
+/* make a glib variant from a type and value; complex types
+ * (as, etc.) are not permitted -- this is for something like
+ * b:true or d:0.5, already split at the colon if from a single
+ * string; in any case type should ba a char giving the data
+ * type, and value should be a convertible string */
+static GVariant*
+gvar_from_simple_type(int type, char *value, mpris_data_struct *dat)
+{
+	GVariant *result = NULL;
+    char     *p      = value;
+
+    /* NOTE that for int types, sscanf into types that are wider
+     * or at least equal length, then clamp with MAX(MIN())
+     */
+    if ( type == 'b' ) {
+        gboolean b = strcasecmp(p, "true") == 0 ? TRUE : FALSE;
+		result = g_variant_new_boolean(b);
+    } else if ( type == 's' ||
+                type == 'o' ||
+                type == 'g' ) {
+		gchar pt[2] = {type, '\0'};
+        result = g_variant_new(pt, p);
+    } else if ( type == 'd' ) {
+        gdouble v = atof(p);
+		result = g_variant_new_double(v);
+    } else if ( type == 'y' ) {
+        unsigned int u;
+        if ( sscanf(p, "%u", &u) == 1 ) {
+            guchar v = (guchar)MIN(u, UINT8_MAX);
+            result = g_variant_new_byte(v);
+        }
+    } else if ( type == 'n' ) {
+        int d;
+        if ( sscanf(p, "%d", &d) == 1 ) {
+            gint16 v = (gint16)MAXMIN(d, INT16_MAX, INT16_MIN);
+            result = g_variant_new_int16(v);
+        }
+    } else if ( type == 'q' ) {
+        unsigned int u;
+        if ( sscanf(p, "%u", &u) == 1 ) {
+            guint16 v = (guint16)MIN(u, UINT16_MAX);
+            result = g_variant_new_uint16(v);
+        }
+    } else if ( type == 'i' ) {
+        long int i;
+        if ( sscanf(p, "%ld", &i) == 1 ) {
+            gint32 v = (gint32)MAXMIN(i, INT32_MAX, INT32_MIN);
+            result = g_variant_new_int32(v);
+        }
+    } else if ( type == 'u' ) {
+        unsigned long int u;
+        if ( sscanf(p, "%lu", &u) == 1 ) {
+            guint32 v = (guint32)MIN(u, UINT32_MAX);
+            result = g_variant_new_uint32(v);
+        }
+    } else if ( type == 'x' ) {
+        long long int i;
+        if ( sscanf(p, "%lld", &i) == 1 ) {
+            gint64 v = (gint64)MAXMIN(i, INT64_MAX, INT64_MIN);
+            result = g_variant_new_int64(v);
+        }
+    } else if ( type == 't' ) {
+        guint64 v;
+        unsigned long long int u;
+        if ( sscanf(p, "%llu", &u) == 1 ) {
+            guint64 v = (guint64)MIN(u, UINT64_MAX);
+            result = g_variant_new_uint64(v);
+        }
+    } else if ( type == 'h' ) {
+        long int i;
+        if ( sscanf(p, "%ld", &i) == 1 ) {
+            gint32 v = (gint32)MAXMIN(i, INT32_MAX, INT32_MIN);
+            result = g_variant_new_handle(v);
+        }
+    } else if ( type == 'v' ) {
+		/* special case here: value (p) must be of form:
+         * type:[value-or-none-per-type]*/
+        GVariant *var;
+        size_t   tlen;
+        ssize_t  rdlen;
+        char     *t, *t2;
+
+        t = strchr(p, _TSEPC);
+        if ( t == NULL ) {
+            fprintf(stderr, "%s unexpected mpris type (%s) (f)\n",
+                prog, p);
+            return NULL;
+        }
+
+        *t++ = '\0';
+        t2   = p;
+
+        var = gvar_from_strings(t2, t, dat);
+        if ( var == NULL ) {
+            fprintf(stderr, "%s rec. gvar_from_strings failed (f)\n",
+                prog);
+            return NULL;
+        }
+
+        result = g_variant_new_variant(var);
+    }
+
+    return result;
+}
+
+/* make a glib variant from a type and value; for complex types
+ * (as, etc.) additional lines must be read, hence
+ * mpris_data_struct *dat -- type string must be suitable
+ * for producing one GVariant -- that is 's' or 'd' or
+ * 'aa{sv}' or '(b(oss))' are OK, but e.g. 'a{sv}(ox)' is NG */
+static GVariant*
+gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
+{
+	GVariant *result = NULL;
+    char     *p2     = type;
+    char     *p      = value;
+    size_t   tlen    = strlen(p2);
+    ssize_t  rdlen;
+    char     *t;
+
+    /* 1st, if type is a single char, hand off to the
+     * simple type procedure
+     */
+    if ( tlen == 1 ) {
+        if ( p == NULL || *p == '\0' ) {
+            rdlen = read_line_dat(dat);
+            if ( rdlen < 1 ) {
+                fprintf(stderr,
+                    "%s unexpected mpris read end (%ld) (d)\n",
+                    prog, (long int)rdlen);
+                return NULL;
+            }
+
+            unnl(dat->buf);
+            p = dat->buf;
+        }
+
+        result = gvar_from_simple_type(*p2, p, dat);
+    }
+
+    if ( result != NULL ) {
+        return result;
+    }
+
+    if ( tlen < 2 ) {
+        fprintf(stderr, "%s: internal error (C) p2<2\n", prog);
+        return NULL;
+    }
+
+    if ( p != NULL && *p == '\0' ) {
+        p = NULL;
+    }
+
+    /* since type might point into dat->buf, and dat->buf
+     * will be refilled, make room and copy type -- if it is not
+     * tiny and insignificant on the stack, then there is a big
+     * problem elsewhere. */
+    t = alloca(++tlen); /* has one extra */
+    if ( strlcpy(t, p2, tlen) >= tlen ) {
+        fprintf(stderr, "%s: internal error (B)\n", prog);
+        return NULL;
+    }
+    --tlen;
+
+    p2 = t++;
+
+    /* array of something */
+    if ( *p2 == 'a' ) {
+		GVariantBuilder *builder;
+
+        builder = g_variant_builder_new(G_VARIANT_TYPE(p2));
+
+        for ( ;; ) {
+            ssize_t  rdlen;
+            GVariant *var = NULL;
+
+            if ( p == NULL ) {
+                rdlen = read_line_dat(dat);
+                if ( rdlen < 1 ) {
+                    fprintf(stderr,
+                        "%s unexpected mpris read end (%ld) (d)\n",
+                        prog, (long int)rdlen);
+                    return NULL;
+                }
+
+                p = dat->buf;
+            }
+
+            unnl(p);
+
+            if ( S_CS_EQ(p, ":END ARRAY:") ) {
+                break;
+            }
+
+            var = gvar_from_strings(t, p, dat);
+            g_variant_builder_add_value(builder, var);
+            p = NULL;
+        }
+
+		result = g_variant_builder_end(builder);
+		g_variant_builder_unref(builder);
+    /* 'dictionary' type */
+    } else if ( *p2 == '{' ) {
+        size_t   i;
+        char     *ep;
+        GVariant *k, *v;
+        int      ccl      = '}';
+
+        if ( (ep = strrchr(t, ccl)) == NULL ) {
+            fprintf(stderr, "%s: internal error (D,2) '%s'\n", prog, t);
+            return NULL;
+        }
+        if ( *t == '{' || *t == '(' || *t == '\0' ) {
+            fprintf(stderr, "%s: internal error (D,3) '%s'\n", prog, t);
+            return NULL;
+        }
+
+        *ep = '\0';
+
+        if ( p == NULL ) {
+            rdlen = read_line_dat(dat);
+            if ( rdlen < 1 ) {
+                fprintf(stderr,
+                    "%s unexpected mpris read end (%ld) (e)\n",
+                    prog, (long int)rdlen);
+                return NULL;
+            }
+            p = dat->buf;
+        }
+
+        unnl(p);
+
+        /* key must be a simple type, */
+        k = gvar_from_simple_type(*t, p, dat);
+        if ( k == NULL ) {
+            fprintf(stderr, "%s: internal error (D,4) '%s'\n", prog, t);
+            return NULL;
+        }
+        ++t;
+
+        rdlen = read_line_dat(dat);
+        if ( rdlen < 1 ) {
+            fprintf(stderr,
+                "%s unexpected mpris read end (%ld) (e)\n",
+                prog, (long int)rdlen);
+            return NULL;
+        }
+        p = dat->buf;
+
+        unnl(p);
+
+        /* value needn't be a simple type */
+        v = gvar_from_strings(t, p, dat);
+        if ( v == NULL ) {
+            fprintf(stderr, "%s: internal error (D,5)\n", prog);
+            return NULL;
+        }
+
+        result = g_variant_new_dict_entry(k, v);
+    /* 'tuple' type */
+    } else if ( *p2 == '(' ) {
+        char            *ep;
+        GVariant        **ch_vec = NULL;
+        gsize           ch_cnt   = 0;
+        size_t          ch_asz   = 0, ch_ainc = 4;
+        int             ccl      = ')';
+
+        if ( (ep = strrchr(t, ccl)) == NULL ) {
+            fprintf(stderr, "%s: internal error (D,2) '%s'\n", prog, t);
+            return NULL;
+        }
+
+        *ep = '\0';
+
+        for ( ; *t != '\0'; t++ ) {
+            GVariant *var = NULL;
+
+            if ( p == NULL ) {
+                rdlen = read_line_dat(dat);
+                if ( rdlen < 1 ) {
+                    fprintf(stderr,
+                        "%s unexpected mpris read end (%ld) (e)\n",
+                        prog, (long int)rdlen);
+                    return NULL;
+                }
+                p = dat->buf;
+            }
+
+            unnl(p);
+
+            var = gvar_from_strings(t, p, dat);
+            if ( var == NULL ) {
+                while ( ch_cnt > 0 ) {
+                    g_free(ch_vec[--ch_cnt]);
+                }
+                if ( ch_vec != NULL ) {
+                    free(ch_vec);
+                }
+                return NULL;
+            }
+
+            if ( ch_cnt == ch_asz ) {
+                ch_asz += ch_ainc;
+                ch_vec = xrealloc(ch_vec, sizeof(*ch_vec) * ch_asz);
+            }
+
+            ch_vec[ch_cnt++] = var;
+
+            if ( *t == '(' || *t == '{' ) {
+                int rtc = *t == '(' ? ')' : '}';
+                /* no check: gvar_from_strings() != NULL implies OK */
+                t = strrchr(t, rtc);
+            }
+
+            p = NULL;
+        }
+
+		if ( ch_cnt > 0 ) {
+            result = g_variant_new_tuple(ch_vec, ch_cnt);
+            free(ch_vec);
+		}
+    }
+    /* TODO other types not handled yet */
+
+    return result;
+}
+
 static GVariant*
 _mpris_get_property(GDBusConnection *connection,
                     const gchar *sender,
@@ -972,40 +1323,7 @@ _mpris_get_property(GDBusConnection *connection,
     *p2 = '\0';
     p2 = dat->buf;
 
-    if ( S_CS_EQ(p2, "b") ) {
-        gboolean b = strcasecmp(p, "true") == 0 ? TRUE : FALSE;
-		result = g_variant_new_boolean(b);
-    } else if ( S_CS_EQ(p2, "s") ) {
-		result = g_variant_new_string(p);
-    } else if ( S_CS_EQ(p2, "g") ) {
-        gdouble d = atof(p);
-		result = g_variant_new_double(d);
-    } else if ( S_CS_EQ(p2, "as") ) {
-		GVariantBuilder *builder =
-            g_variant_builder_new(G_VARIANT_TYPE("as"));
-
-        for ( ;; ) {
-            rdlen = read_line_dat(dat);
-            if ( rdlen < 1 ) {
-                fprintf(stderr,
-                    "%s unexpected mpris read end (%ld) (d)\n",
-                    prog, (long int)rdlen);
-                return NULL;
-            }
-
-            p2 = dat->buf;
-            unnl(dat->buf);
-
-            if ( S_CS_EQ(p2, ":END ARRAY:") ) {
-                break;
-            }
-
-            g_variant_builder_add(builder, "s", p2);
-        }
-
-		result = g_variant_builder_end(builder);
-		g_variant_builder_unref(builder);
-    }
+    result = gvar_from_strings(p2, p, dat);
 
 	return result;
 }
@@ -1377,6 +1695,8 @@ static const char mpris_node_xml[] =
 	"		<method name='Raise'/>"
 	"		<method name='Quit'/>"
 	"		<property access='read'	name='CanQuit'             type='b'/>"
+	"		<property access='readwrite' name='Fullscreen'     type='b'/>"
+	"		<property access='read'	name='CanSetFullscreen'    type='b'/>"
 	"		<property access='read'	name='CanRaise'            type='b'/>"
 	"		<property access='read'	name='HasTrackList'        type='b'/>"
 	"		<property access='read'	name='Identity'            type='s'/>"

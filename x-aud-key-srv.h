@@ -30,12 +30,18 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #undef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MINMAX(v, min, max) \
+    ((v) >= (min) && (v) <= (max) ? (v) : ((v) < (min) ? (min) : (max)))
+#define MAXMIN(v, max, min) MINMAX(v, min, max)
 
 #define A_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 #define TERMINATE_CHARBUF(buf, contentlen) do { \
         buf[MIN(contentlen, sizeof(buf) - 1)] = '\0'; \
     } while (0)
+
+/* 64 bit decimal with sign can be 20 chars -- so lets use 32 */
+#define _FMT_BUF_PAD 32
 
 /* string equivalence - Case Sensitive */
 #define S_CS_EQ(s1, s2) (strcmp(s1, s2) == 0)
@@ -89,5 +95,8 @@ extern volatile sig_atomic_t got_common_signal;
 /* for MPRIS2 support (if available) */
 extern int mpris_fd_read;
 extern int mpris_fd_write;
+
+/* store parent pid for child coprocess */
+extern pid_t app_main_pid;
 
 #endif /* _X_AUD_KEY_H_INCL */
