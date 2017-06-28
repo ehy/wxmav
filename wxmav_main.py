@@ -8757,6 +8757,7 @@ class TopWnd(wx.Frame):
             elif prop == "LoopStatus":
                 _propresp("s", True)
                 resp = _T(os.read(fd_rd, 128)).rstrip("\n")
+                # TODO: make set_ proc that updated menu too
                 if s_eq(resp, "None"):
                     self.w.loop_track = False
                 elif s_eq(resp, "Track"):

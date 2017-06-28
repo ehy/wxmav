@@ -74,6 +74,9 @@ mpris_data_struct mpris_data = {
     NULL, 0, NULL, NULL
 };
 
+/* main procedure for dbus gio coprocess */
+static int
+dbus_gio_main(const dbus_proc_in *in);
 /* signal handler for specified quit signal,
  * (system signal, not glib)
  */
@@ -113,9 +116,17 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat);
  * type, and value should be a convertible string */
 static GVariant*
 gvar_from_simple_type(int type, char *value, mpris_data_struct *dat);
-/* main procedure for dbus gio coprocess */
+/* when client wants arguments -- method invocation, set propery --
+ * client calls for them with string "ARGS" and a colon sep'd
+ * type string, e.g. 'b:x:a{sv}' -- call this to print args extracted
+ * from GVariant 'parameters' sent by glib/gio on FILE * in the
+ * data struct 'dat' according to type-string 'types' and
+ * return sum of returns from fprintf() or -1 on error
+ */
 static int
-dbus_gio_main(const dbus_proc_in *in);
+put_args_from_gvar(char *types,
+                   GVariant *parameters,
+                   mpris_data_struct *dat);
 
 /* MPRIS2 player control */
 static int
@@ -324,12 +335,16 @@ typedef struct _dbus_path_etc {
     const gchar *interface;       /*  org.foo.BarDaemon.BazBits */
     const  char *domain_name;     /*      foo */
 } dbus_path_etc;
-#define _PUT_DBUS_PATH_ETC(v) { \
-     "org." v ".SettingsDaemon", \
-    "/org/" v "/SettingsDaemon/MediaKeys", \
-     "org." v ".SettingsDaemon.MediaKeys", \
-            v \
+
+#define _PUT_DBUS_BY_NAMES(tld, dom, site, respth, resifc) { \
+     tld "." dom "." site , \
+ "/" tld "/" dom "/" site "/" respth , \
+     tld "." dom "." site "." resifc , \
+             dom \
     }
+#define _PUT_DBUS_PATH_ETC(v) \
+_PUT_DBUS_BY_NAMES("org", v, "SettingsDaemon", "MediaKeys", "MediaKeys")
+
 dbus_path_etc path_attempts[] = {
     _PUT_DBUS_PATH_ETC("freedesktop"), /* found in xdg-screensaver */
     _PUT_DBUS_PATH_ETC("xfce"),        /* just a guess */
@@ -346,10 +361,7 @@ static int
 dbus_gio_main(const dbus_proc_in *in)
 {
     size_t          i;
-    GDBusProxy      *proxy;
-    GDBusProxyFlags flags  = 0;
     GMainLoop       *loop  = NULL;
-    GError          *error = NULL;
     int             rmpris = 0;
     int             outfd  = 1; /* standard output */
     const char      *prg   = in->progname ? prog : NULL;
@@ -362,17 +374,20 @@ dbus_gio_main(const dbus_proc_in *in)
     mpris_data.loop = loop;
 
     for ( i = 0; i < A_SIZE(path_attempts); i++ ) {
-        const char *nm = path_attempts[i].domain_name;
+        GDBusProxy      *proxy;
+        GDBusProxyFlags flags  = 0;
+        GError          *error = NULL;
+        const char      *nm = path_attempts[i].domain_name;
 
-        error = NULL;
-        proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
-            flags,
-            NULL, /* GDBusInterfaceInfo */
-            path_attempts[i].well_known_name,
-            path_attempts[i].object_path,
-            path_attempts[i].interface,
-            NULL, /* GCancellable */
-            &error);
+        proxy = g_dbus_proxy_new_for_bus_sync(
+                    G_BUS_TYPE_SESSION,
+                    flags,
+                    NULL, /* GDBusInterfaceInfo */
+                    path_attempts[i].well_known_name,
+                    path_attempts[i].object_path,
+                    path_attempts[i].interface,
+                    NULL, /* GCancellable */
+                    &error);
 
         if ( error != NULL || proxy == NULL ) {
             if ( prg != NULL ) {
@@ -433,6 +448,7 @@ dbus_gio_main(const dbus_proc_in *in)
     g_main_loop_unref(loop);
 
     for ( i = 0; i < A_SIZE(path_attempts); i++ ) {
+        GDBusProxy      *proxy;
         proxy = proxy_all[i];
 
         if ( proxy == NULL ) {
@@ -727,7 +743,7 @@ _exchange_handshake(mpris_data_struct *dat,
                     const char        *property_name)
 {
     ssize_t rdlen;
-    int ret = _EXCHGHS_ALL_OK;
+    int     ret = _EXCHGHS_ALL_OK;
 
     fprintf(dat->fpwr, "%s\n", ini);
     fflush(dat->fpwr);
@@ -805,131 +821,65 @@ _mpris_call_method(GDBusConnection *connection,
     ssize_t rdlen;
     int r;
 
-#define _EXCHGHS_WR_ERR -1
-#define _EXCHGHS_RD_ERR -2
-#define _EXCHGHS_ALL_OK  0
-#define _EXCHGHS_ACKREJ  1
-#define _EXCHGHS_ACK_NG  2
-    do {
-    r = _exchange_handshake(dat, ini, ack, method_name);
-    if ( r < 0 ) {
-        fprintf(stderr, "%s mpris handshake %s error (b)\n",
-            prog, r == _EXCHGHS_WR_ERR ? "write" : "read");
-        p2 = r == _EXCHGHS_WR_ERR ? "IO ERROR: w" : "IO ERROR: r";
-        break;
-    } else if ( r != _EXCHGHS_ALL_OK ) {
-        if ( r & _EXCHGHS_ACKREJ ) {
-            /* client actively reject and expects no more */
-            p2 = "ERROR: handshake rejected";
-        } else {
-            /* handshake wrong, client expects more */
-            p2 = "ERROR: handshake incorrect";
-        }
-        break;
-    }
-
-    p = strchr(dat->buf, _TSEPC);
-    if ( p == NULL ) {
-        fprintf(stderr, "%s unexpected mpris type (%s) (c)\n",
-            prog, dat->buf);
-        p2 = "ERROR: format(c)"; break;
-    }
-
-    p2 = p++;
-    *p2 = '\0';
-    p2 = dat->buf;
-
-	/* method takes arguments? */
-	if ( S_CI_EQ(p2, "ARGS") ) {
-        gsize ix;
-
-        for ( ix = 0; p != NULL; ix++ ) {
-            p2 = strsep(&p, _TSEPS);
-
-            if ( *p2 == '\0' ) {
-                fprintf(dat->fpwr, "%s\n", "");
-            } else if ( S_CS_EQ(p2, "b") ) {
-                gboolean v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%s\n",
-                        v == TRUE ? "true" : "false");
-            } else if ( S_CS_EQ(p2, "y") ) {
-                guchar v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%u\n", (unsigned int)v);
-            } else if ( S_CS_EQ(p2, "n") ) {
-                gint16 v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%d\n", (int)v);
-            } else if ( S_CS_EQ(p2, "q") ) {
-                guint16 v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%u\n", (unsigned int)v);
-            } else if ( S_CS_EQ(p2, "i") ) {
-                gint32 v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%d\n", (int)v);
-            } else if ( S_CS_EQ(p2, "u") ) {
-                guint32 v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%u\n", (unsigned int)v);
-            } else if ( S_CS_EQ(p2, "x") ) {
-                gint64 v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%lld\n", (long long)v);
-            } else if ( S_CS_EQ(p2, "t") ) {
-                guint64 v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%llu\n", (unsigned long long)v);
-            } else if ( S_CS_EQ(p2, "h") ) {
-                gint32 v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%d\n", (int)v);
-            } else if ( S_CS_EQ(p2, "d") ) {
-                gdouble v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                fprintf(dat->fpwr, "%f\n", (double)v);
-            } else if ( S_CS_EQ(p2, "s") ||
-                        S_CS_EQ(p2, "o") ||
-                        S_CS_EQ(p2, "g") ) {
-                gchar *v;
-                g_variant_get_child(parameters, ix, p2, &v);
-                if ( v == NULL ) {
-                    v = "error";
-                }
-                fprintf(dat->fpwr, "%s\n", (const char *)v);
-                g_free(v);
+    do { /* on error exit block with break */
+        r = _exchange_handshake(dat, ini, ack, method_name);
+        if ( r < 0 ) {
+            fprintf(stderr, "%s mpris handshake %s error (b)\n",
+                prog, r == _EXCHGHS_WR_ERR ? "write" : "read");
+            p2 = r == _EXCHGHS_WR_ERR ? "IO ERROR: w" : "IO ERROR: r";
+            break;
+        } else if ( r != _EXCHGHS_ALL_OK ) {
+            if ( r & _EXCHGHS_ACKREJ ) {
+                /* client actively reject and expects no more */
+                p2 = "ERROR: handshake rejected";
+            } else {
+                /* handshake wrong, client expects more */
+                p2 = "ERROR: handshake incorrect";
             }
-
-            fflush(dat->fpwr);
+            break;
         }
-
-        if ( ferror(dat->fpwr) || feof(dat->fpwr) ) {
-            fprintf(stderr, "%s error writing to mpris client (d)\n",
-                prog);
-        }
-
-        rdlen = read_line_dat(dat);
-        if ( rdlen < 1 ) {
-            fprintf(stderr,
-                "%s unexpected mpris read end (%ld) (d)\n",
-                prog, (long int)rdlen);
-            p2 = "ERROR: read(d)"; break;
-        }
-
-        unnl(dat->buf);
 
         p = strchr(dat->buf, _TSEPC);
         if ( p == NULL ) {
-            fprintf(stderr, "%s unexpected mpris type (%s) (d)\n",
+            fprintf(stderr, "%s unexpected mpris type (%s) (c)\n",
                 prog, dat->buf);
-            p2 = "ERROR: type(d)"; break;
+            p2 = "ERROR: format(c)"; break;
         }
 
         p2 = p++;
         *p2 = '\0';
         p2 = dat->buf;
-	}
+
+        /* method takes arguments? */
+        if ( S_CI_EQ(p2, "ARGS") ) {
+            int r = put_args_from_gvar(p, parameters, dat);
+
+            if ( r < 0 || ferror(dat->fpwr) || feof(dat->fpwr) ) {
+                fprintf(stderr, "%s error writing to  client (d)\n",
+                    prog);
+            }
+
+            rdlen = read_line_dat(dat);
+            if ( rdlen < 1 ) {
+                fprintf(stderr,
+                    "%s unexpected mpris read end (%ld) (d)\n",
+                    prog, (long int)rdlen);
+                p2 = "ERROR: read(d)"; break;
+            }
+
+            unnl(dat->buf);
+
+            p = strchr(dat->buf, _TSEPC);
+            if ( p == NULL ) {
+                fprintf(stderr, "%s unexpected mpris type (%s) (d)\n",
+                    prog, dat->buf);
+                p2 = "ERROR: type(d)"; break;
+            }
+
+            p2 = p++;
+            *p2 = '\0';
+            p2 = dat->buf;
+        }
     } while ( 0 );
 
 	/* error herein */
@@ -961,6 +911,137 @@ _mpris_call_method(GDBusConnection *connection,
             "Error: method %s.%s unknown",
             interface_name, method_name);
 	}
+}
+
+/* convenience function: get from GVariant with g_variant_get
+ * if type matches type (format) string; else, _assume_ the
+ * variant is a container type and use g_variant_get_child --
+ * note that g_variant_get_child *might crash* the program
+ * if passed a variant of simple type --
+ * Args:
+ *       param      -- pointer to GVariant with data
+ *       idx        -- index to use if not a type match
+ *       fmt        -- the type (format) string to check against
+ *       dest       -- location to receive the value
+ */
+static void
+_get_gvar_one(GVariant *param, gsize idx, const char *fmt, void *dest)
+{
+    gboolean gb = g_variant_is_of_type(param, G_VARIANT_TYPE(fmt));
+
+    if ( gb ) {
+        g_variant_get(param, fmt, dest);
+    } else {
+        g_variant_get_child(param, idx, fmt, dest);
+    }
+}
+
+/* when client wants arguments -- method invocation, set propery --
+ * client calls for them with string "ARGS" and a colon sep'd
+ * type string, e.g. 'b:x:a{sv}' -- call this to print args extracted
+ * from GVariant 'parameters' sent by glib/gio on FILE * in the
+ * data struct 'dat' according to type-string 'types' and
+ * return sum of returns from fprintf() or -1 on error
+ */
+static int
+put_args_from_gvar(char *types,
+                   GVariant *parameters,
+                   mpris_data_struct *dat)
+{
+    gsize       ix;
+    char        *p;
+    size_t      tlen  = strlen(types);
+    int         ret   = 0;
+
+    /* copy types string so that we may modify it
+     * with a clear conscience */
+    p = alloca(++tlen); /* has one extra */
+    if ( strlcpy(p, types, tlen) >= tlen ) {
+        fprintf(stderr, "%s: internal error (H)\n", prog);
+        return -1;
+    }
+    --tlen;
+
+    for ( ix = 0, p = strtok(p, _TSEPS);
+          p != NULL;
+          ix++, p = strtok(NULL, _TSEPS) ) {
+        int r;
+
+        if ( *p == '\0' ) {
+            r = fprintf(dat->fpwr, "%s\n", "");
+        } else if ( S_CS_EQ(p, "b") ) {
+            gboolean v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%s\n",
+                    v == TRUE ? "true" : "false");
+        } else if ( S_CS_EQ(p, "y") ) {
+            guchar v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%u\n", (unsigned int)v);
+        } else if ( S_CS_EQ(p, "n") ) {
+            gint16 v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%d\n", (int)v);
+        } else if ( S_CS_EQ(p, "q") ) {
+            guint16 v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%u\n", (unsigned int)v);
+        } else if ( S_CS_EQ(p, "i") ) {
+            gint32 v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%d\n", (int)v);
+        } else if ( S_CS_EQ(p, "u") ) {
+            guint32 v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%u\n", (unsigned int)v);
+        } else if ( S_CS_EQ(p, "x") ) {
+            gint64 v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%lld\n", (long long)v);
+        } else if ( S_CS_EQ(p, "t") ) {
+            guint64 v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%llu\n", (unsigned long long)v);
+        } else if ( S_CS_EQ(p, "h") ) {
+            gint32 v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%d\n", (int)v);
+        } else if ( S_CS_EQ(p, "d") ) {
+            gdouble v;
+            _get_gvar_one(parameters, ix, p, &v);
+            r = fprintf(dat->fpwr, "%f\n", (double)v);
+        } else if ( S_CS_EQ(p, "s") ||
+                    S_CS_EQ(p, "o") ||
+                    S_CS_EQ(p, "g") ) {
+            gchar *v;
+            int ok = 0;
+
+            _get_gvar_one(parameters, ix, p, &v);
+
+            if ( v == NULL ) {
+                v = "error";
+                fprintf(stderr, "%s: error getting '%c' param %d\n",
+                        prog, *p, (int)ix);
+            } else {
+                ok = 1;
+            }
+
+            r = fprintf(dat->fpwr, "%s\n", (const char *)v);
+
+            if ( ok ) {
+                g_free(v);
+            }
+        }
+
+        if ( r < 0 ) {
+            return r;
+        }
+
+        ret += r;
+        fflush(dat->fpwr);
+    }
+
+    return ret;
 }
 
 /* make a glib variant from a type and value; complex types
@@ -1342,8 +1423,8 @@ _mpris_set_property(GDBusConnection *connection,
 {
     mpris_data_struct *dat = (mpris_data_struct *)user_data;
     char *p, *p2;
-    ssize_t rdlen;
-	int result = 0;
+    ssize_t  rdlen;
+	int      r, result = 0;
 
     if ( _exchange_handshake(dat, ini, ack, property_name) ) {
         fprintf(stderr, "%s mpris handshake '%s' failure (b)\n",
@@ -1368,60 +1449,10 @@ _mpris_set_property(GDBusConnection *connection,
     *p2 = '\0';
     p2 = dat->buf;
 
-    if ( S_CS_EQ(p2, "b") ) {
-        gboolean v;
-        g_variant_get(value, "b", &v);
-        fprintf(dat->fpwr, "%s\n", v == TRUE ? "true" : "false");
-    } else if ( S_CS_EQ(p2, "y") ) {
-        guchar v;
-        g_variant_get(value, "y", &v);
-        fprintf(dat->fpwr, "%u\n", (unsigned int)v);
-    } else if ( S_CS_EQ(p2, "n") ) {
-        gint16 v;
-        g_variant_get(value, "n", &v);
-        fprintf(dat->fpwr, "%d\n", (int)v);
-    } else if ( S_CS_EQ(p2, "q") ) {
-        guint16 v;
-        g_variant_get(value, "q", &v);
-        fprintf(dat->fpwr, "%u\n", (unsigned int)v);
-    } else if ( S_CS_EQ(p2, "i") ) {
-        gint32 v;
-        g_variant_get(value, "i", &v);
-        fprintf(dat->fpwr, "%d\n", (int)v);
-    } else if ( S_CS_EQ(p2, "u") ) {
-        guint32 v;
-        g_variant_get(value, "u", &v);
-        fprintf(dat->fpwr, "%u\n", (unsigned int)v);
-    } else if ( S_CS_EQ(p2, "x") ) {
-        gint64 v;
-        g_variant_get(value, "x", &v);
-        fprintf(dat->fpwr, "%lld\n", (long long)v);
-    } else if ( S_CS_EQ(p2, "t") ) {
-        guint64 v;
-        g_variant_get(value, "t", &v);
-        fprintf(dat->fpwr, "%llu\n", (unsigned long long)v);
-    } else if ( S_CS_EQ(p2, "h") ) {
-        gint32 v;
-        g_variant_get(value, "h", &v);
-        fprintf(dat->fpwr, "%d\n", (int)v);
-    } else if ( S_CS_EQ(p2, "d") ) {
-        gdouble v;
-        g_variant_get(value, "d", &v);
-        fprintf(dat->fpwr, "%f\n", (double)v);
-    } else if ( S_CS_EQ(p2, "s") ) {
-        gchar *v;
-        g_variant_get(value, "s", &v);
-        if ( v == NULL ) {
-            v = "error";
-        }
-        fprintf(dat->fpwr, "%s\n", (const char *)v);
-        g_free(v);
-    } else {
-        return result;
-    }
+    r = put_args_from_gvar(p2, value, dat);
 
     fflush(dat->fpwr);
-    if ( ferror(dat->fpwr) || feof(dat->fpwr) ) {
+    if ( r < 0 || ferror(dat->fpwr) || feof(dat->fpwr) ) {
         fprintf(stderr, "%s error writing to mpris client (c)\n",
             prog);
         return result;
