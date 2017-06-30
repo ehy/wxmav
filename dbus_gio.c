@@ -299,7 +299,6 @@ on_glib_signal(GDBusProxy *proxy,
                gpointer    user_data)
 {
     size_t  len;
-    ssize_t wret, tot;
     gchar   *param_str = NULL;
     int     fd = (int)(ptrdiff_t)user_data;
 
@@ -354,7 +353,6 @@ dbus_gio_main(const dbus_proc_in *in)
 {
     size_t          i;
     GMainLoop       *loop  = NULL;
-    int             rmpris = 0;
     int             outfd  = 1; /* standard output */
     const char      *prg   = in->progname ? prog : NULL;
 
@@ -524,7 +522,7 @@ put_mpris_thisname(const char *thisname)
     r = snprintf(p, len, "%s.%s.%s%ld",
                  MPRIS2_NAME_BASE, thisname,
                  MPRIS2_INST_BASE, (long int)app_main_pid);
-    p[len - 1] = '\0';
+    p[MIN(r, len - 1)] = '\0';
 
     mpris_thisname = p;
 }
@@ -957,7 +955,7 @@ put_args_from_gvar(char *types,
     for ( ix = 0, p = strtok(p, _TSEPS);
           p != NULL;
           ix++, p = strtok(NULL, _TSEPS) ) {
-        int r;
+        int r = 0;
 
         if ( *p == '\0' ) {
             r = fprintf(dat->fpwr, "%s\n", "");
@@ -1098,7 +1096,6 @@ gvar_from_simple_type(int type, char *value, mpris_data_struct *dat)
             result = g_variant_new_int64(v);
         }
     } else if ( type == 't' ) {
-        guint64 v;
         unsigned long long int u;
         if ( sscanf(p, "%llu", &u) == 1 ) {
             guint64 v = (guint64)MIN(u, UINT64_MAX);
@@ -1114,8 +1111,6 @@ gvar_from_simple_type(int type, char *value, mpris_data_struct *dat)
 		/* special case here: value (p) must be of form:
          * type:[value-or-none-per-type]*/
         GVariant *var;
-        size_t   tlen;
-        ssize_t  rdlen;
         char     *t, *t2;
 
         t = strchr(p, _TSEPC);
@@ -1239,7 +1234,6 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
 		g_variant_builder_unref(builder);
     /* 'dictionary' type */
     } else if ( *p2 == '{' ) {
-        size_t   i;
         char     *ep;
         GVariant *k, *v;
         int      ccl      = '}';
@@ -1376,7 +1370,6 @@ _mpris_get_property(GDBusConnection *connection,
 {
     mpris_data_struct *dat = (mpris_data_struct *)user_data;
     char *p, *p2;
-    ssize_t rdlen;
 	GVariant *result = NULL;
 
     if ( _exchange_handshake(dat, ini, ack, property_name) ) {
@@ -1415,7 +1408,6 @@ _mpris_set_property(GDBusConnection *connection,
 {
     mpris_data_struct *dat = (mpris_data_struct *)user_data;
     char *p, *p2;
-    ssize_t  rdlen;
 	int      r, result = 0;
 
     if ( _exchange_handshake(dat, ini, ack, property_name) ) {
