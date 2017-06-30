@@ -130,13 +130,13 @@ put_args_from_gvar(char *types,
 
 /* MPRIS2 player control */
 static int
-start_mpris_service(void);
+start_mpris_service(mpris_data_struct *dat);
 static void
-stop_mpris_service(void);
+stop_mpris_service(mpris_data_struct *dat);
 
 /* global FILE for read end of client pipe */
 FILE *mpris_rfp = NULL;
-/* global FILE for writeing to client pipe */
+/* global FILE for writing to client pipe */
 FILE *mpris_wfp = NULL;
 
 
@@ -274,17 +274,17 @@ handle_quit_signal(int s)
 
     /* this is working with on_glib_quit_signal() below */
     kill(getpid(), glib_quit_signal);
-    /* need to exit unless it is possible to
-     * interrupt the glib main loop
-     * p_exit(1); */
 }
 
 /* signal handler for glib (app arbitrary) quit signals */
 static gboolean
 on_glib_quit_signal(gpointer user_data)
 {
-    GMainLoop *loop = (GMainLoop *)user_data;
+    mpris_data_struct *dat = (mpris_data_struct *)user_data;
+    GMainLoop *loop        = dat->loop;
+
     g_main_loop_quit(loop);
+
     return TRUE;
 }
 
@@ -318,14 +318,6 @@ on_glib_signal(GDBusProxy *proxy,
         p_exit(1);
     }
 
-    /*
-     * docs at
-     *     https://developer.gnome.org/glib/stable/
-     *      gvariant-format-strings.html
-     * state that g_variant_get with format "s" returns alloc'd
-     * string that should be g_free()'d (g_variant_get_child
-     * uses g_variant_get)
-     */
     g_free(param_str);
 }
 
@@ -411,7 +403,7 @@ dbus_gio_main(const dbus_proc_in *in)
     }
 
     g_unix_signal_add(glib_quit_signal, on_glib_quit_signal,
-                      (gpointer)loop);
+                      (gpointer)&mpris_data);
 
     if ( mpris_fd_read >= 0 && mpris_fd_write >= 0 ) {
         if ( (mpris_rfp = fdopen(mpris_fd_read, "r")) == NULL ) {
@@ -443,13 +435,11 @@ dbus_gio_main(const dbus_proc_in *in)
                       (gpointer)&mpris_data);
     }
 
+    /* the loop is poised twixt setup and teardown */
     g_main_loop_run(loop);
 
-    g_main_loop_unref(loop);
-
     for ( i = 0; i < A_SIZE(path_attempts); i++ ) {
-        GDBusProxy      *proxy;
-        proxy = proxy_all[i];
+        GDBusProxy *proxy = proxy_all[i];
 
         if ( proxy == NULL ) {
             continue;
@@ -463,11 +453,13 @@ dbus_gio_main(const dbus_proc_in *in)
         g_object_unref(proxy);
     }
 
-    /* ensure MPRIS2 support is stopped */
-    stop_mpris_service();
+    /* ensure MPRIS2 support is stopped (should've been called) */
+    stop_mpris_service(&mpris_data);
 
     fclose(mpris_rfp);
     fclose(mpris_wfp);
+
+    g_main_loop_unref(loop);
 
     /* if got quit signal (got_common_signal), reraise */
     if ( got_common_signal ) {
@@ -718,9 +710,9 @@ on_mpris_fd_read(gint fd, GIOCondition condition, gpointer user_data)
     rdlen -= pfxsz;
 
     if ( S_CI_EQ(p, "on") ) {
-        start_mpris_service();
+        start_mpris_service(dat);
     } else if ( S_CI_EQ(p, "off") ) {
-        stop_mpris_service();
+        stop_mpris_service(dat);
     }
 
     return TRUE;
@@ -782,7 +774,7 @@ _exchange_handshake(mpris_data_struct *dat,
         ret |= _EXCHGHS_ACK_NG;
     }
 
-    fprintf(stderr, "%s writeing '%s' to client\n",
+    fprintf(stderr, "%s writing '%s' to client\n",
         prog, property_name);
 
     fprintf(dat->fpwr, "%s\n", property_name);
@@ -989,11 +981,11 @@ put_args_from_gvar(char *types,
         } else if ( S_CS_EQ(p, "i") ) {
             gint32 v;
             _get_gvar_one(parameters, ix, p, &v);
-            r = fprintf(dat->fpwr, "%d\n", (int)v);
+            r = fprintf(dat->fpwr, "%ld\n", (long int)v);
         } else if ( S_CS_EQ(p, "u") ) {
             guint32 v;
             _get_gvar_one(parameters, ix, p, &v);
-            r = fprintf(dat->fpwr, "%u\n", (unsigned int)v);
+            r = fprintf(dat->fpwr, "%lu\n", (unsigned long int)v);
         } else if ( S_CS_EQ(p, "x") ) {
             gint64 v;
             _get_gvar_one(parameters, ix, p, &v);
@@ -1005,7 +997,7 @@ put_args_from_gvar(char *types,
         } else if ( S_CS_EQ(p, "h") ) {
             gint32 v;
             _get_gvar_one(parameters, ix, p, &v);
-            r = fprintf(dat->fpwr, "%d\n", (int)v);
+            r = fprintf(dat->fpwr, "%ld\n", (long int)v);
         } else if ( S_CS_EQ(p, "d") ) {
             gdouble v;
             _get_gvar_one(parameters, ix, p, &v);
@@ -1674,41 +1666,40 @@ mp_acquire_failed(GDBusConnection *connection,
 
 
 static int
-start_mpris_service(void)
+start_mpris_service(mpris_data_struct *dat)
 {
     put_mpris_thisname(appname);
 
-	mpris_data.node_info = g_dbus_node_info_new_for_xml(mpris_node_xml,
-                                                        NULL);
+	dat->node_info = g_dbus_node_info_new_for_xml(mpris_node_xml, NULL);
 
-    mpris_data.bus_id = g_bus_own_name(G_BUS_TYPE_SESSION,
-                                       mpris_thisname,
-                                       G_BUS_NAME_OWNER_FLAGS_REPLACE,
-                                       mp_bus_acquired,
-                                       mp_bus_name_acquired,
-                                       mp_acquire_failed,
-                                       (gpointer)&mpris_data,
-                                       NULL);
+    dat->bus_id    = g_bus_own_name(G_BUS_TYPE_SESSION,
+                                    mpris_thisname,
+                                    G_BUS_NAME_OWNER_FLAGS_REPLACE,
+                                    mp_bus_acquired,
+                                    mp_bus_name_acquired,
+                                    mp_acquire_failed,
+                                    (gpointer)dat,
+                                    NULL);
 
     fprintf(stderr, "%s: MPRIS2 start - name '%s' - bus id %d\n",
-            prog, mpris_thisname, mpris_data.bus_id);
+            prog, mpris_thisname, dat->bus_id);
 
     return 1; /* success */
 }
 
 static void
-stop_mpris_service(void)
+stop_mpris_service(mpris_data_struct *dat)
 {
-    if ( mpris_data.bus_id == 0 && mpris_data.node_info == NULL ) {
+    if ( dat->bus_id == 0 && dat->node_info == NULL ) {
         fprintf(stderr, "%s: MPRIS2 stop -- NOT started\n", prog);
         return;
     }
 
-	g_bus_unown_name(mpris_data.bus_id);
-	g_dbus_node_info_unref(mpris_data.node_info);
+	g_bus_unown_name(dat->bus_id);
+	g_dbus_node_info_unref(dat->node_info);
 
-    mpris_data.bus_id = 0;
-    mpris_data.node_info = NULL;
+    dat->bus_id    = 0;
+    dat->node_info = NULL;
 
     fprintf(stderr, "%s: MPRIS2 stop\n", prog);
 }
