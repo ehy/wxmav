@@ -669,7 +669,7 @@ on_mpris_fd_read(gint fd, GIOCondition condition, gpointer user_data)
     const GIOCondition errbits = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 
     if ( fd != fileno(mpris_rfp) ) {
-        fprintf(stderr, "%s: %s on mpris client read fd unexpected\n",
+        fprintf(stderr, "%s: on mpris client read: fd unexpected\n",
                 prog);
 
         return FALSE;
