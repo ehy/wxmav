@@ -7690,7 +7690,7 @@ class TopWnd(wx.Frame):
             dn = _T('') if _in_msw else os.devnull
             #dn = _T('')
 
-            ret = bool(self.medi.Load(dn))
+            #ret = bool(self.medi.Load(dn))
             ret = False if _in_gtk else bool(self.medi.Load(dn))
 
             self.msg_grep = None
