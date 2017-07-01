@@ -973,6 +973,20 @@ if _in_xws:
             self.fd_rd = rd
             self.fd_wr = wr
 
+        def close_rd(self):
+            if self.fd_rd >= 0:
+                os.close(self.fd_rd)
+                self.fd_rd = -1
+
+        def close_wr(self):
+            if self.fd_wr >= 0:
+                os.close(self.fd_wr)
+                self.fd_wr = -1
+
+        def close(self):
+            self.close_rd()
+            self.close_wr()
+
 """
     classes for data type and file IO
 """
@@ -2934,7 +2948,8 @@ elif _in_xws:
 
             flist = [fdr1, fdr2]
 
-            mprd = mpwr = -1
+            mpctrl = mprd = mpwr = -1
+            mpctrl = (-1, -1)
             if self.mpris2_parent:
                 mprd, mpwr = self.mpris2_parent.get_fds()
                 # control pipe between this and main thread,
@@ -2959,8 +2974,8 @@ elif _in_xws:
                 try:
                     rl = pl.poll(None)
                 except select.error as e:
-                    (err, msg) = e
-                    if err == eintr:
+                    err, msg = e
+                    if err == errno.EINTR or err == errno.EAGAIN:
                         continue
                     put_thd_event(
                         self.app, AThreadEvent(_T("X"), msg, -1))
@@ -2971,25 +2986,27 @@ elif _in_xws:
 
                 lin = ""
                 for fd, bits in rl:
+                    if fd < 0: continue
                     err = bits & errbits
                     if err:
-                        flist.remove(fd)
+                        if fd in flist: flist.remove(fd)
                         pl.unregister(fd)
-                        if fd == mprd and self.mpris2_parent:
+                        if fd == mprd:
                             try:
-                                flist.remove(mpctrl[0])
                                 pl.unregister(mpctrl[0])
                             except:
                                 pass
                             try:
                                 os.close(mpctrl[0])
                                 os.close(mpctrl[1])
+                                self.mpris2_parent.close()
                             except:
                                 pass
-                            self.mpris2_parent.poll_err = err
-                            put_thd_event(self.app,
-                                          AThreadEvent(_T("M"),
-                                         (lin, self.mpris2_parent, -1)))
+                            if  self.mpris2_parent:
+                                self.mpris2_parent.poll_err = err
+                                put_thd_event(self.app,
+                                    AThreadEvent(_T("M"),
+                                    (lin, self.mpris2_parent, -1)))
                         continue
 
                     if fd == mpctrl[0]:
@@ -3042,7 +3059,6 @@ elif _in_xws:
 
                 if len(flist) == 0:
                     break
-
 
             try:
                 f1.close()
@@ -3470,13 +3486,6 @@ class TheAppClass(wx.App):
                 err = obj.poll_err
                 errbits = select.POLLERR|select.POLLHUP|select.POLLNVAL
                 if err & errbits:
-                    try:
-                        os.close(donefd)
-                        os.close(fd_rd)
-                        os.close(fd_wr)
-                    except:
-                        pass
-                    obj.set_fds()
                     self.frame.mpris = False
                     self.frame.mpris_fd_rd = -1
                     self.frame.mpris_fd_wr = -1
@@ -7665,11 +7674,25 @@ class TopWnd(wx.Frame):
             self.set_medi_state("unloaded force")
             # MS seems to have trouble with 'nul', OTOH gstreamer
             # (GTK) seems to ignore empty string
+            # UPDATE (sigh): on an Ubuntu 16.04 system the hack
+            # of loading /dev/null (gtk/gstreamer) is now a problem
+            # (it had been working), as follows: code spins somewhere
+            # outside of wx event loop, presumably in gstreamer,
+            # taking 100% of one CPU core. Damn. Furthermore, reverting
+            # to loading empty string now causes a series of complaints
+            # on stderr like:
+            # "Media playback error: "/home/foo/" is a directory." --
+            # obviously empty string causes some bug to use the
+            # current directory.  It seems this is otherwise
+            # harmless -- it's not spinning anymore -- but what problem
+            # will arise in future?
+            # Try disabling this hack in spite of 'force arg'
             dn = _T('') if _in_msw else os.devnull
+            #dn = _T('')
 
             ret = bool(self.medi.Load(dn))
+            ret = False if _in_gtk else bool(self.medi.Load(dn))
 
-            self.prdbg(_T("self.medi.Load({}): '{}'").format(ret, dn))
             self.msg_grep = None
             return ret
         else:
@@ -8751,7 +8774,13 @@ class TopWnd(wx.Frame):
             #self.err_msg(_T(
             #    "mpris2hdlr::done donefd '{}'").format(self.donefd))
             if self.donefd >= 0:
-                self.wr(self.donefd, "poll")
+                # use try in case reentrant events closed this
+                try:
+                    self.wr(self.donefd, "poll")
+                except (IOError, OSError) as e:
+                    self.err_msg(_T(
+                        "mpris2hdlr::done donefd write error '{}'"
+                        ).format(e.strerror))
 
         def wr(self, fd, v):
             return fd_write(fd, _Tnec(v))
