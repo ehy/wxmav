@@ -95,6 +95,8 @@ extern volatile sig_atomic_t got_common_signal;
 /* for MPRIS2 support (if available) */
 extern int mpris_fd_read;
 extern int mpris_fd_write;
+extern int mpris_fd_sig_read;
+extern int mpris_fd_sig_write;
 
 /* store parent pid for child coprocess */
 extern pid_t app_main_pid;

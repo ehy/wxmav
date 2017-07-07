@@ -147,17 +147,27 @@ _in_xws = (_in_psx and ('DISPLAY' in os.environ))
 # will often need to know whether interpreter is Python 3
 py_v_is_3 = (sys.version_info.major >= 3)
 
+# python version wrappers
 if py_v_is_3:
+    import queue
+    q_fifo       = queue.Queue
+    q_fifo_empty = queue.Empty
+    q_fifo_full  = queue.Full
     def p_filt(*args):
         return list(filter(*args))
     def p_map(*args):
         return list(map(*args))
 else:
+    import Queue
+    q_fifo       = Queue.Queue
+    q_fifo_empty = Queue.Empty
+    q_fifo_full  = Queue.Full
     def p_filt(*args):
         return filter(*args)
     def p_map(*args):
         return map(*args)
 
+# wxPython version wrappers
 if phoenix:
     general_droptarget_base = wx.DropTarget
     select_cursor = wx.Cursor
@@ -2531,17 +2541,18 @@ elif _in_xws:
                                             _T('--xautolock'),
                                             _T('--xscreensaver')]
 
+            self.mpris2_parent = self.mpris2_child = None
+            self.mpris2_parsig = self.mpris2_chsig = None
+            self.mpris2_control = None
+
             if mpris2:
                 ch_rd, ch_wr = self.mpris2_setup()
                 if ch_rd >= 0 and ch_wr >= 0:
+                    srd, swr = self.mpris2_chsig.get_fds()
                     self.xhelperargs.append(
-                        _T("--mpris2-fd-read={}").format(ch_rd))
+                        _T("--mpris2-fd-read={},{}").format(ch_rd,srd))
                     self.xhelperargs.append(
-                        _T("--mpris2-fd-write={}").format(ch_wr))
-                else:
-                    self.mpris2_parent = self.mpris2_child = None
-            else:
-                self.mpris2_parent = self.mpris2_child = None
+                        _T("--mpris2-fd-write={},{}").format(ch_wr,swr))
 
             self.status = None
             if go:
@@ -2549,61 +2560,101 @@ elif _in_xws:
 
 
         def mpris2_setup(self):
+            efd = []
+            def _clerr():
+                for n in efd:
+                    try:
+                        os.close(n)
+                    except:
+                        pass
+
+            # ensure all < 3 are open, so pipe()
+            # will not return those -- close all tfd at end
+            tfd = []
+            for fd in (0, 1, 2):
+                try:
+                    fcntl.fcntl(fd, fcntl.F_GETFL, 0)
+                except IOError:
+                    # descriptor n is not open
+                    n = os.open(os.devnull)
+                    if n != fd:
+                        os.dup2(n, fd)
+                        os.close(n)
+                    tfd.append(fd)
+
+            efd += tfd
+
+            # internal control pipe: when poll() reports
+            # IPC pipe (below) is ready, the read end is removed
+            # from the poll() list so that I/O over the pipe does
+            # not trigger poll -- which might happen since I/O is
+            # in main thread and poll() in worker thread --
+            # likewise when main thread would initiate an I/O dialog,
+            # it should arrange for the read fd to be removed from
+            # poll() list -- and in each case when I/O dialog is
+            # complete the read fd should return to the poll() list --
+            # so writing to the control pipe will wake poll() and
+            # read end will be read: if read says "poll" IPC pipe
+            # read end is added to poll() list (if needed) and if
+            # "unpoll" it is removed -- future extended uses may
+            # be added
+            try:
+                ctrl_rd, ctrl_wr = os.pipe()
+                efd += [ctrl_rd, ctrl_wr]
+            except OSError as e:
+                self.mpris2_pipe_error = e
+                return (-1, -1)
+
+            # write (from parent) end of IPC pipe
             try:
                 ch_rd, par_wr = os.pipe()
+                efd += [ch_rd, par_wr]
             except OSError as e:
+                _clerr()
                 self.mpris2_pipe_error = e
                 return (-1, -1)
 
-            def _clerr(*args):
-                for n in args:
-                    os.close(n)
-
+            # read (from parent) end of IPC pipe
             try:
                 par_rd, ch_wr = os.pipe()
+                efd += [par_rd, ch_wr]
             except OSError as e:
-                _clerr(ch_rd, par_wr)
+                _clerr()
                 self.mpris2_pipe_error = e
                 return (-1, -1)
 
-            fd_max = 1024
-            if ch_rd < 3:
-                for n in xrange(3, fd_max):
-                    if n == ch_wr: continue
-                    try:
-                        fcntl.fcntl(n, fcntl.F_GETFL, 0)
-                    except IOError:
-                        # should try: here . . .
-                        os.dup2(ch_rd, n)
-                        os.close(ch_rd)
-                        ch_rd = n
-                        break
-            if ch_rd < 3:
-                _clerr(ch_rd, ch_wr, par_rd, par_wr)
+            # write (from parent) end of signal IPC pipe
+            try:
+                chsig_rd, parsig_wr = os.pipe()
+                efd += [chsig_rd, parsig_wr]
+            except OSError as e:
+                _clerr()
+                self.mpris2_pipe_error = e
                 return (-1, -1)
 
-            if ch_wr < 3:
-                for n in xrange(3, fd_max):
-                    if n == ch_rd: continue
-                    try:
-                        fcntl.fcntl(n, fcntl.F_GETFL, 0)
-                    except IOError:
-                        # should try: here . . .
-                        os.dup2(ch_wr, n)
-                        os.close(ch_wr)
-                        ch_wr = n
-                        break
-            if ch_wr < 3:
-                _clerr(ch_rd, ch_wr, par_rd, par_wr)
+            # read (from parent) end of signal IPC pipe
+            try:
+                parsig_rd, chsig_wr = os.pipe()
+                efd += [parsig_rd, chsig_wr]
+            except OSError as e:
+                _clerr()
+                self.mpris2_pipe_error = e
                 return (-1, -1)
 
-            fcntl.fcntl(ch_rd, fcntl.F_SETFD, 0)
-            fcntl.fcntl(ch_wr, fcntl.F_SETFD, 0)
-            fcntl.fcntl(par_rd, fcntl.F_SETFD, fcntl.FD_CLOEXEC)
-            fcntl.fcntl(par_wr, fcntl.F_SETFD, fcntl.FD_CLOEXEC)
+            opn = (ch_rd,ch_wr,chsig_rd,chsig_wr)
+            cls = (par_rd,par_wr,parsig_rd,parsig_wr,ctrl_rd,ctrl_wr)
+            for fd in opn:
+                fcntl.fcntl(fd, fcntl.F_SETFD, 0)
+            for fd in cls:
+                fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.FD_CLOEXEC)
+            for fd in tfd:
+                os.close(fd)
 
-            self.mpris2_parent = IODescriptorPair(par_rd, par_wr)
-            self.mpris2_child  = IODescriptorPair(ch_rd,  ch_wr)
+            self.mpris2_parent  = IODescriptorPair(par_rd, par_wr)
+            self.mpris2_child   = IODescriptorPair(ch_rd,  ch_wr)
+            self.mpris2_parsig  = IODescriptorPair(parsig_rd, parsig_wr)
+            self.mpris2_chsig   = IODescriptorPair(chsig_rd,  chsig_wr)
+            self.mpris2_control = IODescriptorPair(ctrl_rd, ctrl_wr)
 
             return (ch_rd, ch_wr)
 
@@ -2616,8 +2667,27 @@ elif _in_xws:
                 return (-1, -1)
             return self.mpris2_parent.get_fds()
 
+        def get_mpris_pipe_signal_obj(self):
+            return self.mpris2_parsig
+
+        def get_mpris_pipe_signal_desc(self):
+            """Return tuple (read, write)"""
+            if not self.mpris2_parsig:
+                return (-1, -1)
+            return self.mpris2_parsig.get_fds()
+
+        def get_mpris_pipe_control_obj(self):
+            return self.mpris2_control
+
+        def get_mpris_pipe_control_desc(self):
+            """Return tuple (read, write)"""
+            if not self.mpris2_control:
+                return (-1, -1)
+            return self.mpris2_control.get_fds()
+
         def mpris_on(self):
-            rd, wr = self.get_mpris_pipe_desc()
+            #rd, wr = self.get_mpris_pipe_desc()
+            rd, wr = self.get_mpris_pipe_signal_desc()
             if wr < 0:
                 return False
             try:
@@ -2635,7 +2705,8 @@ elif _in_xws:
                     pass
 
         def mpris_off(self):
-            rd, wr = self.get_mpris_pipe_desc()
+            #rd, wr = self.get_mpris_pipe_desc()
+            rd, wr = self.get_mpris_pipe_signal_desc()
             if wr < 0:
                 return False
             try:
@@ -2741,9 +2812,12 @@ elif _in_xws:
 
             if self.mpris2_child:
                 ch_r, ch_w = self.mpris2_child.get_fds()
+                sigr, sigw = self.mpris2_chsig.get_fds()
                 os.close(ch_r)
                 os.close(ch_w)
-                self.mpris2_child = None
+                os.close(sigr)
+                os.close(sigw)
+                self.mpris2_child = self.mpris2_chsig = None
 
             # error?
             if pid < 0:
@@ -2912,7 +2986,7 @@ elif _in_xws:
         def run_ch_proc(self, argtuple):
             ch_proc, fdwr, fdr1, fdr2 = argtuple
 
-            bufsize = 2048
+            bufsize = 4096
 
             try:
                 f1 = os.fdopen(fdr1, "r", bufsize)
@@ -2950,25 +3024,21 @@ elif _in_xws:
 
             mpctrl = mprd = mpwr = -1
             mpctrl = (-1, -1)
+            if self.mpris2_control:
+                mpctrl = self.mpris2_control.get_fds()
             if self.mpris2_parent:
                 mprd, mpwr = self.mpris2_parent.get_fds()
-                # control pipe between this and main thread,
-                # for mpris pipe read end, which is removed from
-                # poll when signalled so that other thread may
-                # do multiple IO without interference from here;
-                # when that IO is done writing "poll" to this
-                # pipe will add the mpris pipe back in poll set
-                mpctrl = os.pipe()
 
             errbits = select.POLLERR|select.POLLHUP|select.POLLNVAL
             pl = select.poll()
             pl.register(flist[0], select.POLLIN|errbits)
             pl.register(flist[1], select.POLLIN|errbits)
             if mprd >= 0:
-                #flist.append(mpctrl[0])
-                pl.register(mpctrl[0], select.POLLIN|errbits)
                 flist.append(mprd)
                 pl.register(mprd, select.POLLIN|errbits)
+            if mpctrl[0] >= 0:
+                #flist.append(mpctrl[0])
+                pl.register(mpctrl[0], select.POLLIN|errbits)
 
             while True:
                 try:
@@ -2997,8 +3067,7 @@ elif _in_xws:
                             except:
                                 pass
                             try:
-                                os.close(mpctrl[0])
-                                os.close(mpctrl[1])
+                                self.mpris2_control.close()
                                 self.mpris2_parent.close()
                             except:
                                 pass
@@ -3009,13 +3078,7 @@ elif _in_xws:
                                     (lin, self.mpris2_parent, -1)))
                         continue
 
-                    if fd == mpctrl[0]:
-                        lin = _T(os.read(mpctrl[0], 128))
-                        if s_eq(lin, "poll") and not mprd in flist:
-                            flist.append(mprd)
-                            pl.register(mprd, select.POLLIN|errbits)
-                        continue
-                    elif fd == fdr1:
+                    if fd == fdr1:
                         pfx = _T("1")
                         fN = f1
                     elif fd == fdr2:
@@ -3026,34 +3089,46 @@ elif _in_xws:
                         pl.unregister(fd)
                         pfx = _T("M") # The MPRIS2 desc.
                         fN = None
+                    elif fd == mpctrl[0] and fd >= 0:
+                        fN = None
                     else:
                         continue
 
                     if bits & select.POLLIN:
-                        if fN == None:
-                            # The MPRIS2 desc., app will take
-                            # the desciptor obj from this obj
-                            # *MUST* read a line here - if read is
-                            # left until event is delivered and
-                            # handled, then poll() in this thread
-                            # will spin until the handler eventually
-                            # reads
+                        # internal control fd?
+                        if fd == mpctrl[0]:
+                            lin = _T(os.read(mpctrl[0], 128))
+                            if s_eq(lin, "poll") and not mprd in flist:
+                                flist.append(mprd)
+                                pl.register(mprd, select.POLLIN|errbits)
+                            elif s_eq(lin, "unpoll") and mprd in flist:
+                                flist.remove(mprd)
+                                pl.unregister(mprd)
+                            continue
+                        # MPRIS coproc IPC pipe?
+                        elif fd == mprd:
+                            # reading first line and passing it is
+                            # optional -- event recipient will read
+                            # 1st line if lin arg (in tuple) is
+                            # empty; so, best not
                             lin = "" #os.read(mprd, 16384)
                             put_thd_event(self.app,
                                           AThreadEvent(pfx,
-                                            (lin, self.mpris2_parent,
+                                            (lin,
+                                             self.mpris2_parent,
                                              mpctrl[1])))
                             continue
 
+                        # X helper std IO fds?
                         lin = fN.readline(bufsize)
 
                         if len(lin) > 0:
                             put_thd_event(self.app,
                                           AThreadEvent(pfx, lin))
                         else:
-                            pass
                             #flist.remove(fd)
                             #pl.unregister(fd)
+                            pass
                     else:
                         pass
 
@@ -3403,6 +3478,17 @@ class TheAppClass(wx.App):
 
     def get_config_dir(self):
         return self.std_paths.GetUserConfigDir()
+
+    if _in_xws:
+        def get_mpris2_signal_io(self):
+            if not _in_xws:
+                return None
+
+            if self.xhelper:
+                return (self.xhelper.get_mpris_pipe_signal_obj(),
+                        self.xhelper.get_mpris_pipe_control_obj())
+
+            return None
 
     def get_debug(self):
         return self.debug
@@ -5472,6 +5558,12 @@ class TopWnd(wx.Frame):
         # manager for undo/redo stacks
         self.undo_redo = UndoRedoManager()
 
+        # fifo queue for MPRIS2 coprocess dialog lambdas
+        if _in_xws:
+            # queue has maxx size in case of flurries of events;
+            # handler should discard first when put() fails
+            self.coproc_fifo = q_fifo(8)
+
         # get config values here, in case a setting applies
         # to interface objects created below
         cfvals = self.config_rd()
@@ -7238,6 +7330,24 @@ class TopWnd(wx.Frame):
             self.do_setwname_done = True
             self.do_setwname()
 
+        self.on_idle_menu_update(event)
+        self.player_panel.do_idle(event)
+        self.on_idle_coproc_queue(event)
+
+    def on_idle_coproc_queue(self, event):
+        if not _in_xws:
+            return
+
+        try:
+            fifo = self.coproc_fifo
+            lamb = fifo.get(block = False, timeout = -1)
+            if lamb:
+                lamb()
+            fifo.task_done()
+        except q_fifo_empty:
+            pass
+
+    def on_idle_menu_update(self, event):
         if self.undo_redo.undo_length():
             # activate Undo menu
             self.medit.Enable(self.medit_undo, True)
@@ -7363,8 +7473,6 @@ class TopWnd(wx.Frame):
             for mi in self.mctrl.GetMenuItems():
                 mi.Enable(False)
 
-        self.player_panel.do_idle(event)
-
     def on_media_finish(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_FINISHED"))
 
@@ -7472,6 +7580,7 @@ class TopWnd(wx.Frame):
         self.set_statusbar(
             _("Playing '{}'").format(nm), 0, notify = True)
         self.set_statusbar(self.get_time_str(tm = ln), 1)
+        self.mpris2_signal_emit(_T("PlaybackStatus"))
 
         wx.CallAfter(self.with_media_loaded)
 
@@ -7496,6 +7605,7 @@ class TopWnd(wx.Frame):
             _("Paused '{}'").format(nm), 0, notify = True)
         tm = self.media_meta[0]
         self.set_statusbar(self.get_time_str(tm = tm), 1)
+        self.mpris2_signal_emit(_T("PlaybackStatus"))
 
         # pause duration limit hack
         if self.media_current_is_uri:
@@ -7567,6 +7677,7 @@ class TopWnd(wx.Frame):
         if self.medi.Length() > 0:
             # bounded, seek to 0 (start)
             self.medi.Seek(0)
+            self.mpris2_signal_emit(_T("Seeked"))
         else:
             # unbounded, force backend to disassociate from current
             # resource; if a play() op follows the resource will be
@@ -7575,6 +7686,7 @@ class TopWnd(wx.Frame):
             # forced to unload (which is another hack)
             self.unload_media(force = True)
         self.pos_sld.SetValue(0)
+        self.mpris2_signal_emit(_T("PlaybackStatus"))
 
     # old wxpython sample comment says that MSW backends do not
     # post loaded event -- I have not observed that with MSW 7 and
@@ -7635,6 +7747,8 @@ class TopWnd(wx.Frame):
             self.prdbg(_T("with_media_loaded: call after Play()"))
             wx.CallAfter(self.medi.Play)
             self.focus_medi_opt()
+
+        self.mpris2_signal_emit(_T("CanSeek"))
 
     def slider_setup(self, pos = None):
         ln = self.medi.Length()
@@ -7859,6 +7973,7 @@ class TopWnd(wx.Frame):
                 self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
                 self.medi_tick = 0
             wx.GetApp().do_screensave(b)
+            self.mpris2_signal_emit(_T("Fullscreen"))
         elif off == True:
             if self.IsFullScreen():
                 self.ShowFullScreen(False)
@@ -7867,6 +7982,7 @@ class TopWnd(wx.Frame):
                 self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
                 self.medi_tick = 0
                 wx.GetApp().do_screensave(True)
+                self.mpris2_signal_emit(_T("Fullscreen"))
 
     def do_group_items_desc_from_tags(self, grp = None):
         if grp == None:
@@ -8030,6 +8146,7 @@ class TopWnd(wx.Frame):
             d = float(self.vol_max - self.vol_min)
             v = float(val - self.vol_min) / d
             self.medi.SetVolume(v)
+            self.mpris2_signal_emit(_T("Volume"))
             if self.in_play:
                 val = self.medi.GetVolume()
                 val = int(math.floor(val * d + 0.5)) + self.vol_min
@@ -8495,6 +8612,7 @@ class TopWnd(wx.Frame):
                 v = self.pos_sld.GetValue()
                 v = float(v - self.pos_sld.GetMin()) / self.pos_mul
                 wx.CallAfter(self.medi.Seek, v)
+                wx.CallAfter(self.mpris2_signal_emit, _T("Seeked"))
 
         if self.tittime > 0:
             if self.tittime == 3:
@@ -8760,6 +8878,171 @@ class TopWnd(wx.Frame):
             elif kid == self.hotk_id_prev:
                 self.do_command_button(self.id_prev)
 
+    def put_coproc_queue(self, lamb = None, discard = True):
+        if not _in_xws:
+            return
+
+        try:
+            fifo = self.coproc_fifo
+        except q_fifo_empty:
+            return
+
+        while True:
+            try:
+                fifo.put(lamb, block = False, timeout = -1)
+                break
+            except q_fifo_full:
+                t = fifo.get(block = False, timeout = -1)
+                if t and not discard:
+                    t()
+                fifo.task_done()
+
+    def mpris2_signal_emit(self, signal):
+        if _in_xws:
+            self._x_mpris2_signal_emit(signal)
+            return True
+        return False
+
+    if _in_xws:
+        def _x_mpris2_signal_emit(self, signal):
+            lamb = lambda: self._x_core_mpris2_signal_emit(signal)
+            self.put_coproc_queue(lamb)
+
+        def _x_core_mpris2_signal_emit(self, signal):
+            iotup = wx.GetApp().get_mpris2_signal_io()
+            if iotup == None:
+                return False
+
+            io_ch, io_ctrl = iotup
+            if io_ch == None or io_ctrl == None:
+                return False
+
+            rd_ch, wr_ch     = io_ch.get_fds()
+            rd_ctrl, wr_ctrl = io_ctrl.get_fds()
+            mh = self._mpris2_handler(self, ("", io_ch, wr_ctrl))
+
+            # dbus signal/property maps as tuples:
+            # (object_path, interface_name,
+            #  signal-type, (tuple-of-property-or-signal-names))
+            # do NOT forget NL on strings for witing to coproc!
+            sigbasesigs = ( _T("/org/mpris/MediaPlayer2\n"),
+                _T("org.mpris.MediaPlayer2\n"),
+                _T("signal\n"),
+                ( # base signal signals
+                    _T(""), # this interface ain't got none
+                )
+            )
+            sigbaseprops = ( _T("/org/mpris/MediaPlayer2\n"),
+                _T("org.mpris.MediaPlayer2\n"),
+                _T("property\n"),
+                ( # base property signals
+                    _T("CanQuit"),             # b 	Read only
+                    _T("Fullscreen"),          # b 	Read/Write(optional)
+                    _T("CanSetFullscreen"),    # b 	Read only (optional)
+                    _T("CanRaise"),            # b 	Read only
+                    _T("HasTrackList"),        # b 	Read only
+                    _T("Identity"),            # s 	Read only
+                    _T("DesktopEntry"),        # s 	Read only (optional)
+                    _T("SupportedUriSchemes"), # as Read only
+                    _T("SupportedMimeTypes")   # as Read only
+                )
+            )
+
+            sigplayersigs = ( _T("/org/mpris/MediaPlayer2\n"),
+                _T("org.mpris.MediaPlayer2.Player\n"),
+                _T("signal\n"),
+                ( # player signal signals
+                    _T("Seeked"), # (x: Position) [usecs]
+                )
+            )
+            sigplayerprops = ( _T("/org/mpris/MediaPlayer2\n"),
+                _T("org.mpris.MediaPlayer2.Player\n"),
+                _T("property\n"),
+                ( # player property signals
+                    _T("PlaybackStatus"), # s     Read only
+                    _T("LoopStatus"),     # s     Read/Write (optional)
+                    _T("Rate"),           # d     Read/Write
+                    _T("Shuffle"),        # b 	  Read/Write (optional)
+                    _T("Metadata"),       # a{sv} Read only
+                    _T("Volume"),         # d     Read/Write
+                    _T("Position"),       # x     Read only
+                    _T("MinimumRate"),    # d  	  Read only
+                    _T("MaximumRate"),    # d  	  Read only
+                    _T("CanGoNext"),      # b 	  Read only
+                    _T("CanGoPrevious"),  # b 	  Read only
+                    _T("CanPlay"),        # b 	  Read only
+                    _T("CanPause"),       # b 	  Read only
+                    _T("CanSeek"),        # b 	  Read only
+                    _T("CanControl")      # b 	  Read only
+                )
+            )
+
+            ttup = (sigbasesigs, sigbaseprops,
+                    sigplayersigs, sigplayerprops)
+
+            opath = ifname = sigtype = None
+            for tup in ttup:
+                if signal in tup[3]:
+                    opath   = tup[0]
+                    ifname  = tup[1]
+                    sigtype = tup[2]
+                    break
+
+            if opath == None:
+                self.err_msg(
+                    _T("signal_emit: unknown signal '{}'").format(
+                        signal))
+                return False
+
+            # disengage IPC pipe in poll() thread
+            #fd_write(wr_ctrl, _T("unpoll"))
+
+            # tell coproc to begin signal IO dialog
+            fd_write(wr_ch, _T("mpris:signal\n"))
+
+            rsz = 128
+            # read ini string
+            #static const char *ini = "send:signal";
+            r = _T(os.read(rd_ch, rsz)).strip(_T('\n'))
+            if r != _T("send:signal"):
+                self.err_msg(
+                    _T("signal_emit: bad ini for {} - '{}'").format(
+                        signal, r))
+                fd_write(wr_ch, _T("UNSUPPORTED\n"))
+                #mh.done()
+                return False
+
+            # write ack string
+            #static const char *ack = "signal";
+            fd_write(wr_ch, _T("signal\n"))
+
+            # read method/property -- not used here but
+            # the line must be read
+            r = _T(os.read(rd_ch, rsz)).strip(_T('\n'))
+
+            if False:
+                # write object path
+                fd_write(wr_ch, opath)
+                # write interface name
+                fd_write(wr_ch, ifname)
+                # write signal name
+                fd_write(wr_ch, _T("{}\n").format(signal))
+                # write signal type !!! "property" or "signal"
+                fd_write(wr_ch, sigtype)
+            else:
+                # multiline write
+                fd_write(wr_ch, _T("{}{}{}{}").format(
+                    opath, ifname, _T("{}\n").format(signal), sigtype
+                ))
+
+            # use mpris handler to write GIO/dbus format string and data
+            r = mh.mpris2_send_prop_or_signal(rd_ch, wr_ch,
+                                              signal, "signal")
+
+            # cleanup and return
+            #mh.done()
+            return r
+
     class _mpris2_handler:
         def __init__(self, wnd, dat):
             self.w      = wnd
@@ -8822,15 +9105,27 @@ class TopWnd(wx.Frame):
 
         def mpris2_send_base(self, fd_rd, fd_wr):
             prop = self.rdstp(fd_rd, 128)
+            return self.mpris2_send_prop_or_signal(fd_rd, fd_wr,
+                                                   prop, "base")
+
+        def mpris2_send_player(self, fd_rd, fd_wr):
+            prop = self.rdstp(fd_rd, 128)
+            return self.mpris2_send_prop_or_signal(fd_rd, fd_wr,
+                                                   prop, "player")
+
+        def mpris2_send_prop_or_signal(self,
+                                       fd_rd, fd_wr,
+                                       prop, level):
+            self.err_msg(
+                _T("mpris2 send {} property '{}'").format(
+                    level, prop))
+
             m = _T("b:true\n")
 
-            self.err_msg(
-                _T("mpris2_send_base property '{}'").format(
-                    prop))
-
-            if False:
-                pass
-            elif s_eq(prop, "CanQuit"):
+            # Cases that would return "b:true\n" will just pass
+            #
+            # base (or signal)
+            if s_eq(prop, "CanQuit"):
                 pass
             elif s_eq(prop, "Fullscreen"):
                 t = "true" if self.w.IsFullScreen() else "false"
@@ -8862,28 +9157,7 @@ class TopWnd(wx.Frame):
                     m = _T("{}\n").format(s)
                     self.wr(fd_wr, m)
                 m = _T(":END ARRAY:\n")
-            else:
-                m = _T("b:false\n")
-                self.wr(fd_wr, m)
-                return False
-
-            self.err_msg(
-                _T("mpris2_send_base property '{}' -> '{}'").format(
-                    prop, m))
-
-            self.wr(fd_wr, m)
-            return True
-
-        def mpris2_send_player(self, fd_rd, fd_wr):
-            prop = self.rdstp(fd_rd, 128)
-            m = _T("b:true\n")
-
-            self.err_msg(
-                _T("mpris2_send_player property '{}'").format(
-                    prop))
-
-            if False:
-                pass
+            # player (or signal)
             elif s_eq(prop, "PlaybackStatus"):
                 m = _T("s:{}\n").format(
                     self.w.get_playback_state_string())
@@ -8913,6 +9187,11 @@ class TopWnd(wx.Frame):
                 v = 0 if (self.w.medi.Length() < 1) else (
                     self.w.medi.Tell() * 1000)
                 m = _T("x:{:d}\n").format(v)
+            elif s_eq(prop, "Seeked"):
+                # dbus signal -- glib wants a tuple
+                v = 0 if (self.w.medi.Length() < 1) else (
+                    self.w.medi.Tell() * 1000)
+                m = _T("(x):{:d}\n").format(v)
             elif s_eq(prop, "MinimumRate") or s_eq(prop, "MaximumRate"):
                 m = _T("d:1.0\n")
             elif s_eq(prop, "CanGoNext"):
@@ -8935,8 +9214,8 @@ class TopWnd(wx.Frame):
                 return False
 
             self.err_msg(
-                _T("mpris2_send_player property '{}' -> '{}'").format(
-                    prop, m))
+                _T("mpris2 send {} property '{}' -> '{}'").format(
+                    level, prop, m))
 
             self.wr(fd_wr, m)
             return True
@@ -9032,13 +9311,14 @@ class TopWnd(wx.Frame):
             meth = self.rdstp(fd_rd, 128)
             self.err_msg(_T("MPRIS2 after mpris2_meth_base READ"))
 
-            if False:
-                pass
             # org.mpris.MediaPlayer2 [base] methods
-            elif s_eq(meth, "Quit"):
+            if s_eq(meth, "Quit"):
                 _methresp("VOID", True)
                 #self.w.Close(False)
                 wx.CallAfter(self.w.Close, False)
+                #wnd = self.w
+                #lamb = lambda: wnd.Close(False)
+                #wnd.put_coproc_queue(lamb)
             elif s_eq(meth, "Raise"):
                 _methresp("VOID", True)
                 self.w.Raise()
@@ -9163,10 +9443,11 @@ class TopWnd(wx.Frame):
                 n = 0
             self.err_msg(_T("MPRIS call #{}").format(n))
             tmh = self._mpris2_handler(self, dat)
+            lamb = lambda: tmh.go()
             if False:
-                wx.CallAfter(tmh.go)
+                self.put_coproc_queue(lamb)
             else:
-                tmh.go()
+                lamb()
             return
 
         if t != _T('1'):

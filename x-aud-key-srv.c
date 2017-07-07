@@ -1338,6 +1338,8 @@ int dbus_proc_status = -1;
 int dbus_fd = -1;
 int mpris_fd_write = -1;
 int mpris_fd_read  = -1;
+int mpris_fd_sig_write = -1;
+int mpris_fd_sig_read  = -1;
 #if HAVE_GIO20
 dbus_proc_out dbus_out;
 dbus_proc_in  dbus_in;
@@ -1368,6 +1370,12 @@ do_dbus_proc(char *av[])
     }
     if ( mpris_fd_read >= 0 ) {
         close(mpris_fd_read);
+    }
+    if ( mpris_fd_sig_write >= 0 ) {
+        close(mpris_fd_sig_write);
+    }
+    if ( mpris_fd_sig_read >= 0 ) {
+        close(mpris_fd_sig_read);
     }
 
     return dbus_proc_status;
@@ -1475,17 +1483,21 @@ main(int argc, char **argv)
         switch (c) {
         case 'R': /* fall through */
         case 'W': {
-                int mfd, fl, r = sscanf(optarg, "%d", &mfd);
-                if( r != 1 || (fl = fcntl(mfd, F_GETFL, 0)) == -1 ) {
+                int mfd, sfd, flm, fls,
+                    r = sscanf(optarg, "%d,%d", &mfd, &sfd);
+                if( r != 2 || (flm = fcntl(mfd, F_GETFL, 0)) == -1
+                           || (fls = fcntl(sfd, F_GETFL, 0)) == -1) {
                     fprintf(stderr,
                         "%s: bad -%c argument '%s'\n", prog, c, optarg);
                     usage();
                     exit(1);
                 }
                 if ( c == 'R' ) {
-                    mpris_fd_read  = mfd;
+                    mpris_fd_read      = mfd;
+                    mpris_fd_sig_read  = sfd;
                 } else {
-                    mpris_fd_write = mfd;
+                    mpris_fd_write     = mfd;
+                    mpris_fd_sig_write = sfd;
                 }
             }
             break;
