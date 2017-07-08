@@ -9019,6 +9019,10 @@ class TopWnd(wx.Frame):
             # read method/property -- not used here but
             # the line must be read
             r = _T(os.read(rd_ch, rsz)).strip(_T('\n'))
+            if r != _T("signaldata"):
+                # warn, no error
+                self.err_msg(
+                    _T("signal_emit: unexpected method '{}'").format(r))
 
             if False:
                 # write object path
@@ -9032,8 +9036,7 @@ class TopWnd(wx.Frame):
             else:
                 # multiline write
                 fd_write(wr_ch, _T("{}{}{}{}").format(
-                    opath, ifname, _T("{}\n").format(signal), sigtype
-                ))
+                    opath, ifname, _T("{}\n").format(signal), sigtype))
 
             # use mpris handler to write GIO/dbus format string and data
             r = mh.mpris2_send_prop_or_signal(rd_ch, wr_ch,
@@ -9316,9 +9319,6 @@ class TopWnd(wx.Frame):
                 _methresp("VOID", True)
                 #self.w.Close(False)
                 wx.CallAfter(self.w.Close, False)
-                #wnd = self.w
-                #lamb = lambda: wnd.Close(False)
-                #wnd.put_coproc_queue(lamb)
             elif s_eq(meth, "Raise"):
                 _methresp("VOID", True)
                 self.w.Raise()
@@ -9443,11 +9443,10 @@ class TopWnd(wx.Frame):
                 n = 0
             self.err_msg(_T("MPRIS call #{}").format(n))
             tmh = self._mpris2_handler(self, dat)
-            lamb = lambda: tmh.go()
             if False:
-                self.put_coproc_queue(lamb)
+                self.put_coproc_queue(lambda: tmh.go())
             else:
-                lamb()
+                tmh.go()
             return
 
         if t != _T('1'):

@@ -470,13 +470,11 @@ dbus_gio_main(const dbus_proc_in *in)
 
         mpris_data.fpwr = mpris_wfp;
 
-        /* NOTE: start with line buffering writes, full buffering
-         * with fflush() might be needed eventually, so use fflush
-         * after all line writes; then if multi-line writes are needed
-         * just change this.
-         */
         setvbuf(mpris_wfp, NULL, _IOLBF, 0);
+        setvbuf(mpris_sig_wfp, NULL, _IOLBF, 0);
 
+        /* dbus signals dialogs are initiated by client,
+         * so poll that descriptor */
         g_unix_fd_add(mpris_fd_sig_read,
                       G_IO_IN|G_IO_PRI|G_IO_ERR|G_IO_HUP|G_IO_NVAL,
                       on_mpris_sig_read,
@@ -745,7 +743,8 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
         if ( condition & errbits ) {
             GMainLoop *loop = dat->loop;
 
-            fprintf(fpinfo, "%s: %s on mpris client read fd; quitting\n",
+            fprintf(fpinfo,
+                    "%s: %s on mpris client read fd; quitting\n",
                     prog, condition & G_IO_HUP ? "close" : "error");
 
             g_main_loop_quit(loop);
@@ -755,7 +754,7 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
         }
 
         if ( buf == NULL ) {
-            bufsz = MAX(bufsz, 32);
+            bufsz = MAX(bufsz, 128);
             buf = xmalloc(bufsz);
         }
 
@@ -772,6 +771,9 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
 
         /* not mpris prefix? */
         if ( strncasecmp(buf, pfx, pfxsz) ) {
+            fprintf(fpinfo, "%s: expected prefix '%s' - got \"%s\"\n",
+                    prog, pfx, buf);
+
             ret = TRUE;
             break;
         }
@@ -787,6 +789,9 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
             mpris_data_struct ldat;
             int r;
 
+            /* the user_data arg passed here has all the dbus/gio
+             * items wanted, but this is a separate IPC pipe pair,
+             * so use pertinent file objects and buffer */
             memcpy(&ldat, dat, sizeof(ldat));
             ldat.fprd  = mpris_sig_rfp;
             ldat.fpwr  = mpris_sig_wfp;
@@ -794,6 +799,9 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
             ldat.buf   = buf;
 
             r = signal_mpris_service(&ldat);
+
+            /* read calls might realloc() buffer,
+             * so don't lose track */
             bufsz = ldat.bufsz;
             buf   = ldat.buf;
 
@@ -1342,7 +1350,7 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
 }
 
 /*
- * general core procs for mthod invocation, get/set properties
+ * general core procs for method invocation, properties get/set,
  * and signal emission
  */
 
@@ -1361,7 +1369,7 @@ _mpris_emit_signal(const char        *ini,
 #   define _n_sigparams    5
     gchar  *sigparams[_n_sigparams];
 
-    ret = _exchange_handshake(dat, ini, ack, "dbusdata");
+    ret = _exchange_handshake(dat, ini, ack, "signaldata");
 
     if ( ret != _EXCHGHS_ALL_OK ) {
         return ret;
@@ -1436,7 +1444,7 @@ _mpris_emit_signal(const char        *ini,
             static const gchar *sname_properties =
                                 "PropertiesChanged";
             GVariantBuilder *builder;
-            GVariant        *signal[3];
+            GVariant        *ptuple[3];
 
             builder = g_variant_builder_new(G_VARIANT_TYPE_ARRAY);
             g_variant_builder_add(builder,
@@ -1444,15 +1452,15 @@ _mpris_emit_signal(const char        *ini,
                                   sigparams[_ix_signal_name],
                                   parameters);
 
-            signal[0] = g_variant_new_string(sigparams[_ix_iface_name]);
-            signal[1] = g_variant_builder_end(builder);
-            signal[2] = g_variant_new_strv(NULL, 0);
+            ptuple[0] = g_variant_new_string(sigparams[_ix_iface_name]);
+            ptuple[1] = g_variant_builder_end(builder);
+            ptuple[2] = g_variant_new_strv(NULL, 0);
 
             fprintf(fpinfo, "%s: calling %s(%p, %s, %s, %s, %s, %p)\n",
                             prog,
                             "g_dbus_connection_emit_signal",
                             (void *)dat->connection,
-                            dat->bus_name,
+                            "[NULL]",
                             (char *)sigparams[_ix_object_path],
                             (char *)iface_properties,
                             (char *)sigparams[_ix_signal_name],
@@ -1462,8 +1470,8 @@ _mpris_emit_signal(const char        *ini,
                                          sigparams[_ix_object_path],
                                          iface_properties,
                                          sname_properties,
-                                         g_variant_new_tuple(signal,
-                                                    A_SIZE(signal)),
+                                         g_variant_new_tuple(ptuple,
+                                                      A_SIZE(ptuple)),
                                          &error);
 
             g_variant_builder_unref(builder);
@@ -1473,7 +1481,7 @@ _mpris_emit_signal(const char        *ini,
                             prog,
                             "g_dbus_connection_emit_signal",
                             (void *)dat->connection,
-                            dat->bus_name,
+                            "[NULL]",
                             (char *)sigparams[_ix_object_path],
                             (char *)sigparams[_ix_iface_name],
                             (char *)sigparams[_ix_signal_name],
@@ -1495,11 +1503,13 @@ _mpris_emit_signal(const char        *ini,
             break;
         }
 
-        if ( gret != TRUE && error != NULL ) {
+        if ( error != NULL ) {
             fprintf(fpinfo,
-                "%s: failed g_dbus_connection_emit_signal (%d, '%s')\n",
+                "%s: error: g_dbus_connection_emit_signal (%d, '%s')\n",
                 prog, (int)error->code, (char *)error->message);
             g_error_free(error);
+        }
+        if ( gret != TRUE ) {
             ret = _n_sigparams + 1;
             break;
         }
