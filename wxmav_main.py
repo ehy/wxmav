@@ -2658,6 +2658,33 @@ elif _in_xws:
 
             return (ch_rd, ch_wr)
 
+        def close_mpris_io(self):
+            t = (self.mpris2_parent,
+                 self.mpris2_child,
+                 self.mpris2_parsig,
+                 self.mpris2_chsig,
+                 self.mpris2_control)
+
+            for io in t:
+                if not io:
+                    continue
+                for fd in io.get_fds():
+                    if fd >= 0:
+                        try:
+                            os.close(fd)
+                        except (OSError, IOError) as e:
+                            self.err_msg(_T(
+                                "close mpris fd: error '{e}'").format(
+                                e = e.strerror))
+                        except:
+                            pass
+
+            self.mpris2_parent  = None
+            self.mpris2_child   = None
+            self.mpris2_parsig  = None
+            self.mpris2_chsig   = None
+            self.mpris2_control = None
+
         def get_mpris_pipe_obj(self):
             return self.mpris2_parent
 
@@ -2686,9 +2713,9 @@ elif _in_xws:
             return self.mpris2_control.get_fds()
 
         def mpris_on(self):
-            #rd, wr = self.get_mpris_pipe_desc()
             rd, wr = self.get_mpris_pipe_signal_desc()
             if wr < 0:
+                self.close_mpris_io()
                 return False
             try:
                 m = "mpris:on\n".encode('ascii')
@@ -2697,31 +2724,30 @@ elif _in_xws:
                 self.err_msg(_T(
                     "MPRIS2 write '{m}' failed '{e}'").format(
                                 m = m, e = e.strerror))
-                self.mpris2_parent = None
-                try:
-                    os.close(wr)
-                    os.close(rd)
-                except:
-                    pass
+                self.close_mpris_io()
+                return False
+            return True
 
         def mpris_off(self):
-            #rd, wr = self.get_mpris_pipe_desc()
+            self.err_msg(_T("mpris_off: entry"))
+            ret = False
             rd, wr = self.get_mpris_pipe_signal_desc()
             if wr < 0:
-                return False
+                self.err_msg(_T("mpris_off: wr < 0"))
+                self.close_mpris_io()
+                return ret
             try:
                 m = "mpris:off\n".encode('ascii')
                 fd_write(wr, m)
+                ret = True
             except (OSError, IOError) as e:
                 self.err_msg(_T(
                     "MPRIS2 write '{m}' failed '{e}'").format(
                                 m = m, e = e.strerror))
-            self.mpris2_parent = None
-            try:
-                os.close(wr)
-                os.close(rd)
-            except:
-                pass
+            self.close_mpris_io()
+            self.err_msg(_T("mpris_off: io closed ({})").format(
+                self.get_mpris_pipe_signal_obj()))
+            return ret
 
 
         def _handle_common_signal(self, signum, stack_frame):
@@ -3037,7 +3063,6 @@ elif _in_xws:
                 flist.append(mprd)
                 pl.register(mprd, select.POLLIN|errbits)
             if mpctrl[0] >= 0:
-                #flist.append(mpctrl[0])
                 pl.register(mpctrl[0], select.POLLIN|errbits)
 
             while True:
@@ -3060,7 +3085,10 @@ elif _in_xws:
                     err = bits & errbits
                     if err:
                         if fd in flist: flist.remove(fd)
-                        pl.unregister(fd)
+                        try:
+                            pl.unregister(fd)
+                        except:
+                            pass
                         if fd == mprd:
                             try:
                                 pl.unregister(mpctrl[0])
@@ -7332,7 +7360,7 @@ class TopWnd(wx.Frame):
 
         self.on_idle_menu_update(event)
         self.player_panel.do_idle(event)
-        self.on_idle_coproc_queue(event)
+        #wx.CallAfter(self.on_idle_coproc_queue, event)
 
     def on_idle_coproc_queue(self, event):
         if not _in_xws:
@@ -8565,8 +8593,9 @@ class TopWnd(wx.Frame):
         # shop (e.g. exit signal was caught)
         try:
             if self._quit_signal != 0:
+                b = False if (self._quit_signal < -1) else True
                 self._quit_signal = 0
-                wx.CallAfter(self.Close, True)
+                wx.CallAfter(self.Close, b)
                 self.prdbg("SIGNAL NUMBER {}".format(self._quit_signal))
         except AttributeError:
             self._quit_signal = 0
@@ -8625,6 +8654,12 @@ class TopWnd(wx.Frame):
                 self.prdbg(_T("do_timep {}").format(self.tittime))
 
             self.tittime -= 1
+
+        # This was called in idle handler, but when
+        # queue is full wx gets overwhelmed and lockup
+        # happens
+        wx.CallAfter(self.on_idle_coproc_queue, None)
+
 
     def get_medi_state(self):
         # Incredibly, under msw self.medi.GetState() will return
@@ -8892,21 +8927,25 @@ class TopWnd(wx.Frame):
                 fifo.put(lamb, block = False, timeout = -1)
                 break
             except q_fifo_full:
+                self.err_msg(_T("put_coproc_queue: DISCARD queue head"))
                 t = fifo.get(block = False, timeout = -1)
                 if t and not discard:
                     t()
                 fifo.task_done()
 
     def mpris2_signal_emit(self, signal):
-        if _in_xws:
+        if _in_xws and True:
             self._x_mpris2_signal_emit(signal)
             return True
         return False
 
     if _in_xws:
         def _x_mpris2_signal_emit(self, signal):
-            lamb = lambda: self._x_core_mpris2_signal_emit(signal)
-            self.put_coproc_queue(lamb)
+            if True:
+                lamb = lambda: self._x_core_mpris2_signal_emit(signal)
+                self.put_coproc_queue(lamb)
+            else:
+                self._x_core_mpris2_signal_emit(signal)
 
         def _x_core_mpris2_signal_emit(self, signal):
             iotup = wx.GetApp().get_mpris2_signal_io()
@@ -9060,13 +9099,21 @@ class TopWnd(wx.Frame):
             #self.err_msg(_T(
             #    "mpris2hdlr::done donefd '{}'").format(self.donefd))
             if self.donefd >= 0:
-                # use try in case reentrant events closed this
-                try:
-                    self.wr(self.donefd, "poll")
-                except (IOError, OSError) as e:
-                    self.err_msg(_T(
-                        "mpris2hdlr::done donefd write error '{}'"
-                        ).format(e.strerror))
+                # rapid pace of property queries at startup
+                # seems to overwhelm something (wx wvent loop?
+                # python poll()?) and lockups occur -- try using
+                # bothe callafter and sleep to slow things down
+                def _done_mp(w, fd, sl):
+                    wx.MilliSleep(sl)
+                    # use try in case reentrant events closed this
+                    try:
+                        fd_write(fd, _T("poll"))
+                    except (IOError, OSError) as e:
+                        w.err_msg(_T(
+                            "mpris2hdlr::done donefd write error '{}'"
+                            ).format(e.strerror))
+
+                wx.CallAfter(_done_mp, self.w, self.donefd, 10)
 
         def wr(self, fd, v):
             return fd_write(fd, _Tnec(v))
@@ -9318,7 +9365,8 @@ class TopWnd(wx.Frame):
             if s_eq(meth, "Quit"):
                 _methresp("VOID", True)
                 #self.w.Close(False)
-                wx.CallAfter(self.w.Close, False)
+                #wx.CallAfter(self.w.Close, False)
+                self.w._quit_signal = -2
             elif s_eq(meth, "Raise"):
                 _methresp("VOID", True)
                 self.w.Raise()

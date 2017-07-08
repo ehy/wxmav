@@ -217,7 +217,7 @@ start_dbus_coproc(const dbus_proc_in *in,
 
 #   if _DEBUG || 0
     fpinfo = fopen(DBUS_GIO_DEBUGFILE, "w");
-#   elif 0
+#   elif 1
     /* stderr goes to main process, through wx event loop
      * to a wxLog* object; but, the volume of messages seems
      * to overwelm the loop, so reserve stderr for urgency */
@@ -1541,7 +1541,8 @@ _mpris_call_method(GDBusConnection *connection,
     ssize_t rdlen;
     int r;
 
-    if ( reenter_guard != 0 ) {
+    if ( ++reenter_guard > 1 ) {
+        --reenter_guard;
         /* error code G_DBUS_ERROR_LIMITS_EXCEEDED
          * is the only one I see that looks as if
          * it may be regarded as temporary */
@@ -1552,7 +1553,7 @@ _mpris_call_method(GDBusConnection *connection,
         return;
     }
 
-    do { /* on error exit block with break */
+    do { /* breakable block */
         r = _exchange_handshake(dat, ini, ack, method_name);
         if ( r < 0 ) {
             fprintf(fpinfo, "%s mpris handshake %s error (b)\n",
@@ -1642,6 +1643,8 @@ _mpris_call_method(GDBusConnection *connection,
             "Error: method %s.%s unknown",
             interface_name, method_name);
 	}
+
+    --reenter_guard;
 }
 
 static GVariant*
@@ -1659,7 +1662,8 @@ _mpris_get_property(GDBusConnection *connection,
     char *p, *p2;
 	GVariant *result = NULL;
 
-    if ( reenter_guard != 0 ) {
+    if ( ++reenter_guard > 1 ) {
+        --reenter_guard;
         fprintf(fpinfo, "%s reentrence detected at '%s' (count %d)\n",
             prog, "_mpris_get_property", reenter_guard);
         return NULL;
@@ -1668,6 +1672,7 @@ _mpris_get_property(GDBusConnection *connection,
     if ( _exchange_handshake(dat, ini, ack, property_name) ) {
         fprintf(fpinfo, "%s mpris handshake '%s' failure (b)\n",
             prog, ini);
+        --reenter_guard;
         return NULL;
     }
 
@@ -1675,6 +1680,7 @@ _mpris_get_property(GDBusConnection *connection,
     if ( p == NULL ) {
         fprintf(fpinfo, "%s unexpected mpris type (%s) (c)\n",
             prog, dat->buf);
+        --reenter_guard;
         return NULL;
     }
 
@@ -1684,6 +1690,7 @@ _mpris_get_property(GDBusConnection *connection,
 
     result = gvar_from_strings(p2, p, dat);
 
+    --reenter_guard;
 	return result;
 }
 
@@ -1703,7 +1710,8 @@ _mpris_set_property(GDBusConnection *connection,
     char *p, *p2;
 	int      r, result = 0;
 
-    if ( reenter_guard != 0 ) {
+    if ( ++reenter_guard > 1 ) {
+        --reenter_guard;
         fprintf(fpinfo, "%s reentrence detected at '%s' (count %d)\n",
             prog, "_mpris_set_property", reenter_guard);
         return 0;
@@ -1712,6 +1720,7 @@ _mpris_set_property(GDBusConnection *connection,
     if ( _exchange_handshake(dat, ini, ack, property_name) ) {
         fprintf(fpinfo, "%s mpris handshake '%s' failure (b)\n",
             prog, ini);
+        --reenter_guard;
         return result;
     }
 
@@ -1719,6 +1728,7 @@ _mpris_set_property(GDBusConnection *connection,
     if ( p == NULL ) {
         fprintf(fpinfo, "%s unexpected mpris reply '%s' (c)\n",
             prog, dat->buf);
+        --reenter_guard;
         return result;
     }
 
@@ -1726,6 +1736,7 @@ _mpris_set_property(GDBusConnection *connection,
     if ( strcmp(p, "ok") ) {
         fprintf(fpinfo, "%s unexpected mpris property '%s' (c)\n",
             prog, property_name);
+        --reenter_guard;
         return result;
     }
 
@@ -1738,9 +1749,11 @@ _mpris_set_property(GDBusConnection *connection,
     if ( r < 0 || ferror(dat->fpwr) || feof(dat->fpwr) ) {
         fprintf(fpinfo, "%s error writing to mpris client (c)\n",
             prog);
+        --reenter_guard;
         return result;
     }
 
+    --reenter_guard;
     return 1;
 }
 
