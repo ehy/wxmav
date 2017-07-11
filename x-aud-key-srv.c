@@ -1159,6 +1159,17 @@ xrealloc(void *ptr, size_t sz)
     }
     return p;
 }
+void *
+xstrdup(const char *s)
+{
+    size_t l = strlen(s) + 1;
+    char *p = xcalloc(l, 1);
+    if ( strlcpy(p, s, l) >= l ) {
+        fprintf(stderr, "%s: internal error, strlcpy failure\n", prog);
+        p_exit(1);
+    }
+    return p;
+}
 
 #if ! HAVE_STRLCPY
 /*

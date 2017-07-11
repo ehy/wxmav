@@ -71,6 +71,53 @@ xcalloc(size_t nmemb, size_t szmemb);
 #define xmalloc(sz) xcalloc(sz, 1)
 void *
 xrealloc(void *ptr, size_t sz);
+void *
+xstrdup(const char *s);
+/*
+ * alloca() is desirable for some small allocations, but it
+ * is merely widely available, not standard; so, where unavailable
+ * or broken, or where this code is compiled by a zealous
+ * alloca hater . . .
+ */
+#if HAVE_ALLOCA && ! ALLOCA_GO_AWAY
+#   define LALLOC(sz)  alloca(sz)
+    /* of course sane use of these macros demand that
+     * unallocation macro must occur on any path to return --
+     * the odd block for do-while should silence gcc set but not
+     * used warning w/o '-Wunused-but-set-variable' */
+#   define LAFREE(ptr) do { ptr = ptr; } while (0)
+
+    /* and, this ugly nest of includes right outta autoconf.info: */
+    #ifdef STDC_HEADERS
+    # include <stdlib.h>
+    # include <stddef.h>
+    #else
+    # ifdef HAVE_STDLIB_H
+    #  include <stdlib.h>
+    # endif
+    #endif
+    #ifdef HAVE_ALLOCA_H
+    # include <alloca.h>
+    #elif !defined alloca
+    # ifdef __GNUC__
+    #  define alloca __builtin_alloca
+    # elif defined _AIX
+    #  define alloca __alloca
+    # elif defined _MSC_VER
+    #  include <malloc.h>
+    #  define alloca _alloca
+    # elif !defined HAVE_ALLOCA
+    #  ifdef  __cplusplus
+    extern "C"
+    #  endif
+    void *alloca (size_t);
+    # endif
+    #endif
+#else
+#   define LALLOC(sz)  xmalloc(sz)
+#   define LAFREE(ptr) free(ptr)
+#endif
+
 #if ! HAVE_STRLCPY
 size_t
 strlcpy(char* dst, const char* src, size_t cnt);

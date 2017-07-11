@@ -238,7 +238,7 @@ fi # if test X"$no_x" != Xyes
 
 # can continue X checks?
 if test X"$no_x" != Xyes ; then
-
+AC_FUNC_ALLOCA
 dnl getopt{,_long}
 AM_CONDITIONAL([NEED_GETOPT_C], [test x$ac_cv_func_getopt != xyes && test x$ac_cv_func_getopt != xtrue])
 AM_CONDITIONAL([NEED_GETOPT_LONG_C], [test x$ac_cv_func_getopt_long != xyes && test x$ac_cv_func_getopt_long != xtrue])

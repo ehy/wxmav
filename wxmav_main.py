@@ -3580,15 +3580,6 @@ class TheAppClass(wx.App):
             dset = self.get_data_dir_curset()
             wr_current_set(self.reslist, dset)
 
-        try:
-            self.frame.config_wr()
-        except:
-            pass
-
-        config = self.get_config()
-        if config:
-            config.Flush()
-
     def on_chmsg(self, event):
         eid = event.GetId()
 
@@ -3646,6 +3637,7 @@ class TheAppClass(wx.App):
     # else veto the event and wait until it gets event AppDestroyEvent
     # then it can destroy
     def test_exit(self):
+        self.save_self_state()
         if self.xhelper:
             return self.xhelper.test_exit()
 
@@ -8758,7 +8750,7 @@ class TopWnd(wx.Frame):
         return vmap
 
 
-    def config_wr(self, config = None):
+    def config_wr(self, config = None, flush = False):
         if not config:
             config = self.get_config()
         if not config:
@@ -8822,6 +8814,8 @@ class TopWnd(wx.Frame):
                "\tposition {} -- size {}").format(
                                             mn, mx, (x, y), (w, h)))
 
+        if flush:
+            config.Flush()
 
     def on_quit(self, event):
         self.cmd_on_quit(from_user = True, event = event)
@@ -8845,7 +8839,7 @@ class TopWnd(wx.Frame):
                     return
 
             if wx.GetApp().test_exit():
-                self.config_wr()
+                self.config_wr(flush = True)
                 self.cmd_on_stop()
                 self.unload_media(True)
                 self.register_ms_hotkeys(False)
@@ -8857,7 +8851,7 @@ class TopWnd(wx.Frame):
                 event.Veto(True)
                 self.prdbg(_T("DID Veto 2"))
         else:
-            self.config_wr()
+            self.config_wr(flush = True)
             self.cmd_on_stop()
             self.unload_media(True)
             wx.GetApp().test_exit()
