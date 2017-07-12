@@ -582,7 +582,6 @@ const gchar *mpris_busname  = MPRIS2_NAME_BASE;
 const gchar *mpris_path     = "/org/mpris/MediaPlayer2";
 const gchar *mpris_player   = MPRIS2_NAME_BASE ".Player";
 const gchar *fdesk_props    = "org.freedesktop.DBus.Properties";
-const gchar *mpris_thisname = NULL;
 
 /* 1st attempt to start a global instance of the dbus objecct
  * with our name, but if that fails set this var and assume
@@ -591,21 +590,19 @@ int start_global_mpris_failed = 0;
 
 /* make name of this instance of, or global, MPRIS2 dbus object */
 static void
-put_mpris_thisname(const char *thisname, int mk_instance)
+put_mpris_bus_name(mpris_data_struct *dat,
+                   const char *thisname,
+                   int mk_instance)
 {
-    size_t len = sizeof(MPRIS2_NAME_BASE) + sizeof(MPRIS2_INST_BASE);
     int    r;
     gchar  *p;
-
-    if ( mpris_thisname != NULL ) {
-        free((void *)mpris_thisname);
-    }
+    size_t len = sizeof(MPRIS2_NAME_BASE) + sizeof(MPRIS2_INST_BASE);
 
     len += strlen(thisname) + _FMT_BUF_PAD;
 
     p = xmalloc(len);
 
-    /* use mk_instance=1 if an instance is found running */
+    /* use mk_instance=1 if an instance is found running already */
     if ( mk_instance ) {
         r = snprintf(p, len, "%s.%s.%s%ld",
                      mpris_busname, thisname,
@@ -616,7 +613,11 @@ put_mpris_thisname(const char *thisname, int mk_instance)
 
     p[MIN(r, len - 1)] = '\0';
 
-    mpris_thisname = p;
+    if ( dat->bus_name != NULL ) {
+        free((void *)dat->bus_name);
+    }
+
+    dat->bus_name = p;
 }
 
 static void
@@ -1989,20 +1990,20 @@ mp_bus_acquired(GDBusConnection *connection,
     dat->connection = connection;
 
 	dat->reg_ids[0] =
-    g_dbus_connection_register_object(connection,
-                                      mpris_path,
-                                      interfaces[0],
-                                      &base_interface_vtable,
-                                      user_data,
-                                      NULL, NULL);
+        g_dbus_connection_register_object(connection,
+                                          mpris_path,
+                                          interfaces[0],
+                                          &base_interface_vtable,
+                                          user_data,
+                                          NULL, NULL);
 
 	dat->reg_ids[1] =
-	g_dbus_connection_register_object(connection,
-                                      mpris_path,
-                                      interfaces[1],
-                                      &player_interface_vtable,
-                                      user_data,
-                                      NULL, NULL);
+        g_dbus_connection_register_object(connection,
+                                          mpris_path,
+                                          interfaces[1],
+                                          &player_interface_vtable,
+                                          user_data,
+                                          NULL, NULL);
 
     fprintf(fpinfo, "%s: Acquired data bus '%s' (%s)\n",
             prog, dat->bus_name, name);
@@ -2013,7 +2014,7 @@ mp_name_acquired(GDBusConnection *connection,
                  const gchar *name,
                  gpointer user_data)
 {
-    mpris_data_struct  *dat = (mpris_data_struct *)user_data;
+    mpris_data_struct *dat = (mpris_data_struct *)user_data;
 
     fprintf(fpinfo, "%s: Acquired bus name '%s' (%s)\n",
             prog, dat->bus_name, name);
@@ -2071,8 +2072,7 @@ signal_mpris_service(mpris_data_struct *dat)
 static int
 start_mpris_service(mpris_data_struct *dat)
 {
-    put_mpris_thisname(appname, 0);
-    dat->bus_name  = mpris_thisname;
+    put_mpris_bus_name(dat, appname, 0);
 
 	dat->node_info = g_dbus_node_info_new_for_xml(mpris_node_xml, NULL);
 
@@ -2094,22 +2094,21 @@ start_mpris_service(mpris_data_struct *dat)
 static int
 start_instance_mpris_service(mpris_data_struct *dat)
 {
-    put_mpris_thisname(appname, 1);
-    dat->bus_name  = mpris_thisname;
+    put_mpris_bus_name(dat, appname, 1);
 
 	if ( dat->node_info == NULL ) {
-        dat->node_info = g_dbus_node_info_new_for_xml(
-                                                mpris_node_xml, NULL);
+        dat->node_info =
+            g_dbus_node_info_new_for_xml(mpris_node_xml, NULL);
     }
 
-    dat->bus_id    = g_bus_own_name(G_BUS_TYPE_SESSION,
-                                    dat->bus_name,
-                                    G_BUS_NAME_OWNER_FLAGS_REPLACE,
-                                    mp_bus_acquired,
-                                    mp_name_acquired,
-                                    mp_name_lost,
-                                    (gpointer)dat,
-                                    NULL);
+    dat->bus_id = g_bus_own_name(G_BUS_TYPE_SESSION,
+                                 dat->bus_name,
+                                 G_BUS_NAME_OWNER_FLAGS_REPLACE,
+                                 mp_bus_acquired,
+                                 mp_name_acquired,
+                                 mp_name_lost,
+                                 (gpointer)dat,
+                                 NULL);
 
     fprintf(fpinfo,
             "%s: MPRIS2 start INSTANCE - name '%s' - bus id %d\n",
@@ -2141,23 +2140,24 @@ stop_mpris_service(mpris_data_struct *dat)
 
     if ( dat->bus_id != 0 ) {
         g_bus_unown_name(dat->bus_id);
-    }
-
-    if ( dat->node_info != NULL ) {
-        g_dbus_node_info_unref(dat->node_info);
+        dat->bus_id     = 0;
     }
 
     if ( dat->connection != NULL ) {
         g_dbus_connection_close_sync(dat->connection, NULL, NULL);
-        g_dbus_connection_unregister_object(dat->connection,
-                                            dat->reg_ids[0]);
-        g_dbus_connection_unregister_object(dat->connection,
-                                            dat->reg_ids[1]);
+        dat->connection = NULL;
     }
 
-    dat->connection = NULL;
-    dat->bus_id     = 0;
-    dat->node_info  = NULL;
+    if ( dat->node_info != NULL ) {
+        g_dbus_node_info_unref(dat->node_info);
+        dat->node_info  = NULL;
+    }
+
+    if ( dat->bus_name != NULL ) {
+        free((void *)dat->bus_name);
+        dat->bus_name   = NULL;
+    }
+
 
     fprintf(fpinfo, "%s: MPRIS2 stop\n", prog);
 }

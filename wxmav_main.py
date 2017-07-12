@@ -5580,7 +5580,7 @@ class TopWnd(wx.Frame):
 
         # fifo queue for MPRIS2 coprocess dialog lambdas
         if _in_xws:
-            # queue has maxx size in case of flurries of events;
+            # queue has max size in case of flurries of events;
             # handler should discard first when put() fails
             self.coproc_fifo = q_fifo(8)
 
@@ -7358,8 +7358,8 @@ class TopWnd(wx.Frame):
         if not _in_xws:
             return
 
+        fifo = self.coproc_fifo
         try:
-            fifo = self.coproc_fifo
             lamb = fifo.get(block = False, timeout = -1)
             if lamb:
                 lamb()
@@ -8911,11 +8911,7 @@ class TopWnd(wx.Frame):
         if not _in_xws:
             return
 
-        try:
-            fifo = self.coproc_fifo
-        except q_fifo_empty:
-            return
-
+        fifo = self.coproc_fifo
         while True:
             try:
                 fifo.put(lamb, block = False, timeout = -1)
