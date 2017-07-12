@@ -75,11 +75,6 @@ typedef struct _mpris_data_struct {
     FILE              *fpwr;
 } mpris_data_struct;
 
-mpris_data_struct mpris_data = {
-    NULL, NULL, 0, NULL, NULL, {0, 0, 0, 0},
-    NULL, 0, NULL, NULL
-};
-
 /* main procedure for dbus gio coprocess */
 static int
 dbus_gio_main(const dbus_proc_in *in);
@@ -350,12 +345,12 @@ on_glib_signal(GDBusProxy *proxy,
     g_free(param_str);
 }
 
-typedef struct _dbus_path_etc {
+typedef struct _dbus_path_mediakeys {
     const gchar *well_known_name; /*  org.foo.BarDaemon */
     const gchar *object_path;     /* /org/foo/BarDaemon/BazBits */
     const gchar *interface;       /*  org.foo.BarDaemon.BazBits */
     const  char *domain_name;     /*      foo */
-} dbus_path_etc;
+} dbus_path_mediakeys;
 
 #define _PUT_DBUS_BY_NAMES(tld, dom, site, respth, resifc) { \
      tld "." dom "." site , \
@@ -363,21 +358,21 @@ typedef struct _dbus_path_etc {
      tld "." dom "." site "." resifc , \
              dom \
     }
-#define _PUT_DBUS_PATH_ETC(v) \
+#define _PUT_DBUS_PATH_KEYS(v) \
 _PUT_DBUS_BY_NAMES("org", v, "SettingsDaemon", "MediaKeys", "MediaKeys")
 
-dbus_path_etc keys_path_attempts[] = {
-    _PUT_DBUS_PATH_ETC("freedesktop"), /* found in xdg-screensaver */
-    _PUT_DBUS_PATH_ETC("xfce"),        /* just a guess */
-    _PUT_DBUS_PATH_ETC("unity"),       /* just a guess */
-    _PUT_DBUS_PATH_ETC("mate"),        /* found in xdg-screensaver */
-    _PUT_DBUS_PATH_ETC("cinnamon"),    /* found in xdg-screensaver */
-    _PUT_DBUS_PATH_ETC("gnome")        /* found in xdg-screensaver */
+dbus_path_mediakeys keys_path_attempts[] = {
+    _PUT_DBUS_PATH_KEYS("freedesktop"), /* found in xdg-screensaver */
+    _PUT_DBUS_PATH_KEYS("xfce"),        /* just a guess */
+    _PUT_DBUS_PATH_KEYS("unity"),       /* just a guess */
+    _PUT_DBUS_PATH_KEYS("mate"),        /* found in xdg-screensaver */
+    _PUT_DBUS_PATH_KEYS("cinnamon"),    /* found in xdg-screensaver */
+    _PUT_DBUS_PATH_KEYS("gnome")        /* found in xdg-screensaver */
 };
 
 GDBusProxy *keys_proxy_all[A_SIZE(keys_path_attempts)];
 
-void
+static void
 _get_media_keys_proxies(const dbus_proc_in *in, const char *prg, int fd)
 {
     size_t i;
@@ -426,7 +421,7 @@ _get_media_keys_proxies(const dbus_proc_in *in, const char *prg, int fd)
     }
 }
 
-void
+static void
 _free_media_keys_proxies(const dbus_proc_in *in, const char *prg)
 {
     size_t i;
@@ -447,97 +442,106 @@ _free_media_keys_proxies(const dbus_proc_in *in, const char *prg)
     }
 }
 
-void
-_mpris2_app_setup(const char *prg)
+static void
+_mpris2_app_setup(const char *prg, mpris_data_struct *dat)
 {
     if ( mpris_fd_read >= 0 && mpris_fd_write >= 0 ) {
         if ( (mpris_rfp = fdopen(mpris_fd_read, "r")) == NULL ) {
             perror("fdopen(mpris_fd_read, \"r\") (MPRIS2 coproc)");
             p_exit(1);
         }
-        if ( (mpris_sig_rfp = fdopen(mpris_fd_sig_read, "r"))
+        if ( mpris_fd_sig_read < 0 ) {
+            mpris_fd_sig_read = mpris_fd_read;
+            mpris_sig_rfp = mpris_rfp;
+        } else if ( (mpris_sig_rfp = fdopen(mpris_fd_sig_read, "r"))
               == NULL ) {
             perror("fdopen(mpris_fd_sig_read, \"r\") (MPRIS2 coproc)");
-            fclose(mpris_rfp);
-            close(mpris_fd_sig_read);
             p_exit(1);
         }
 
-        mpris_data.fprd = mpris_rfp;
+        dat->fprd = mpris_rfp;
 
         if ( (mpris_wfp = fdopen(mpris_fd_write, "w")) == NULL ) {
             perror("fdopen(mpris_fd_write, \"w\") (MPRIS2 coproc)");
-            fclose(mpris_rfp);
-            fclose(mpris_sig_rfp);
-            close(mpris_fd_write);
             p_exit(1);
         }
-        if ( (mpris_sig_wfp = fdopen(mpris_fd_sig_write, "w"))
+        if ( mpris_fd_sig_write < 0 ) {
+            mpris_fd_sig_write = mpris_fd_write;
+            mpris_sig_wfp = mpris_wfp;
+        } else if ( (mpris_sig_wfp = fdopen(mpris_fd_sig_write, "w"))
               == NULL ) {
             perror("fdopen(mpris_fd_sig_write, \"w\") (MPRIS2 coproc)");
-            fclose(mpris_rfp);
-            fclose(mpris_wfp);
-            fclose(mpris_sig_rfp);
-            close(mpris_fd_write);
             p_exit(1);
         }
 
-        mpris_data.fpwr = mpris_wfp;
+        dat->fpwr = mpris_wfp;
 
         setvbuf(mpris_wfp, NULL, _IOLBF, 0);
-        setvbuf(mpris_sig_wfp, NULL, _IOLBF, 0);
+        if ( mpris_sig_wfp != mpris_wfp ) {
+            setvbuf(mpris_sig_wfp, NULL, _IOLBF, 0);
+        }
 
         /* dbus signals dialogs are initiated by client,
          * so poll that descriptor */
         g_unix_fd_add(mpris_fd_sig_read,
                       G_IO_IN|G_IO_PRI|G_IO_ERR|G_IO_HUP|G_IO_NVAL,
                       on_mpris_sig_read,
-                      (gpointer)&mpris_data);
+                      (gpointer)dat);
     }
 }
 
-void
-_mpris2_app_setdown(const char *prg)
+static void
+_mpris2_app_setdown(const char *prg, mpris_data_struct *dat)
 {
     /* ensure MPRIS2 support is stopped (should've been called) */
-    stop_mpris_service(&mpris_data);
+    stop_mpris_service(dat);
+
+    if ( mpris_sig_rfp != mpris_rfp ) {
+        fclose(mpris_sig_rfp);
+    }
+    if ( mpris_sig_wfp != mpris_wfp ) {
+        fclose(mpris_sig_wfp);
+    }
 
     fclose(mpris_rfp);
     fclose(mpris_wfp);
-    fclose(mpris_sig_rfp);
-    fclose(mpris_sig_wfp);
 }
 
 /* main procedure for dbus gio coprocess */
 static int
 dbus_gio_main(const dbus_proc_in *in)
 {
-    GMainLoop       *loop  = NULL;
-    int             outfd  = 1; /* standard output */
-    const char      *prg   = in->progname ? prog : NULL;
+    mpris_data_struct *dat;
+    GMainLoop         *loop  = NULL;
+    int               outfd  = 1; /* standard output */
+    const char        *prg   = in->progname ? prog : NULL;
 
     loop = g_main_loop_new(NULL, FALSE);
     if ( loop == NULL ) {
         return 1;
     }
 
-    mpris_data.loop = loop;
+    dat = xcalloc(1, sizeof(mpris_data_struct));
+
+    dat->loop = loop;
 
     _get_media_keys_proxies(in, prg, outfd);
 
-    _mpris2_app_setup(prg);
+    _mpris2_app_setup(prg, dat);
 
     g_unix_signal_add(glib_quit_signal, on_glib_quit_signal,
-                      (gpointer)&mpris_data);
+                      (gpointer)dat);
 
     /* the loop is poised twixt setup and teardown */
     g_main_loop_run(loop);
 
     _free_media_keys_proxies(in, prg);
 
-    _mpris2_app_setdown(prg);
+    _mpris2_app_setdown(prg, dat);
 
     g_main_loop_unref(loop);
+
+    free(dat);
 
     /* if got quit signal (got_common_signal), reraise */
     if ( got_common_signal ) {
@@ -2053,8 +2057,7 @@ mp_name_lost(GDBusConnection *connection,
     /* if start_global_mpris_failed == 0 then this failure might
      * be due to another instance already running, so try again
      * using a name with an instance qualifier */
-    if ( start_global_mpris_failed == 0 ) {
-        start_global_mpris_failed = 1;
+    if ( start_global_mpris_failed++ == 0 ) {
         start_instance_mpris_service(dat);
     }
 }
