@@ -605,10 +605,7 @@ put_mpris_thisname(const char *thisname, int mk_instance)
 
     p = xmalloc(len);
 
-    /* TODO: when code to check existing owner of this name
-     * is ready, this preprocessor conditional must becaome
-     * a runtime conditional -- the 'if 0' block running if
-     * an instance is found */
+    /* use mk_instance=1 if an instance is found running */
     if ( mk_instance ) {
         r = snprintf(p, len, "%s.%s.%s%ld",
                      mpris_busname, thisname,
@@ -636,7 +633,7 @@ alloc_read_buffer(int readfd, char **buf, size_t *bs)
     *buf = xmalloc(*bs);
 }
 
-#if       HAVE_GETDELIM
+#if HAVE_GETDELIM
 /* note getdelim vs. getline: the latter would be suitable,
  * but the common use of the name might be a problem; use
  * of the former is just a safe alternative at essentially
