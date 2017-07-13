@@ -6130,7 +6130,6 @@ class TopWnd(wx.Frame):
             return self.get_dbus_itempath(g, g.get_at_index(i))
 
         def mpris_timer_check(self):
-            print("XXXX IN mpris_timer_check")
             try:
                 b = self.cangonext
             except AttributeError:
@@ -7868,7 +7867,7 @@ class TopWnd(wx.Frame):
             wx.CallAfter(self.medi.Play)
             self.focus_medi_opt()
 
-        self.mpris2_signal_emit(_T("CanSeek"))
+        #self.mpris2_signal_emit(_T("CanSeek"))
 
     def slider_setup(self, pos = None):
         ln = self.medi.Length()
