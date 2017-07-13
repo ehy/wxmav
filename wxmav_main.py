@@ -6129,6 +6129,75 @@ class TopWnd(wx.Frame):
                 return _T("{}/{}").format(p, _T(zmsg))
             return self.get_dbus_itempath(g, g.get_at_index(i))
 
+        def mpris_timer_check(self):
+            print("XXXX IN mpris_timer_check")
+            try:
+                b = self.cangonext
+            except AttributeError:
+                b = self.cangonext = None
+            c = True if (self.get_next_index() != None) else False
+            if b != c:
+                self.cangonext = c
+                self.mpris2_signal_emit(_T("CanGoNext"))
+            else:
+                pass
+
+            try:
+                b = self.cangoprev
+            except AttributeError:
+                b = self.cangoprev = None
+            c = True if (self.get_prev_index() != None) else False
+            if b != c:
+                self.cangoprev = c
+                self.mpris2_signal_emit(_T("CanGoPrevious"))
+            else:
+                pass
+
+            try:
+                b = self.canplay
+            except AttributeError:
+                b = self.canplay = None
+            c = True if (
+                    self.reslist and len(self.reslist) > 0) else False
+            if b != c:
+                self.canplay = c
+                self.mpris2_signal_emit(_T("CanPlay"))
+                self.mpris2_signal_emit(_T("CanPause"))
+
+            try:
+                b = self.canseek
+            except AttributeError:
+                b = self.canseek = None
+            c = True if (
+                    self.medi and self.medi.Length() > 0) else False
+            if b != c:
+                self.canseek = c
+                self.mpris2_signal_emit(_T("CanSeek"))
+
+        def metadata_check(self):
+            g, i = self.get_res_group_with_index()
+            curtuple = None
+            try:
+                curtuple = self.cur_uniq_tuple
+            except AttributeError:
+                pass
+            if curtuple == None and (g == None or i == None):
+                self.cur_uniq_tuple = None
+                return
+            elif g == None or i == None:
+                self.cur_uniq_tuple = None
+                self.mpris2_signal_emit(_T("Metadata"))
+                return
+
+            item = g.get_at_index(i)
+            gid = _T(g.uniq)
+            uid = _T(item.uniq)
+            if (curtuple == None or
+                curtuple[0] != gid or curtuple[1] != uid):
+                self.cur_uniq_tuple = (gid, uid)
+                self.mpris2_signal_emit(_T("Metadata"))
+                return
+
         def get_mpris2_metadata(self, idx = None, zmsg = "null_data"):
             #  return a list of (attribute, value), like dbus a{sv}
             r = []
@@ -7056,12 +7125,16 @@ class TopWnd(wx.Frame):
             self.on_quit(event)
         elif i == self.mfile_openfile:
             self.dialog_open_file()
+            self.metadata_check()
         elif i == self.mfile_opendir:
             self.dialog_open_dirs()
+            self.metadata_check()
         elif i == self.mfile_opendir_recurse:
             self.dialog_open_dirs(recurse = True)
+            self.metadata_check()
         elif i == self.mfile_openurl:
             self.dialog_open_uri()
+            self.metadata_check()
         ## saves
         elif i == self.mfile_savegrp:
             self.dialog_save_group()
@@ -7071,22 +7144,30 @@ class TopWnd(wx.Frame):
         ## regrets
         elif i == self.medit_undo:
             self.do_undo()
+            self.metadata_check()
         elif i == self.medit_redo:
             self.do_redo()
+            self.metadata_check()
         ## set edit dialog
         elif i == self.medit_editor:
             self.dialog_set_editor()
+            self.metadata_check()
         ## set title tags on group items
         elif i == self.medit_grtags:
             self.do_group_items_desc_from_tags()
         ## deletes
         elif i == self.medit_delegrp:
             self.delete_group()
+            self.metadata_check()
         elif i == self.medit_deleset:
             self.delete_set()
+            self.metadata_check()
         # Controls menu
         elif i == self.mctrl_loop:
+            b = self.loop_track
             self.loop_track = self.mctrl.IsChecked(self.mctrl_loop)
+            if b != self.loop_track:
+                self.mpris2_signal_emit(_T("LoopStatus"))
         elif i == self.mctrl_advance:
             self.adv_track = self.mctrl.IsChecked(self.mctrl_advance)
         elif i == self.mctrl_play:
@@ -7097,16 +7178,22 @@ class TopWnd(wx.Frame):
             self.do_command_button(self.id_stop)
         elif i == self.mctrl_next:
             self.do_command_button(self.id_next)
+            self.metadata_check()
         elif i == self.mctrl_previous:
             self.do_command_button(self.id_prev)
+            self.metadata_check()
         elif i == self.mctrl_next_grp:
             self.cmd_next_grp()
+            self.metadata_check()
         elif i == self.mctrl_previous_grp:
             self.cmd_prev_grp()
+            self.metadata_check()
         elif i == self.mctrl_first_grp:
             self.cmd_first_grp()
+            self.metadata_check()
         elif i == self.mctrl_last_grp:
             self.cmd_last_grp()
+            self.metadata_check()
         # Options menu
         elif i == self.mopts_quitquery:
             t = self.mopts.IsChecked(self.mopts_quitquery)
@@ -7295,7 +7382,10 @@ class TopWnd(wx.Frame):
     def set_loop_track(self, do_loop = None):
         if do_loop != None:
             self.loop_track = True if do_loop else False
+        b = self.mctrl.IsChecked()
         self.mctrl.Check(self.mctrl_loop, self.loop_track)
+        if b != self.loop_track:
+            self.mpris2_signal_emit(_T("LoopStatus"))
 
     # see comment in ctor, where this is Bind()ed
     def on_iconize_event(self, event):
@@ -7530,10 +7620,22 @@ class TopWnd(wx.Frame):
                 wx.CallAfter(self.check_set_media_meta, True)
 
         if self.getdbg():
+            st = self.medi.GetState()
+            if st == wx.media.MEDIASTATE_PLAYING:
+                m = "MEDIASTATE_PLAYING"
+            elif st == wx.media.MEDIASTATE_PAUSED:
+                m = "MEDIASTATE_PAUSED"
+            elif st == wx.media.MEDIASTATE_STOPPED:
+                m = "MEDIASTATE_STOPPED"
+            else:
+                m = "STATE UNKNOWN: value {}".format(st)
+            self.prdbg(_T("CURRENT STATE: {}").format(_T(m)))
             ln = self.get_time_str(tm = ln, wm = True)
             self.prdbg(_T("Media length: {}").format(ln))
             self.prdbg(_T("Media size: {}x{} (chg state)").format(
                             sz.width, sz.height))
+
+        self.mpris2_signal_emit(_T("PlaybackStatus"))
 
     def on_media_play(self, event):
         self.prdbg(_T("Media event: EVT_MEDIA_PLAY"))
@@ -7600,7 +7702,6 @@ class TopWnd(wx.Frame):
         self.set_statusbar(
             _("Playing '{}'").format(nm), 0, notify = True)
         self.set_statusbar(self.get_time_str(tm = ln), 1)
-        self.mpris2_signal_emit(_T("PlaybackStatus"))
 
         wx.CallAfter(self.with_media_loaded)
 
@@ -7625,7 +7726,6 @@ class TopWnd(wx.Frame):
             _("Paused '{}'").format(nm), 0, notify = True)
         tm = self.media_meta[0]
         self.set_statusbar(self.get_time_str(tm = tm), 1)
-        self.mpris2_signal_emit(_T("PlaybackStatus"))
 
         # pause duration limit hack
         if self.media_current_is_uri:
@@ -7706,7 +7806,6 @@ class TopWnd(wx.Frame):
             # forced to unload (which is another hack)
             self.unload_media(force = True)
         self.pos_sld.SetValue(0)
-        self.mpris2_signal_emit(_T("PlaybackStatus"))
 
     # old wxpython sample comment says that MSW backends do not
     # post loaded event -- I have not observed that with MSW 7 and
@@ -7739,6 +7838,7 @@ class TopWnd(wx.Frame):
             self._seek_and_play(whence = self.pause_seek_pos)
         else:
             self.pause_ticks = -1
+            self.metadata_check()
             wx.CallAfter(self.with_media_loaded, call_me = call_me)
 
     def with_media_loaded(self, event = None, call_me = None):
@@ -7982,16 +8082,29 @@ class TopWnd(wx.Frame):
         if off == False:
             b = self.IsFullScreen()
             if not b:
+                # Did go fullscreen, so make sure we are at top of
+                # z-order -- we probably already are if we're here
+                # from a button or menu; but might not be if this
+                # is initiated programmatically, e.g. MPRIS
+                self.Raise()
                 self.do_fullscreen_label(False)
                 # let it show at 1st, ticker will hide
                 #self.show_wnd_obj(self.hiders["vszr"], False)
                 self.medi_tick = self.medi_tick_span
-            self.ShowFullScreen(not b)
-            if b:
-                self.do_fullscreen_label(True)
-                self.show_wnd_obj(self.hiders["vszr"], True)
-                self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
-                self.medi_tick = 0
+            def _aft(self, b):
+                self.ShowFullScreen(not b)
+                if b:
+                    self.do_fullscreen_label(True)
+                    self.show_wnd_obj(self.hiders["vszr"], True)
+                    self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
+                    self.medi_tick = 0
+                else:
+                    # Did go fullscreen, so make sure we are at top of
+                    # z-order -- we probably already are if we're here
+                    # from a button or menu; but might not be if this
+                    # is initiated programmatically, e.g. MPRIS
+                    wx.CallAfter(self.Raise)
+            wx.CallAfter(_aft, self, b)
             wx.GetApp().do_screensave(b)
             self.mpris2_signal_emit(_T("Fullscreen"))
         elif off == True:
@@ -8051,6 +8164,7 @@ class TopWnd(wx.Frame):
             grp.desc = _T(" -- ").join(alst)
 
         self.set_tb_combos()
+        self.mpris2_signal_emit(_T("Metadata"))
 
         return True
 
@@ -8646,6 +8760,9 @@ class TopWnd(wx.Frame):
                 self.prdbg(_T("do_timep {}").format(self.tittime))
 
             self.tittime -= 1
+
+        # timer checks for state chenges for mpris2
+        self.mpris_timer_check()
 
         # This was called in idle handler, but when
         # queue is full wx gets overwhelmed and lockup

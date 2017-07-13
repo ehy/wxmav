@@ -213,7 +213,7 @@ start_dbus_coproc(const dbus_proc_in *in,
 
 #   if _DEBUG || 0
     fpinfo = fopen(DBUS_GIO_DEBUGFILE, "w");
-#   elif 1
+#   elif 0
     /* stderr goes to main process, through wx event loop
      * to a wxLog* object; but, the volume of messages seems
      * to overwelm the loop, so reserve stderr for urgency */
@@ -972,6 +972,7 @@ put_args_from_gvar(char *types,
     /* copy types string so that we may modify it
      * with a clear conscience */
     tfrptr = p = LALLOC(++tlen); /* has one extra */
+
     do { /* breakable block */
         if ( strlcpy(p, types, tlen) >= tlen ) {
             fprintf(fpinfo, "%s: internal error (H)\n", prog);
@@ -1038,8 +1039,8 @@ put_args_from_gvar(char *types,
                 if ( v == NULL ) {
                     v = "error";
                     fprintf(fpinfo,
-                            "%s: error getting '%c' param %d\n",
-                            prog, *p, (int)ix);
+                            "%s: error getting '%c' param num %u\n",
+                            prog, *p, (unsigned int)ix);
                 } else {
                     ok = 1;
                 }
