@@ -755,6 +755,24 @@ class media_tags:
     def processed_title(self, tr_wid = 2, tr_sep = '. '):
         return get_processed_title(self, tr_wid, tr_sep)
 
+    def get_album(self):
+        return None
+
+    def get_tracknumber(self):
+        return None
+
+    def get_title(self):
+        return None
+
+    def get_artist(self):
+        return None
+
+    def get_genre(self):
+        return None
+
+    def get_date(self):
+        return None
+
     def get_tracknum_int(self):
         return None
 
@@ -794,6 +812,10 @@ if have_mutagen:
                         self.title = v
                     elif k == 'artist':
                         self.artist = v
+                    elif k == 'genre':
+                        self.genre = v
+                    elif k == 'date':
+                        self.date = v
             except:
                 return False
 
@@ -801,8 +823,47 @@ if have_mutagen:
 
             return self.is_ok
 
+        def get_album(self):
+            try:
+                return self.album
+            except AttributeError:
+                return None
+
+        def get_tracknumber(self):
+            try:
+                return self.tracknumber
+            except AttributeError:
+                return None
+
+        def get_title(self):
+            try:
+                return self.title
+            except AttributeError:
+                return None
+
+        def get_artist(self):
+            try:
+                return self.artist
+            except AttributeError:
+                return None
+
+        def get_genre(self):
+            try:
+                return self.genre
+            except AttributeError:
+                return None
+
+        def get_date(self):
+            try:
+                return self.date
+            except AttributeError:
+                return None
+
         def get_tracknum_int(self):
-            tn = self.tracknumber
+            try:
+                tn = self.tracknumber
+            except AttributeError:
+                return None
 
             if tn is None:
                 return None
@@ -894,10 +955,44 @@ def get_processed_title(tags, tr_wid = 2, tr_sep = '. '):
     return t
 
 
+if _in_xws:
+    # this is for freedesktop.org MPRIS2 support
+    def get_xesam_map(fname):
+        tg = get_media_tags_obj(fname)
+
+        u = _T(fname)
+        if os.path.isfile(u):
+            u = _T("file://") + _Tnec(os.path.realpath(u))
+
+        xm = {
+            "album" :           tg.get_album(),
+            #"albumArtist" :     None,
+            "artist" :          tg.get_artist(),
+            #"asText" :          None,
+            #"audioBPM" :        None,
+            #"autoRating" :      None,
+            #"comment" :         None,
+            #"composer" :        None,
+            #"contentCreated" :  tg.get_date(), # not correct
+            #"discNumber" :      None,
+            #"firstUsed" :       None,
+            "genre" :           tg.get_genre(),
+            #"lastUsed" :        None,
+            #"lyricist" :        None,
+            "title" :           tg.get_title(),
+            "trackNumber" :     tg.get_tracknum_int(),
+            "url" :             u,
+            #"useCount" :        None,
+            #"userRating" :      None,
+            "DUMMY" : None
+        }
+
+        return xm
+
+
 """
     classes and data Unix and MPRIS2
 """
-
 if _in_xws:
     # gstreamer URI schemes (might be incomplete)
     gst_uri_schemes = ["file", "rtp", "rtsp", "http", "https"]
@@ -6118,9 +6213,11 @@ class TopWnd(wx.Frame):
             obj, ifc = self.get_dbus_dom_app()
             gid = _T(grp.uniq)
             uid = _T(item.uniq)
-            dsc = self._get_dbuspath_clean(
-                item.get_desc_disp_str(True) or item.get_res_disp_str())
-            return _T("{}/{}/{}/{}").format(obj, gid, uid, dsc)
+            # cannot include desc in dbus object path -- chars restrict
+            #dsc = self._get_dbuspath_clean(
+            #    item.get_desc_disp_str(True) or item.get_res_disp_str())
+            #return _T("{}/{}/{}/{}").format(obj, gid, uid, dsc)
+            return _T("{}/{}/{}").format(obj, gid, uid)
 
         def get_dbus_itempath_current(self, zmsg = "null_data"):
             g, i = self.get_res_group_with_index()
@@ -6205,16 +6302,38 @@ class TopWnd(wx.Frame):
             if g == None or i == None:
                 p, i = self.get_dbus_dom_app()
                 ob = _T("{}/{}").format(p, _T(zmsg))
-                r.append((_T("mpris:trackid"), _T('s:{}').format(ob)))
+                r.append((_T("mpris:trackid"), _T('o:{}').format(ob)))
                 return r
 
             i = g.get_at_index(i)
             r.append((_T("mpris:trackid"),
-                      _T('s:{}').format(self.get_dbus_itempath(g, i))))
+                      _T('o:{}').format(self.get_dbus_itempath(g, i))))
             l = i.length if (i.length >= 0) else 0
             # length attribute needs microsecs (we have millisecs)
             r.append((_T("mpris:length"), _T('x:{}').format(l * 1000)))
             # note: we do not do 'mpris:artUrl'
+
+            # xesam items:
+            nam = i.resname
+            ids = i.get_desc_disp_str()
+            gds = g.get_desc()
+
+            xm = get_xesam_map(nam)
+            r.append((_T("xesam:title"),
+                      _T('s:{}').format(xm['title'] or ids)))
+            r.append((_T("xesam:album"),
+                      _T('s:{}').format(xm['album'] or gds)))
+
+            # artist, genre: check how to send type 'as'
+            #if xm['artist'] != None:
+            #    r.append((_T("xesam:artist"),
+            #          _T('as:{}').format(xm['artist'])))
+            #if xm['genre'] != None:
+            #    r.append((_T("xesam:genre"),
+            #          _T('as:{}').format(xm['genre'])))
+            if xm['trackNumber'] != None:
+                r.append((_T("xesam:trackNumber"),
+                      _T('i:{}').format(xm['trackNumber'])))
 
             return r
 
