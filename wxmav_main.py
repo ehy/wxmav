@@ -962,7 +962,7 @@ if _in_xws:
 
         u = _T(fname)
         if os.path.isfile(u):
-            u = _T("file://") + _Tnec(os.path.realpath(u))
+            u = _T("file://") + _Tnec(os.path.abspath(u))
 
         xm = {
             "album" :           tg.get_album(),
@@ -6306,8 +6306,12 @@ class TopWnd(wx.Frame):
                 return r
 
             i = g.get_at_index(i)
-            r.append((_T("mpris:trackid"),
-                      _T('o:{}').format(self.get_dbus_itempath(g, i))))
+            resid = self.get_dbus_itempath(g, i)
+            # TODO - objects made here can be cached in a map
+            # keyed on resid
+
+            r.append((_T("mpris:trackid"), _T('o:{}').format(resid)))
+
             l = i.length if (i.length >= 0) else 0
             # length attribute needs microsecs (we have millisecs)
             r.append((_T("mpris:length"), _T('x:{}').format(l * 1000)))
@@ -6324,16 +6328,28 @@ class TopWnd(wx.Frame):
             r.append((_T("xesam:album"),
                       _T('s:{}').format(xm['album'] or gds)))
 
-            # artist, genre: check how to send type 'as'
-            #if xm['artist'] != None:
-            #    r.append((_T("xesam:artist"),
-            #          _T('as:{}').format(xm['artist'])))
-            #if xm['genre'] != None:
-            #    r.append((_T("xesam:genre"),
-            #          _T('as:{}').format(xm['genre'])))
+            # artist, genre: to send type 'as' join w/ '\n'
+            if xm['artist'] != None:
+                if isinstance(xm['artist'], list):
+                    v = '\n'.join(xm['artist'])
+                else:
+                    v = xm['artist']
+                r.append((_T("xesam:artist"), _T('as:{}').format(v)))
+
+            if xm['genre'] != None:
+                if isinstance(xm['genre'], list):
+                    v = '\n'.join(xm['genre'])
+                else:
+                    v = xm['genre']
+                r.append((_T("xesam:genre"), _T('as:{}').format(v)))
+
             if xm['trackNumber'] != None:
                 r.append((_T("xesam:trackNumber"),
                       _T('i:{}').format(xm['trackNumber'])))
+
+            if xm['url'] != None:
+                r.append((_T("xesam:url"),
+                      _T('s:{}').format(xm['url'])))
 
             return r
 
@@ -9451,8 +9467,16 @@ class TopWnd(wx.Frame):
                 for s, v in a:
                     m = _T("{}\n").format(s)
                     self.wr(fd_wr, m)
-                    m = _T("{}\n").format(v)
-                    self.wr(fd_wr, m)
+                    if v[:3] == _T('as:'):
+                        m = _T("as:\n")
+                        self.wr(fd_wr, m)
+                        m = _T("{}\n").format(v[3:])
+                        self.wr(fd_wr, m)
+                        m = _T(":END ARRAY:\n")
+                        self.wr(fd_wr, m)
+                    else:
+                        m = _T("{}\n").format(v)
+                        self.wr(fd_wr, m)
                 m = _T(":END ARRAY:\n")
             elif s_eq(prop, "Volume"):
                 d = float(self.w.vol_max - self.w.vol_min)
