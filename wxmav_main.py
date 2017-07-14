@@ -5674,10 +5674,10 @@ class TopWnd(wx.Frame):
         self.undo_redo = UndoRedoManager()
 
         # fifo queue for MPRIS2 coprocess dialog lambdas
-        if _in_xws:
+        if _in_xws or True:
             # queue has max size in case of flurries of events;
             # handler should discard first when put() fails
-            self.coproc_fifo = q_fifo(8)
+            self.coproc_fifo = q_fifo(32)
 
         # get config values here, in case a setting applies
         # to interface objects created below
@@ -9173,6 +9173,7 @@ class TopWnd(wx.Frame):
                 if t and not discard:
                     t()
                 fifo.task_done()
+                fifo.put(lamb, block = False, timeout = -1)
 
     def mpris2_signal_emit(self, signal):
         if _in_xws and True:

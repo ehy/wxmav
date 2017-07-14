@@ -213,7 +213,7 @@ start_dbus_coproc(const dbus_proc_in *in,
 
 #   if _DEBUG || 0
     fpinfo = fopen(DBUS_GIO_DEBUGFILE, "w");
-#   elif 1
+#   elif 0
     /* stderr goes to main process, through wx event loop
      * to a wxLog* object; but, the volume of messages seems
      * to overwelm the loop, so reserve stderr for urgency */
