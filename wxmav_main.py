@@ -382,10 +382,7 @@ else:
 # use _T() or _() for all* strings for string safety -- _("") for
 # strings that should get language translation, and _T("") for
 # string that should not be translated -- as in wxWidgets C++
-if _ucode_type == None:
-    def _T(s):
-        return s
-elif not py_v_is_3:
+if not py_v_is_3:
     def _T(s):
         try:
             return s.decode(_ucode_type, 'replace')
@@ -432,7 +429,13 @@ elif not py_v_is_3:
         return s
 
     def fd_write(fd, s):
-        os.write(fd, s)
+        # sys.version
+        # 2.7.13 (default, Jun 26 2017, 10:20:05) \n
+        #  [GCC 7.1.1 20170622 (Red Hat 7.1.1-3)]
+        os.write(fd, _T(s).encode(_ucode_type))
+        # sys.version
+        #
+        #os.write(fd, s)
 
 else:
     def _T(s):
@@ -6319,9 +6322,9 @@ class TopWnd(wx.Frame):
             # note: we do not do 'mpris:artUrl'
 
             # xesam items:
-            nam = i.resname
-            ids = i.get_desc_disp_str()
-            gds = g.get_desc()
+            nam = _T(i.resname)
+            ids = _T(i.get_desc_disp_str())
+            gds = _T(g.get_desc())
 
             xm = get_xesam_map(nam)
             r.append((_T("xesam:title"),
