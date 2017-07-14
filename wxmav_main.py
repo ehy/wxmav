@@ -6880,7 +6880,13 @@ class TopWnd(wx.Frame):
         # In GTK the wxChoice is far better than this app's
         # 'ComboCtrlBecauseMSW' which exists just because
         # MSW Choice and ComboBox suck WRT dropdown size
-        if _in_gtk:
+        # NOTE wxChoice is broken on fedora/gnome3: does not
+        # truncate long strings and if too long, just destroys
+        # the control, never to be seen again, soo . . .
+        choice_ng = 'Red Hat' in sys.version
+        # . . . of course, that test is insufficient, but
+        # it will have to do for now
+        if _in_gtk and not choice_ng:
             sty = 0
 
             self.cbox_group_id = cur = wx.NewId()
