@@ -5678,6 +5678,7 @@ class TopWnd(wx.Frame):
             # queue has max size in case of flurries of events;
             # handler should discard first when put() fails
             self.coproc_fifo = q_fifo(32)
+            self.block_mpris_signals = False
 
         # get config values here, in case a setting applies
         # to interface objects created below
@@ -7576,10 +7577,12 @@ class TopWnd(wx.Frame):
 
         self.on_idle_menu_update(event)
         self.player_panel.do_idle(event)
-        #wx.CallAfter(self.on_idle_coproc_queue, event)
 
     def on_idle_coproc_queue(self, event):
         if not _in_xws:
+            return
+
+        if self.block_mpris_signals != False:
             return
 
         fifo = self.coproc_fifo
@@ -9346,7 +9349,8 @@ class TopWnd(wx.Frame):
                 # python poll()?) and lockups occur -- try using
                 # bothe callafter and sleep to slow things down
                 def _done_mp(w, fd, sl):
-                    wx.MilliSleep(sl)
+                    if sl > 0:
+                        wx.MilliSleep(sl)
                     # use try in case reentrant events closed this
                     try:
                         fd_write(fd, _T("poll"))
@@ -9354,8 +9358,9 @@ class TopWnd(wx.Frame):
                         w.err_msg(_T(
                             "mpris2hdlr::done donefd write error '{}'"
                             ).format(e.strerror))
+                    w.block_mpris_signals = False
 
-                wx.CallAfter(_done_mp, self.w, self.donefd, 10)
+                wx.CallAfter(_done_mp, self.w, self.donefd, 0)
 
         def wr(self, fd, v):
             return fd_write(fd, _Tnec(v))
@@ -9698,6 +9703,8 @@ class TopWnd(wx.Frame):
             self.err_msg(_T("self.w.mpris : {}").format(self.w.mpris))
             if not self.w.mpris:
                 return False
+
+            self.w.block_mpris_signals = True
 
             if not cmd:
                 cmd = self.rdstp(fd_rd, 128)
