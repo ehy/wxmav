@@ -2997,7 +2997,6 @@ elif _in_xws:
         def test_exit(self):
             self.mpris_off()
             if self.thd or self.ch_proc:
-                self.mpris_off()
                 wx.CallAfter(self.do_keyend, True)
                 return False
 
@@ -3392,6 +3391,10 @@ class TheAppClass(wx.App):
 
         self.debug   = ("-debug" in self.av)
         self.verbose = ("-verbose" in self.av)
+        if _in_xws:
+            self.dompris = not ("-no-mpris" in self.av)
+        else:
+            self.dompris = False
 
         def _args_re_filt(arg):
             m = re.match(_re_fsopt, arg)
@@ -3400,6 +3403,7 @@ class TheAppClass(wx.App):
                 filesys_encoding = m.group(1)
                 return False
             return (arg != "-inspection" and
+                    arg != "-no-mpris" and
                     arg != "-verbose" and
                     arg != "-debug")
 
@@ -3604,6 +3608,9 @@ class TheAppClass(wx.App):
 
     def get_config_dir(self):
         return self.std_paths.GetUserConfigDir()
+
+    def should_do_mpris(self):
+        return self.dompris
 
     if _in_xws:
         def get_mpris2_signal_io(self):
@@ -7598,7 +7605,11 @@ class TopWnd(wx.Frame):
         try:
             lamb = fifo.get(block = False, timeout = -1)
             if lamb:
-                lamb()
+                try:
+                    lamb()
+                except (IOError. OSError) as e:
+                    self.err_msg(
+                      _T("EX FIFO lambda: '{}'").format(e.strerror))
             fifo.task_done()
         except q_fifo_empty:
             pass
@@ -7950,7 +7961,7 @@ class TopWnd(wx.Frame):
             # loaded again, fresh and new and shiny -- note force =
             # True; else, only flags are set but backend is not
             # forced to unload (which is another hack)
-            self.unload_media(force = True)
+            self.unload_media(force = False)
         self.pos_sld.SetValue(0)
 
     # old wxpython sample comment says that MSW backends do not
@@ -8382,7 +8393,7 @@ class TopWnd(wx.Frame):
         self.push_undo(do_copy = True)
 
         self.cmd_on_stop(from_user = True)
-        self.unload_media(force = True)
+        self.unload_media(force = False)
 
         def _sub_del_grp(self, do_play):
             l = 0
@@ -8410,7 +8421,7 @@ class TopWnd(wx.Frame):
         self.push_undo(do_copy = False)
 
         self.cmd_on_stop(from_user = True)
-        self.unload_media(force = True)
+        self.unload_media(force = False)
 
         self.reslist = []
         self.media_indice = 0
@@ -8501,7 +8512,7 @@ class TopWnd(wx.Frame):
                 self.pause_ticks = 0 # expired: tested in stop event
                 self.prdbg(_T("on_media_play: pause_ticks == 0"))
                 self.medi.Stop()
-                self.unload_media(force = True)
+                self.unload_media(force = False)
                 self.load_media()
                 return
             else:
@@ -8744,7 +8755,7 @@ class TopWnd(wx.Frame):
 
         #self.prdbg(_T("IN _unload_and_play()"))
         self.medi.Stop()
-        self.unload_media(force = True)
+        self.unload_media(force = False)
         self.in_stop = True
         self.in_play = False
         self.set_play_label()
@@ -8813,7 +8824,7 @@ class TopWnd(wx.Frame):
         self.do_setwname_done = False
 
         self.mpris = (self.xhelper.get_mpris_pipe_obj() != None)
-        if self.mpris:
+        if self.mpris and wx.GetApp().should_do_mpris():
             self.xhelper.mpris_on()
 
     def do_time_medi(self, timer):
@@ -9105,7 +9116,7 @@ class TopWnd(wx.Frame):
                 self.config_wr(flush = True)
                 self.cmd_on_stop()
                 self.unload_media(True)
-                self.register_ms_hotkeys(False)
+                self.err_msg.register_ms_hotkeys(False)
                 self.del_taskbar_object()
                 self.main_timer.Stop()
                 self.Show(False)
@@ -9183,12 +9194,16 @@ class TopWnd(wx.Frame):
                 self.err_msg(_T("put_coproc_queue: DISCARD queue head"))
                 t = fifo.get(block = False, timeout = -1)
                 if t and not discard:
-                    t()
+                    try:
+                        t()
+                    except (IOError. OSError) as e:
+                        self.err_msg(
+                          _T("EX FIFO lambda: '{}'").format(e.strerror))
                 fifo.task_done()
                 fifo.put(lamb, block = False, timeout = -1)
 
     def mpris2_signal_emit(self, signal):
-        if _in_xws and True:
+        if _in_xws and wx.GetApp().should_do_mpris():
             self._x_mpris2_signal_emit(signal)
             return True
         return False
@@ -9287,9 +9302,6 @@ class TopWnd(wx.Frame):
                         signal))
                 return False
 
-            # disengage IPC pipe in poll() thread
-            #fd_write(wr_ctrl, _T("unpoll"))
-
             # tell coproc to begin signal IO dialog
             fd_write(wr_ch, _T("mpris:signal\n"))
 
@@ -9336,7 +9348,6 @@ class TopWnd(wx.Frame):
                                               signal, "signal")
 
             # cleanup and return
-            #mh.done()
             return r
 
     class _mpris2_handler:
@@ -9369,7 +9380,10 @@ class TopWnd(wx.Frame):
                             ).format(e.strerror))
                     w.block_mpris_signals = False
 
-                wx.CallAfter(_done_mp, self.w, self.donefd, 0)
+                if True:
+                    _done_mp(self.w, self.donefd, 0)
+                else:
+                    wx.CallAfter(_done_mp, self.w, self.donefd, 0)
 
         def wr(self, fd, v):
             return fd_write(fd, _Tnec(v))
