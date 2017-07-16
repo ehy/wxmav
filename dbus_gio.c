@@ -52,9 +52,16 @@
 #define SIZE_MAX ULONG_MAX
 #endif
 
-#ifndef   DBUS_GIO_DEBUGFILE
+#if _DEBUG
+/* e.g., if a specific file is preferred over
+ * a /tmp/template, then define DBUS_GIO_DEBUGFILE
 #define   DBUS_GIO_DEBUGFILE "/tmp/wxmav.debug"
-#endif /* DBUS_GIO_DEBUGFILE */
+*/
+
+#ifndef   DBUS_GIO_DEBUGFILE_TEMPLATE
+#define   DBUS_GIO_DEBUGFILE_TEMPLATE "/tmp/wxmav.debug.XXXXXXXXXX"
+#endif /* DBUS_GIO_DEBUGFILE_TEMPLATE */
+#endif /* _DEBUG */
 
 /* token separator for multi-token lines */
 #define _TSEPC ':'
@@ -89,11 +96,11 @@ static gboolean
 on_glib_quit_signal(gpointer user_data);
 /* signal handler for glib signals (i.e., callback) */
 static void
-on_glib_signal(GDBusProxy *proxy,
-               gchar      *sender_name,
-               gchar      *signal_name,
-               GVariant   *parameters,
-               gpointer    user_data);
+on_glib_signal_mediakey(GDBusProxy *proxy,
+                        gchar      *sender_name,
+                        gchar      *signal_name,
+                        GVariant   *parameters,
+                        gpointer    user_data);
 /* event on read end of client pipe */
 static gboolean
 on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data);
@@ -109,14 +116,18 @@ unnl(char *p);
  * for producing one GVariant -- that is 's' or 'd' or
  * 'aa{sv}' or '(b(oss))' are OK, but e.g. 'a{sv}(ox)' is NG */
 static GVariant*
-gvar_from_strings(char *type, char *value, mpris_data_struct *dat);
+gvar_from_strings(const char *type,
+                  const char *value,
+                  mpris_data_struct *dat);
 /* make a glib variant from a type and value; complex types
  * (as, etc.) are not permitted -- this is for something like
  * b:true or d:0.5, already split at the colon if from a single
  * string; in any case type should ba a char giving the data
  * type, and value should be a convertible string */
 static GVariant*
-gvar_from_simple_type(int type, char *value, mpris_data_struct *dat);
+gvar_from_simple_type(int type,
+                      const char *value,
+                      mpris_data_struct *dat);
 /* when client wants arguments -- method invocation, set property --
  * client calls for them with string "ARGS" and a colon sep'd
  * type string, e.g. 'b:x:a{sv}' -- call this to print args extracted
@@ -125,7 +136,7 @@ gvar_from_simple_type(int type, char *value, mpris_data_struct *dat);
  * return sum of returns from fprintf() or -1 on error
  */
 static int
-put_args_from_gvar(char *types,
+put_args_from_gvar(const char *types,
                    GVariant *parameters,
                    mpris_data_struct *dat);
 
@@ -152,6 +163,33 @@ FILE *fpinfo;
 
 /* guard reentrency when hadling dbus signal from client */
 volatile int reenter_guard = 0;
+
+#if _DEBUG
+/* slop accepted - no error checks - debug only */
+static FILE *
+_get_debug_file(void)
+{
+    FILE *f;
+
+#   if DBUS_GIO_DEBUGFILE
+    f = fopen(DBUS_GIO_DEBUGFILE, "w");
+
+    fprintf(stderr, "GLIB/GIO coprocess: debug file \"%s\"\n",
+            DBUS_GIO_DEBUGFILE);
+#   else
+    char buf[sizeof(DBUS_GIO_DEBUGFILE_TEMPLATE)];
+    int  fd;
+
+    strlcpy(buf, DBUS_GIO_DEBUGFILE_TEMPLATE, sizeof(buf));
+    fd = mkstemp(buf);
+    f = fdopen(fd, "w");
+
+    fprintf(stderr, "GLIB/GIO coprocess: debug file \"%s\"\n", buf);
+#   endif
+
+    return f;
+}
+#endif /* _DEBUG */
 
 /* EXTERNAL API:
  * start (fork) coprocess to handle glib2 gio loop
@@ -211,9 +249,9 @@ start_dbus_coproc(const dbus_proc_in *in,
     /* fork succeeded, child here */
     p_exit = _exit;
 
-#   if _DEBUG || 0
-    fpinfo = fopen(DBUS_GIO_DEBUGFILE, "w");
-#   elif 0
+#   if _DEBUG
+    fpinfo = _get_debug_file();
+#   elif _COPROC_SPAM_STDERR
     /* stderr goes to main process, through wx event loop
      * to a wxLog* object; but, the volume of messages seems
      * to overwelm the loop, so reserve stderr for urgency */
@@ -221,6 +259,7 @@ start_dbus_coproc(const dbus_proc_in *in,
 #   else
     fpinfo = fopen("/dev/null", "w");
 #   endif
+
     setvbuf(fpinfo, NULL, _IOLBF, 0);
 
     for ( i = 0; i < in->num_sig; i++ ) {
@@ -313,21 +352,21 @@ on_glib_quit_signal(gpointer user_data)
     return TRUE;
 }
 
-const gchar *signal_wanted = "MediaPlayerKeyPressed";
-
-/* signal handler for glib signals */
+/* handler for glib media key signals */
 static void
-on_glib_signal(GDBusProxy *proxy,
-               gchar      *sender_name,
-               gchar      *signal_name,
-               GVariant   *params,
-               gpointer    user_data)
+on_glib_signal_mediakey(GDBusProxy *proxy,
+                        gchar      *sender_name,
+                        gchar      *signal_name,
+                        GVariant   *params,
+                        gpointer    user_data)
 {
+    static const gchar *signal_mediakey = "MediaPlayerKeyPressed";
     size_t  len;
+    ssize_t slen;
     gchar   *param_str = NULL;
-    int     fd = (int)(ptrdiff_t)user_data;
+    int     fd         = (int)(ptrdiff_t)user_data;
 
-    if ( strcasecmp(signal_wanted, signal_name) ) {
+    if ( strcasecmp(signal_mediakey, signal_name) ) {
         return;
     }
 
@@ -338,7 +377,10 @@ on_glib_signal(GDBusProxy *proxy,
     }
 
     len = strlen(param_str);
-    if ( client_output(fd, param_str, len) != len ) {
+    if ( (slen = client_output(fd, param_str, len)) != len ) {
+        fprintf(stderr,
+                "%s: media key write fail: len==%zu, return==%zd\n",
+                prog, len, slen);
         p_exit(1);
     }
 
@@ -411,7 +453,7 @@ _get_media_keys_proxies(const dbus_proc_in *in, const char *prg, int fd)
         keys_proxy_all[i] = proxy;
 
         g_signal_connect(proxy, "g-signal",
-                         G_CALLBACK(on_glib_signal),
+                         G_CALLBACK(on_glib_signal_mediakey),
                          (gpointer)(ptrdiff_t)fd);
 
         g_dbus_proxy_call(proxy, "GrabMediaPlayerKeys",
@@ -496,15 +538,19 @@ _mpris2_app_setdown(const char *prg, mpris_data_struct *dat)
     /* ensure MPRIS2 support is stopped (should've been called) */
     stop_mpris_service(dat);
 
-    if ( mpris_sig_rfp != mpris_rfp ) {
+    if ( mpris_sig_rfp != NULL && mpris_sig_rfp != mpris_rfp ) {
         fclose(mpris_sig_rfp);
     }
-    if ( mpris_sig_wfp != mpris_wfp ) {
+    if ( mpris_sig_wfp != NULL && mpris_sig_wfp != mpris_wfp ) {
         fclose(mpris_sig_wfp);
     }
 
-    fclose(mpris_rfp);
-    fclose(mpris_wfp);
+    if ( mpris_rfp != NULL ) {
+        fclose(mpris_rfp);
+    }
+    if ( mpris_wfp != NULL ) {
+        fclose(mpris_wfp);
+    }
 }
 
 /* main procedure for dbus gio coprocess */
@@ -634,7 +680,7 @@ alloc_read_buffer(int readfd, char **buf, size_t *bs)
     *buf = xmalloc(*bs);
 }
 
-#if HAVE_GETDELIM
+#if HAVE_GETDELIM /* && ! _DEBUG temp */
 /* note getdelim vs. getline: the latter would be suitable,
  * but the common use of the name might be a problem; use
  * of the former is just a safe alternative at essentially
@@ -667,17 +713,14 @@ read_line(char **buf, size_t *bs, FILE *fptr)
 }
 #else  /* HAVE_GETDELIM */
 static ssize_t
-rd_fgets(char **buf, size_t *bs, FILE *fptr)
+_rd_fgets(char *buf, size_t bs, FILE *fptr)
 {
     char *ret;
 
-    if ( *buf == NULL ) {
-        alloc_read_buffer(fileno(fptr), buf, bs);
-    }
-
-    while ( (ret = fgets(*buf, *bs, fptr)) == NULL ) {
+    while ( (ret = fgets(buf, bs, fptr)) == NULL ) {
         int e = errno;
         if ( got_common_signal ) {
+            return -1;
         } else if ( ferror(fptr) && (e == EAGAIN || e == EINTR) ) {
             clearerr(fptr);
         } else if ( ferror(fptr) ) {
@@ -688,37 +731,39 @@ rd_fgets(char **buf, size_t *bs, FILE *fptr)
         sleep(1);
     }
 
-    return strlen(*buf);
+    return strlen(buf);
 }
 
 static ssize_t
 read_line(char **buf, size_t *bs, FILE *fptr)
 {
-    ssize_t s = rd_fgets(buf, bs, fptr);
+#if _DEBUG
+    const size_t incsz = 16;
+#else
+    const size_t incsz = 128;
+#endif
+    const size_t maxsz = UINT16_MAX - incsz;
+    ssize_t      rdlen, s;
 
-    while ( s > 0 && (*buf)[s - 1] != '\n' ) {
-        char  *tbuf = NULL;
-        size_t slen = 0;
-        ssize_t s2 = rd_fgets(&buf, &slen, fptr);
+    if ( *buf == NULL ) {
+        alloc_read_buffer(fileno(fptr), buf, bs);
+    }
 
-        if ( s2 > 0 ) {
+    rdlen = 0;
+    while ( (s = _rd_fgets(*buf + rdlen, *bs - rdlen, fptr)) > 0 ) {
+        rdlen += s;
+
+        if ( (*buf)[rdlen - 1] == '\n' ) {
+            return rdlen;
+        } else if ( *bs > maxsz ) {
+            /* max exceeded -- reading data that is not likey text --
+             * just return the data and let caller handle/ignore it */
+            return rdlen;
+        } else {
             /* xrealloc exits on error, so it is no matter
              * that we assign directly to source pointer */
-            slen = s;
-            s += s2;
-            *bs = BUFSIZ + s;
+            *bs += incsz;
             *buf = xrealloc(*buf, *bs);
-            slen = strlcpy((*buf) + slen, tbuf, *bs - slen);
-            if ( slen != s2 ) {
-                fprintf(fpinfo, "%s: internal error (strlcpy)\n", prog);
-                p_exit(1);
-            }
-        }
-
-        free(tbuf);
-
-        if ( s2 < 1 ) {
-            break;
         }
     }
 
@@ -759,6 +804,9 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
     char    *p;
     gboolean ret = TRUE;
     const GIOCondition errbits = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+
+    fprintf(fpinfo, "%s re. %d: %s\n", prog,
+            reenter_guard, "on_mpris_sig_read");
 
     if ( ++reenter_guard > 1 ) {
         --reenter_guard;
@@ -855,7 +903,7 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
 ** org.mpris.MediaPlayer2 [base]
 */
 
-/* a handshake proc for all procs that communicate with client */
+/* a handshake proc for the procs that communicate with client */
 #define _EXCHGHS_WR_ERR -1
 #define _EXCHGHS_RD_ERR -2
 #define _EXCHGHS_ALL_OK  0
@@ -868,7 +916,6 @@ _exchange_handshake(mpris_data_struct *dat,
                     const char        *property_name)
 {
     ssize_t rdlen;
-    int     ret = _EXCHGHS_ALL_OK;
 
     fprintf(dat->fpwr, "%s\n", ini);
     fflush(dat->fpwr);
@@ -884,31 +931,31 @@ _exchange_handshake(mpris_data_struct *dat,
     if ( rdlen < 1 ) {
         /* whether EOF or error, that's it for the other one */
         fprintf(fpinfo, "%s unexpected mpris read end (%ld) (b)\n",
-            prog, (long int)rdlen);
+                prog, (long int)rdlen);
         return _EXCHGHS_RD_ERR;
     }
 
     unnl(dat->buf);
 
     fprintf(fpinfo, "%s got ack '%s' from client\n",
-        prog, dat->buf);
+            prog, dat->buf);
 
     /* rejected? */
     if ( strcmp(dat->buf, "UNSUPPORTED") == 0 ) {
         fprintf(fpinfo, "%s mpris client ack for '%s' is '%s'\n",
-            prog, ini, dat->buf);
+                prog, ini, dat->buf);
         return _EXCHGHS_ACKREJ;
     }
 
     /* ack */
     if ( strcmp(dat->buf, ack) ) {
         fprintf(fpinfo, "%s unexpected mpris client ack '%s'\n",
-            prog, dat->buf);
-        ret |= _EXCHGHS_ACK_NG;
+                prog, dat->buf);
+        return _EXCHGHS_ACK_NG;
     }
 
     fprintf(fpinfo, "%s writing '%s' to client\n",
-        prog, property_name);
+            prog, property_name);
 
     fprintf(dat->fpwr, "%s\n", property_name);
     fflush(dat->fpwr);
@@ -920,13 +967,13 @@ _exchange_handshake(mpris_data_struct *dat,
     rdlen = read_line_dat(dat);
     if ( rdlen < 1 ) {
         fprintf(fpinfo, "%s unexpected mpris read end (%ld) (c)\n",
-            prog, (long int)rdlen);
+                prog, (long int)rdlen);
         return _EXCHGHS_RD_ERR;
     }
 
     unnl(dat->buf);
 
-    return ret;
+    return _EXCHGHS_ALL_OK;
 }
 
 /* convenience function: get from GVariant with g_variant_get
@@ -960,7 +1007,7 @@ _get_gvar_one(GVariant *param, gsize idx, const char *fmt, void *dest)
  * return sum of returns from fprintf() or -1 on error
  */
 static int
-put_args_from_gvar(char *types,
+put_args_from_gvar(const char *types,
                    GVariant *parameters,
                    mpris_data_struct *dat)
 {
@@ -1039,8 +1086,8 @@ put_args_from_gvar(char *types,
                 if ( v == NULL ) {
                     v = "error";
                     fprintf(fpinfo,
-                            "%s: error getting '%c' param num %u\n",
-                            prog, *p, (unsigned int)ix);
+                            "%s: error getting '%s' param num %u\n",
+                            prog, p, (unsigned int)ix);
                 } else {
                     ok = 1;
                 }
@@ -1071,10 +1118,16 @@ put_args_from_gvar(char *types,
  * string; in any case type should ba a char giving the data
  * type, and value should be a convertible string */
 static GVariant*
-gvar_from_simple_type(int type, char *value, mpris_data_struct *dat)
+gvar_from_simple_type(int type,
+                      const char *value,
+                      mpris_data_struct *dat)
 {
-	GVariant *result = NULL;
-    char     *p      = value;
+	GVariant   *result = NULL;
+    const char *p      = value;
+
+    fprintf(fpinfo, "%s: %s type '%c' value '%s'\n", prog,
+            "gvar_from_simple_type", type,
+            value == NULL ? "[NULL]" : value);
 
     /* NOTE that for int types, sscanf into types that are wider
      * or at least equal length, then clamp with MAX(MIN())
@@ -1143,21 +1196,32 @@ gvar_from_simple_type(int type, char *value, mpris_data_struct *dat)
          * type:[value-or-none-per-type]*/
         GVariant *var;
         char     *t, *t2;
+        size_t   tlen = strlen(p) + 1;
 
-        t = strchr(p, _TSEPC);
+        t2 = LALLOC(tlen);
+        if ( strlcpy(t2, p, tlen) >= tlen ) {
+            fprintf(fpinfo, "%s: internal error (I)\n", prog);
+            LAFREE(t2);
+            return NULL;
+        }
+
+        t = strchr(t2, _TSEPC);
         if ( t == NULL ) {
             fprintf(fpinfo, "%s unexpected mpris type (%s) (f)\n",
-                prog, p);
+                    prog, p);
+            LAFREE(t2);
             return NULL;
         }
 
         *t++ = '\0';
-        t2   = p;
 
         var = gvar_from_strings(t2, t, dat);
+
+        LAFREE(t2);
+
         if ( var == NULL ) {
             fprintf(fpinfo, "%s rec. gvar_from_strings failed (f)\n",
-                prog);
+                    prog);
             return NULL;
         }
 
@@ -1173,94 +1237,113 @@ gvar_from_simple_type(int type, char *value, mpris_data_struct *dat)
  * for producing one GVariant -- that is 's' or 'd' or
  * 'aa{sv}' or '(b(oss))' are OK, but e.g. 'a{sv}(ox)' is NG */
 static GVariant*
-gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
+gvar_from_strings(const char *type,
+                  const char *value,
+                  mpris_data_struct *dat)
 {
-	GVariant *result = NULL;
-    char     *p2     = type;
-    char     *p      = value;
-    size_t   tlen    = strlen(p2);
-    ssize_t  rdlen;
-    char     *t, *tfrptr;
+    char      *t, *t2, *tfrptr, *v, *vfrptr;
+    ssize_t   rdlen;
+    size_t    vlen    = 1;
+    size_t    tlen    = strlen(type);
+	GVariant  *result = NULL;
 
-    /* 1st, if type is a single char, hand off to the
-     * simple type procedure
-     */
-    if ( tlen == 1 ) {
-        if ( p == NULL || *p == '\0' ) {
-            rdlen = read_line_dat(dat);
-            if ( rdlen < 1 ) {
-                fprintf(fpinfo,
-                    "%s unexpected mpris read end (%ld) (d)\n",
-                    prog, (long int)rdlen);
-                return NULL;
-            }
+    fprintf(fpinfo, "%s: %s type '%s' value '%s'\n", prog,
+            "gvar_from_strings", type,
+            value == NULL ? "[NULL]" : value);
 
-            unnl(dat->buf);
-            p = dat->buf;
-        }
-
-        result = gvar_from_simple_type(*p2, p, dat);
+    if ( value != NULL ) {
+        vlen += strlen(value); /* note: += */
     }
 
-    if ( result != NULL ) {
-        return result;
-    }
-
-    if ( tlen < 2 ) {
-        fprintf(fpinfo, "%s: internal error (C) p2<2\n", prog);
+    vfrptr = LALLOC(vlen);
+    if ( strlcpy(vfrptr, value == NULL ? "" : value, vlen) >= vlen ) {
+        fprintf(fpinfo, "%s: internal error (J)\n", prog);
+        LAFREE(vfrptr);
         return NULL;
     }
-
-    if ( p != NULL && *p == '\0' ) {
-        p = NULL;
-    }
+    --vlen;
+    v = value == NULL ? NULL : vfrptr;
 
     /* since type might point into dat->buf, and dat->buf
      * will be refilled, make room and copy type -- if it is not
      * tiny and insignificant on the stack, then there is a big
      * problem elsewhere. */
     tfrptr = t = LALLOC(++tlen); /* has one extra */
+    if ( strlcpy(tfrptr, type, tlen) >= tlen ) {
+        fprintf(fpinfo, "%s: internal error (B)\n", prog);
+        LAFREE(vfrptr);
+        LAFREE(tfrptr);
+        return NULL;
+    }
+    --tlen;
+    t2 = t++;
+
     do { /* breakable block */
-        if ( strlcpy(t, p2, tlen) >= tlen ) {
-            fprintf(fpinfo, "%s: internal error (B)\n", prog);
+        /* 1st, if type is a single char, hand off to the
+         * simple type procedure
+         */
+        if ( tlen == 1 ) {
+            if ( v == NULL || *v == '\0' ) {
+                rdlen = read_line_dat(dat);
+                if ( rdlen < 1 ) {
+                    fprintf(fpinfo,
+                        "%s unexpected mpris read end (%ld) (d)\n",
+                        prog, (long int)rdlen);
+                    break;
+                }
+
+                unnl(dat->buf);
+                v = dat->buf;
+            }
+
+            result = gvar_from_simple_type(*t2, v, dat);
+        }
+
+        if ( result != NULL ) {
             break;
         }
-        --tlen;
 
-        p2 = t++;
+        if ( tlen < 2 ) {
+            fprintf(fpinfo, "%s: internal error (C) t2<2\n", prog);
+            break;
+        }
+
+        if ( v != NULL && *v == '\0' ) {
+            v = NULL;
+        }
 
         /* array of something */
-        if ( *p2 == 'a' ) {
+        if ( *t2 == 'a' ) {
             GVariantBuilder *builder;
             int br = 0;
 
-            builder = g_variant_builder_new(G_VARIANT_TYPE(p2));
+            builder = g_variant_builder_new(G_VARIANT_TYPE(t2));
 
             for ( ;; ) {
                 ssize_t  rdlen;
                 GVariant *var = NULL;
 
-                if ( p == NULL ) {
+                if ( v == NULL ) {
                     rdlen = read_line_dat(dat);
                     if ( rdlen < 1 ) {
                         fprintf(fpinfo,
-                            "%s unexpected mpris read end (%ld) (d)\n",
+                            "%s unexpected mpris read end (%ld) (d2)\n",
                             prog, (long int)rdlen);
                         br = 1; break;
                     }
 
-                    p = dat->buf;
+                    v = dat->buf;
                 }
 
-                unnl(p);
+                unnl(v);
 
-                if ( S_CS_EQ(p, ":END ARRAY:") ) {
+                if ( S_CS_EQ(v, ":END ARRAY:") ) {
                     break;
                 }
 
-                var = gvar_from_strings(t, p, dat);
+                var = gvar_from_strings(t, v, dat);
                 g_variant_builder_add_value(builder, var);
-                p = NULL;
+                v = NULL;
             }
 
             if ( br ) {
@@ -1270,9 +1353,9 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
             result = g_variant_builder_end(builder);
             g_variant_builder_unref(builder);
         /* 'dictionary' type */
-        } else if ( *p2 == '{' ) {
+        } else if ( *t2 == '{' ) {
             char     *ep;
-            GVariant *k, *v;
+            GVariant *k, *var;
             int      ccl      = '}';
 
             if ( (ep = strrchr(t, ccl)) == NULL ) {
@@ -1288,7 +1371,7 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
 
             *ep = '\0';
 
-            if ( p == NULL ) {
+            if ( v == NULL ) {
                 rdlen = read_line_dat(dat);
                 if ( rdlen < 1 ) {
                     fprintf(fpinfo,
@@ -1296,13 +1379,13 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
                             prog, (long int)rdlen);
                     break;
                 }
-                p = dat->buf;
+                v = dat->buf;
             }
 
-            unnl(p);
+            unnl(v);
 
             /* key must be a simple type, */
-            k = gvar_from_simple_type(*t, p, dat);
+            k = gvar_from_simple_type(*t, v, dat);
             if ( k == NULL ) {
                 fprintf(fpinfo,
                         "%s: internal error (D,4) '%s'\n", prog, t);
@@ -1317,20 +1400,20 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
                         prog, (long int)rdlen);
                 break;
             }
-            p = dat->buf;
+            v = dat->buf;
 
-            unnl(p);
+            unnl(v);
 
             /* value needn't be a simple type */
-            v = gvar_from_strings(t, p, dat);
-            if ( v == NULL ) {
+            var = gvar_from_strings(t, v, dat);
+            if ( var == NULL ) {
                 fprintf(fpinfo, "%s: internal error (D,5)\n", prog);
                 break;
             }
 
-            result = g_variant_new_dict_entry(k, v);
+            result = g_variant_new_dict_entry(k, var);
         /* 'tuple' type */
-        } else if ( *p2 == '(' ) {
+        } else if ( *t2 == '(' ) {
             char            *ep;
             GVariant        **ch_vec = NULL;
             gsize           ch_cnt   = 0;
@@ -1349,7 +1432,7 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
             for ( ; *t != '\0'; t++ ) {
                 GVariant *var = NULL;
 
-                if ( p == NULL ) {
+                if ( v == NULL ) {
                     rdlen = read_line_dat(dat);
                     if ( rdlen < 1 ) {
                         fprintf(fpinfo,
@@ -1357,12 +1440,12 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
                             prog, (long int)rdlen);
                         br = 1; break;
                     }
-                    p = dat->buf;
+                    v = dat->buf;
                 }
 
-                unnl(p);
+                unnl(v);
 
-                var = gvar_from_strings(t, p, dat);
+                var = gvar_from_strings(t, v, dat);
                 if ( var == NULL ) {
                     while ( ch_cnt > 0 ) {
                         g_free(ch_vec[--ch_cnt]);
@@ -1386,7 +1469,7 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
                     t = strrchr(t, rtc);
                 }
 
-                p = NULL;
+                v = NULL;
             }
 
             if ( br ) {
@@ -1402,6 +1485,7 @@ gvar_from_strings(char *type, char *value, mpris_data_struct *dat)
     } while ( 0 ); /* breakable block */
 
     LAFREE(tfrptr);
+    LAFREE(vfrptr);
     return result;
 }
 
@@ -1435,6 +1519,9 @@ _mpris_emit_signal(const char        *ini,
 
     sigparams[_ix_object_path] = g_strdup(dat->buf);
 
+    fprintf(fpinfo, "%s: %s signal path '%s'\n", prog,
+            "_mpris_emit_signal", dat->buf);
+
     do { /* breakable block */
         GVariant *parameters;
         gboolean gret;
@@ -1459,6 +1546,9 @@ _mpris_emit_signal(const char        *ini,
 
             unnl(dat->buf);
             sigparams[sz] = g_strdup(dat->buf);
+
+            fprintf(fpinfo, "%s: %s signal datum %zu '%s'\n", prog,
+                    "_mpris_emit_signal", sz, dat->buf);
         }
 
         if ( br ) {
@@ -1597,6 +1687,11 @@ _mpris_call_method(GDBusConnection *connection,
     ssize_t rdlen;
     int r;
 
+    fprintf(fpinfo, "%s re. %d: %s meth/prop '%s'\n", prog,
+            reenter_guard,
+            "_mpris_call_method",
+            (const char *)method_name);
+
     if ( ++reenter_guard > 1 ) {
         --reenter_guard;
         /* error code G_DBUS_ERROR_LIMITS_EXCEEDED
@@ -1612,7 +1707,7 @@ _mpris_call_method(GDBusConnection *connection,
     do { /* breakable block */
         r = _exchange_handshake(dat, ini, ack, method_name);
         if ( r < 0 ) {
-            fprintf(fpinfo, "%s mpris handshake %s error (b)\n",
+            fprintf(fpinfo, "%s mpris handshake %s error (b1)\n",
                 prog, r == _EXCHGHS_WR_ERR ? "write" : "read");
             p2 = r == _EXCHGHS_WR_ERR ? "IO ERROR: w" : "IO ERROR: r";
             break;
@@ -1708,7 +1803,7 @@ _mpris_get_property(GDBusConnection *connection,
                     const gchar *sender,
                     const gchar *object_path,
                     const gchar *interface_name,
-                    const char  *property_name,
+                    const gchar *property_name,
                     GError      **error,
                     gpointer    user_data,
                     const char  *ini,
@@ -1718,6 +1813,11 @@ _mpris_get_property(GDBusConnection *connection,
     char *p, *p2;
 	GVariant *result = NULL;
 
+    fprintf(fpinfo, "%s re. %d: %s meth/prop '%s'\n", prog,
+            reenter_guard,
+            "_mpris_get_property",
+            property_name);
+
     if ( ++reenter_guard > 1 ) {
         --reenter_guard;
         fprintf(fpinfo, "%s reentrence detected at '%s' (count %d)\n",
@@ -1726,7 +1826,7 @@ _mpris_get_property(GDBusConnection *connection,
     }
 
     if ( _exchange_handshake(dat, ini, ack, property_name) ) {
-        fprintf(fpinfo, "%s mpris handshake '%s' failure (b)\n",
+        fprintf(fpinfo, "%s mpris handshake '%s' failure (b3)\n",
             prog, ini);
         --reenter_guard;
         return NULL;
@@ -1766,6 +1866,11 @@ _mpris_set_property(GDBusConnection *connection,
     char *p, *p2;
 	int      r, result = 0;
 
+    fprintf(fpinfo, "%s re. %d: %s meth/prop '%s'\n", prog,
+            reenter_guard,
+            "_mpris_set_property",
+            (const char *)property_name);
+
     if ( ++reenter_guard > 1 ) {
         --reenter_guard;
         fprintf(fpinfo, "%s reentrence detected at '%s' (count %d)\n",
@@ -1774,7 +1879,7 @@ _mpris_set_property(GDBusConnection *connection,
     }
 
     if ( _exchange_handshake(dat, ini, ack, property_name) ) {
-        fprintf(fpinfo, "%s mpris handshake '%s' failure (b)\n",
+        fprintf(fpinfo, "%s mpris handshake '%s' failure (b2)\n",
             prog, ini);
         --reenter_guard;
         return result;
@@ -1803,7 +1908,7 @@ _mpris_set_property(GDBusConnection *connection,
 
     fflush(dat->fpwr);
     if ( r < 0 || ferror(dat->fpwr) || feof(dat->fpwr) ) {
-        fprintf(fpinfo, "%s error writing to mpris client (c)\n",
+        fprintf(fpinfo, "%s error writing to mpris client (c2)\n",
             prog);
         --reenter_guard;
         return result;
