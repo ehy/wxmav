@@ -3744,7 +3744,11 @@ class TheAppClass(wx.App):
     def test_exit(self):
         self.save_self_state()
         if self.xhelper:
-            return self.xhelper.test_exit()
+            try:
+                return self.xhelper.test_exit()
+            except:
+                self.err_msg(_T("EXCEPTION: xhelper.test_exit()"))
+                return False
 
         return True
 
