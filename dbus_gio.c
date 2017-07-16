@@ -252,9 +252,9 @@ start_dbus_coproc(const dbus_proc_in *in,
 #   if _DEBUG
     fpinfo = _get_debug_file();
 #   elif _COPROC_SPAM_STDERR
-    /* stderr goes to main process, through wx event loop
-     * to a wxLog* object; but, the volume of messages seems
-     * to overwelm the loop, so reserve stderr for urgency */
+    /* using stderr might be abusive, e.g. it might be a pipe
+     * to a process where it might enter an event loop, and
+     * that loop might be overwhelmed, so reserve stderr for urgency */
     fpinfo = stderr;
 #   else
     fpinfo = fopen("/dev/null", "w");
@@ -680,7 +680,7 @@ alloc_read_buffer(int readfd, char **buf, size_t *bs)
     *buf = xmalloc(*bs);
 }
 
-#if HAVE_GETDELIM /* && ! _DEBUG temp */
+#if HAVE_GETDELIM && ! _DEBUG
 /* note getdelim vs. getline: the latter would be suitable,
  * but the common use of the name might be a problem; use
  * of the former is just a safe alternative at essentially
@@ -756,12 +756,12 @@ read_line(char **buf, size_t *bs, FILE *fptr)
         if ( (*buf)[rdlen - 1] == '\n' ) {
             return rdlen;
         } else if ( *bs > maxsz ) {
-            /* max exceeded -- reading data that is not likey text --
+            /* max exceeded -- reading data that is not likely text --
              * just return the data and let caller handle/ignore it */
             return rdlen;
         } else {
-            /* xrealloc exits on error, so it is no matter
-             * that we assign directly to source pointer */
+            /* xrealloc exits on error, so it is acceptable
+             * assigning directly to source pointer */
             *bs += incsz;
             *buf = xrealloc(*buf, *bs);
         }
@@ -836,7 +836,7 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
         }
 
         if ( buf == NULL ) {
-            bufsz = MAX(bufsz, 128);
+            bufsz = MAX(bufsz, 16);
             buf = xmalloc(bufsz);
         }
 
