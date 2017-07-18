@@ -2937,10 +2937,12 @@ elif _in_xws:
             if self.mpris2_child:
                 ch_r, ch_w = self.mpris2_child.get_fds()
                 sigr, sigw = self.mpris2_chsig.get_fds()
+                if sigr != ch_r:
+                    os.close(sigr)
+                if sigw != ch_w:
+                    os.close(sigw)
                 os.close(ch_r)
                 os.close(ch_w)
-                os.close(sigr)
-                os.close(sigw)
                 self.mpris2_child = self.mpris2_chsig = None
 
             # error?
@@ -3468,7 +3470,10 @@ class TheAppClass(wx.App):
                 else:
                     procargs = None
 
-            self.xhelper = XWSHelperProcClass(self, procargs = procargs)
+            self.xhelper = XWSHelperProcClass(
+                            self,
+                            procargs = procargs,
+                            mpris2 = self.should_do_mpris())
             global X11hack
             if X11hack and X11hack["lib_err"]:
                 self.err_msg(_T("Cannot load {} : '{}'").format(
@@ -3612,16 +3617,15 @@ class TheAppClass(wx.App):
     def should_do_mpris(self):
         return self.dompris
 
-    if _in_xws:
-        def get_mpris2_signal_io(self):
-            if not _in_xws:
-                return None
-
-            if self.xhelper:
-                return (self.xhelper.get_mpris_pipe_signal_obj(),
-                        self.xhelper.get_mpris_pipe_control_obj())
-
+    def get_mpris2_signal_io(self):
+        if not _in_xws:
             return None
+
+        if self.xhelper and self.should_do_mpris():
+            return (self.xhelper.get_mpris_pipe_signal_obj(),
+                    self.xhelper.get_mpris_pipe_control_obj())
+
+        return None
 
     def get_debug(self):
         return self.debug
@@ -6242,6 +6246,8 @@ class TopWnd(wx.Frame):
             return self.get_dbus_itempath(g, g.get_at_index(i))
 
         def mpris_timer_check(self):
+            didemit = False
+
             try:
                 b = self.cangonext
             except AttributeError:
@@ -6250,8 +6256,7 @@ class TopWnd(wx.Frame):
             if b != c:
                 self.cangonext = c
                 self.mpris2_signal_emit(_T("CanGoNext"))
-            else:
-                pass
+                didemit = True
 
             try:
                 b = self.cangoprev
@@ -6261,8 +6266,7 @@ class TopWnd(wx.Frame):
             if b != c:
                 self.cangoprev = c
                 self.mpris2_signal_emit(_T("CanGoPrevious"))
-            else:
-                pass
+                didemit = True
 
             try:
                 b = self.canplay
@@ -6274,6 +6278,7 @@ class TopWnd(wx.Frame):
                 self.canplay = c
                 self.mpris2_signal_emit(_T("CanPlay"))
                 self.mpris2_signal_emit(_T("CanPause"))
+                didemit = True
 
             try:
                 b = self.canseek
@@ -6284,6 +6289,11 @@ class TopWnd(wx.Frame):
             if b != c:
                 self.canseek = c
                 self.mpris2_signal_emit(_T("CanSeek"))
+                didemit = True
+
+            # hack: wanting a flush-like effect
+            if didemit:
+                self.mpris2_signal_emit(_T("PlaybackStatus"))
 
         def metadata_check(self):
             g, i = self.get_res_group_with_index()
@@ -7598,26 +7608,6 @@ class TopWnd(wx.Frame):
         self.on_idle_menu_update(event)
         self.player_panel.do_idle(event)
 
-    def on_idle_coproc_queue(self, event):
-        if not _in_xws:
-            return
-
-        if self.block_mpris_signals != False:
-            return
-
-        fifo = self.coproc_fifo
-        try:
-            lamb = fifo.get(block = False, timeout = -1)
-            if lamb:
-                try:
-                    lamb()
-                except (IOError. OSError) as e:
-                    self.err_msg(
-                      _T("EX FIFO lambda: '{}'").format(e.strerror))
-            fifo.task_done()
-        except q_fifo_empty:
-            pass
-
     def on_idle_menu_update(self, event):
         if self.undo_redo.undo_length():
             # activate Undo menu
@@ -8925,11 +8915,6 @@ class TopWnd(wx.Frame):
         # timer checks for state chenges for mpris2
         self.mpris_timer_check()
 
-        # This was called in idle handler, but when
-        # queue is full wx gets overwhelmed and lockup
-        # happens
-        wx.CallAfter(self.on_idle_coproc_queue, None)
-
 
     def get_medi_state(self):
         # Incredibly, under msw self.medi.GetState() will return
@@ -9118,26 +9103,30 @@ class TopWnd(wx.Frame):
 
             if wx.GetApp().test_exit():
                 self.config_wr(flush = True)
+                self.Show(False)
                 self.cmd_on_stop()
                 self.unload_media(True)
                 self.err_msg.register_ms_hotkeys(False)
                 self.del_taskbar_object()
                 self.main_timer.Stop()
-                self.Show(False)
                 self.Destroy()
+                #wx.MilliSleep(2000)
+                #wx.CallAfter(self.Destroy)
             else:
                 event.Veto(True)
                 self.prdbg(_T("DID Veto 2"))
         else:
             self.config_wr(flush = True)
+            self.Show(False)
             self.cmd_on_stop()
             self.unload_media(True)
             wx.GetApp().test_exit()
             self.register_ms_hotkeys(False)
-            self.Show(False)
-
+            self.del_taskbar_object()
             self.main_timer.Stop()
             self.Destroy()
+            #wx.MilliSleep(2000)
+            #wx.CallAfter(self.Destroy)
             self.prdbg(_T("DID Destroy"))
 
     def on_destroy(self, event):
@@ -9185,26 +9174,39 @@ class TopWnd(wx.Frame):
             elif kid == self.hotk_id_prev:
                 self.do_command_button(self.id_prev)
 
-    def put_coproc_queue(self, lamb = None, discard = True):
+    def coproc_queue_get(self):
+        if not _in_xws:
+            return None
+
+        fifo = self.coproc_fifo
+        try:
+            r = fifo.get(block = False, timeout = -1)
+            fifo.task_done()
+            return r
+        except q_fifo_empty:
+            return None
+
+        return None
+
+    def put_coproc_queue(self, dat = None, discardold = True):
         if not _in_xws:
             return
 
         fifo = self.coproc_fifo
         while True:
             try:
-                fifo.put(lamb, block = False, timeout = -1)
+                fifo.put(dat, block = False, timeout = -1)
                 break
             except q_fifo_full:
-                self.err_msg(_T("put_coproc_queue: DISCARD queue head"))
-                t = fifo.get(block = False, timeout = -1)
-                if t and not discard:
-                    try:
-                        t()
-                    except (IOError. OSError) as e:
-                        self.err_msg(
-                          _T("EX FIFO lambda: '{}'").format(e.strerror))
-                fifo.task_done()
-                fifo.put(lamb, block = False, timeout = -1)
+                if discardold:
+                    t = fifo.get(block = False, timeout = -1)
+                    fifo.task_done()
+                    m = _T("put_coproc_queue: FULL: lose old {}")
+                    self.err_msg(m.format(t))
+                else:
+                    m = _T("put_coproc_queue: FULL: lose new {}")
+                    self.err_msg(m.format(dat))
+                    break
 
     def mpris2_signal_emit(self, signal):
         if _in_xws and wx.GetApp().should_do_mpris():
@@ -9215,9 +9217,7 @@ class TopWnd(wx.Frame):
     if _in_xws:
         def _x_mpris2_signal_emit(self, signal):
             if True:
-                lamb = lambda: self._x_core_mpris2_signal_emit(signal)
-                self.put_coproc_queue(lamb)
-            else:
+                self.put_coproc_queue(signal)
                 self._x_core_mpris2_signal_emit(signal)
 
         def _x_core_mpris2_signal_emit(self, signal):
@@ -9233,6 +9233,38 @@ class TopWnd(wx.Frame):
             rd_ctrl, wr_ctrl = io_ctrl.get_fds()
             mh = self._mpris2_handler(self, ("", io_ch, wr_ctrl))
 
+            ret = True
+            fl_wr_ch = fcntl.fcntl(wr_ch, fcntl.F_GETFL)
+            if not (fl_wr_ch & os.O_NONBLOCK):
+                fcntl.fcntl(wr_ch, fcntl.F_SETFL,
+                            fl_wr_ch | os.O_NONBLOCK)
+
+            # tell coproc to set available signal flag
+            try:
+                fd_write(wr_ch, _T("mpris:signal\n"))
+            except (IOError, OSError) as e:
+                if e.errno == errno.EAGAIN:
+                    self.err_msg(_T("signal_emit: WOULD BLOCK"))
+                else:
+                    self.err_msg(
+                        _T("signal_emit: IO fail '{}'").format(
+                            e.strerror))
+                ret = False
+
+            if not (fl_wr_ch & os.O_NONBLOCK):
+                fcntl.fcntl(wr_ch, fcntl.F_SETFL, fl_wr_ch)
+
+            return ret
+
+
+    class _mpris2_handler:
+        def __init__(self, wnd, dat):
+            self.w      = wnd
+            self.line_1 = dat[0]
+            self.io_obj = dat[1]
+            self.donefd = dat[2]
+
+        def mpris2_send_signal(self, rd_ch, wr_ch, signal):
             # dbus signal/property maps as tuples:
             # (object_path, interface_name,
             #  signal-type, (tuple-of-property-or-signal-names))
@@ -9304,62 +9336,43 @@ class TopWnd(wx.Frame):
                 self.err_msg(
                     _T("signal_emit: unknown signal '{}'").format(
                         signal))
+                self.wr(wr_ch, _T("ACK:NA\n"))
                 return False
 
-            # tell coproc to begin signal IO dialog
-            fd_write(wr_ch, _T("mpris:signal\n"))
-
-            rsz = 128
-            # read ini string
-            #static const char *ini = "send:signal";
-            r = _T(os.read(rd_ch, rsz)).strip(_T('\n'))
-            if r != _T("send:signal"):
-                self.err_msg(
-                    _T("signal_emit: bad ini for {} - '{}'").format(
-                        signal, r))
-                fd_write(wr_ch, _T("UNSUPPORTED\n"))
-                #mh.done()
-                return False
+            rsz = 256
 
             # write ack string
             #static const char *ack = "signal";
-            fd_write(wr_ch, _T("signal\n"))
+            self.wr(wr_ch, _T("signal\n"))
 
             # read method/property -- not used here but
             # the line must be read
-            r = _T(os.read(rd_ch, rsz)).strip(_T('\n'))
+            r = self.rdstp(rd_ch, rsz)
             if r != _T("signaldata"):
                 # warn, no error
                 self.err_msg(
                     _T("signal_emit: unexpected method '{}'").format(r))
 
-            if False:
+            if True:
                 # write object path
-                fd_write(wr_ch, opath)
+                self.wr(wr_ch, opath)
                 # write interface name
-                fd_write(wr_ch, ifname)
+                self.wr(wr_ch, ifname)
                 # write signal name
-                fd_write(wr_ch, _T("{}\n").format(signal))
+                self.wr(wr_ch, _T("{}\n").format(signal))
                 # write signal type !!! "property" or "signal"
-                fd_write(wr_ch, sigtype)
+                self.wr(wr_ch, sigtype)
             else:
                 # multiline write
-                fd_write(wr_ch, _T("{}{}{}{}").format(
+                self.wr(wr_ch, _T("{}{}{}{}").format(
                     opath, ifname, _T("{}\n").format(signal), sigtype))
 
             # use mpris handler to write GIO/dbus format string and data
-            r = mh.mpris2_send_prop_or_signal(rd_ch, wr_ch,
-                                              signal, "signal")
+            r = self.mpris2_send_prop_or_signal(rd_ch, wr_ch,
+                                                signal, "signal")
 
             # cleanup and return
             return r
-
-    class _mpris2_handler:
-        def __init__(self, wnd, dat):
-            self.w      = wnd
-            self.line_1 = dat[0]
-            self.io_obj = dat[1]
-            self.donefd = dat[2]
 
         def go(self):
             self.on_mpris2(self.line_1, self.io_obj)
@@ -9739,7 +9752,15 @@ class TopWnd(wx.Frame):
 
             ret = False
 
-            if s_eq(cmd[:5], "base:"):
+            if s_eq(cmd, "send:signal"):
+                sig = self.w.coproc_queue_get()
+                if sig == None:
+                    self.wr(fd_wr, _T("ACK:NA\n"))
+                    self.err_msg(_T("MPRIS cmd signal is N.A."))
+                    ret = False
+                else:
+                    ret = self.mpris2_send_signal(fd_rd, fd_wr, sig)
+            elif s_eq(cmd[:5], "base:"):
                 cmd = cmd[5:]
                 if s_eq(cmd, "getproperty"):
                     ret = self.mpris2_send(fd_rd, fd_wr, cmd, "base")
@@ -9775,10 +9796,7 @@ class TopWnd(wx.Frame):
                 n = 0
             self.err_msg(_T("MPRIS call #{}").format(n))
             tmh = self._mpris2_handler(self, dat)
-            if False:
-                self.put_coproc_queue(lambda: tmh.go())
-            else:
-                tmh.go()
+            tmh.go()
             return
 
         if t != _T('1'):

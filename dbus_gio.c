@@ -67,6 +67,18 @@
 #define _TSEPC ':'
 #define _TSEPS ":"
 
+/* handshake proc return value macros */
+#define _EXCHGHS_WR_ERR -1
+#define _EXCHGHS_RD_ERR -2
+#define _EXCHGHS_ALL_OK  0
+#define _EXCHGHS_ACKREJ  1
+#define _EXCHGHS_ACK_NG  2
+#define _EXCHGHS_ACK_NA  3 /* NOT AVAILABLE e.g. pending signal */
+#define _EXCHGHS_ERRMAX  3 /* additional test */
+
+
+/* for MPRIS2 support: items both pertinent to glib/gio,
+ * and necessary to this code */
 typedef struct _mpris_data_struct {
     /* glib items */
     GMainLoop         *loop;
@@ -81,6 +93,12 @@ typedef struct _mpris_data_struct {
     FILE              *fprd;
     FILE              *fpwr;
 } mpris_data_struct;
+
+/* data for time event callbacks: idle event, timer, etc.. */
+typedef struct _time_event_cb_data {
+    guint             reg_id;     /* returned from reg proc */
+    mpris_data_struct *dat;
+} time_event_cb_data;
 
 /* main procedure for dbus gio coprocess */
 static int
@@ -101,6 +119,9 @@ on_glib_signal_mediakey(GDBusProxy *proxy,
                         gchar      *signal_name,
                         GVariant   *parameters,
                         gpointer    user_data);
+/* event 'timeout' */
+static gboolean
+on_glib_timer(gpointer user_data);
 /* event on read end of client pipe */
 static gboolean
 on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data);
@@ -110,6 +131,8 @@ read_line(char **buf, size_t *bs, FILE *fptr);\
 /* remove trailing '\n' */
 static int
 unnl(char *p);
+static ssize_t
+unnl_len(char *p, ssize_t len);
 /* make a glib variant from a type and value; for complex types
  * (as, etc.) additional lines must be read, hence
  * mpris_data_struct *dat -- type string must be suitable
@@ -160,6 +183,9 @@ FILE *mpris_sig_rfp = NULL;
 FILE *mpris_sig_wfp = NULL;
 /* info messages */
 FILE *fpinfo;
+
+/* non-zero if MPRIS2 support is set and usable, else 0 */
+int MPRIS2_ok = 0;
 
 /* guard reentrency when hadling dbus signal from client */
 volatile int reenter_guard = 0;
@@ -523,18 +549,28 @@ _mpris2_app_setup(const char *prg, mpris_data_struct *dat)
             setvbuf(mpris_sig_wfp, NULL, _IOLBF, 0);
         }
 
+        MPRIS2_ok = 1;
         /* dbus signals dialogs are initiated by client,
          * so poll that descriptor */
         g_unix_fd_add(mpris_fd_sig_read,
                       G_IO_IN|G_IO_PRI|G_IO_ERR|G_IO_HUP|G_IO_NVAL,
                       on_mpris_sig_read,
                       (gpointer)dat);
+    } else {
+        MPRIS2_ok = 0;
     }
+
+    fprintf(fpinfo, "%s: MPRIS2 support is %s\n", prog,
+            MPRIS2_ok ? "on" : "off");
 }
 
 static void
 _mpris2_app_setdown(const char *prg, mpris_data_struct *dat)
 {
+    if ( MPRIS2_ok == 0 ){
+        return;
+    }
+
     /* ensure MPRIS2 support is stopped (should've been called) */
     stop_mpris_service(dat);
 
@@ -557,17 +593,21 @@ _mpris2_app_setdown(const char *prg, mpris_data_struct *dat)
 static int
 dbus_gio_main(const dbus_proc_in *in)
 {
-    mpris_data_struct *dat;
-    GMainLoop         *loop  = NULL;
-    int               outfd  = 1; /* standard output */
-    const char        *prg   = in->progname ? prog : NULL;
+    mpris_data_struct  *dat;
+    time_event_cb_data *timecb_dat, *timecb_dat2;
+    GMainLoop          *loop  = NULL;
+    int                outfd  = 1; /* standard output */
+    const char         *prg   = in->progname ? prog : NULL;
 
     loop = g_main_loop_new(NULL, FALSE);
     if ( loop == NULL ) {
         return 1;
     }
 
-    dat = xcalloc(1, sizeof(mpris_data_struct));
+    dat        = xcalloc(1, sizeof(mpris_data_struct));
+    timecb_dat = xcalloc(1, sizeof(time_event_cb_data));
+    timecb_dat->dat = dat;
+    timecb_dat2     = timecb_dat;
 
     dat->loop = loop;
 
@@ -578,8 +618,20 @@ dbus_gio_main(const dbus_proc_in *in)
     g_unix_signal_add(glib_quit_signal, on_glib_quit_signal,
                       (gpointer)dat);
 
+    /* DO NOT use g_idle_add: it really spins!
+    timecb_dat->reg_id = g_idle_add(on_glib_timer,
+                                    (gpointer)&timecb_dat);
+    Instead, use timer */
+    /* note: *address* of pointer is passed so that . . . */
+    timecb_dat->reg_id = g_timeout_add(500,
+                                       on_glib_timer,
+                                       (gpointer)&timecb_dat);
+
     /* the loop is poised twixt setup and teardown */
     g_main_loop_run(loop);
+
+    /* . . . any late cb calls will detect NULL */
+    timecb_dat = NULL;
 
     _free_media_keys_proxies(in, prg);
 
@@ -588,6 +640,7 @@ dbus_gio_main(const dbus_proc_in *in)
     g_main_loop_unref(loop);
 
     free(dat);
+    free(timecb_dat2);
 
     /* if got quit signal (got_common_signal), reraise */
     if ( got_common_signal ) {
@@ -777,17 +830,74 @@ read_line_dat(mpris_data_struct *dat)
     return read_line(&dat->buf, &dat->bufsz, dat->fprd);
 }
 
+/* return 0 if NL is trimmed. nonzero elsewise */
 static int
 unnl(char *p)
 {
     size_t l;
-    if ( p == NULL ) return -1;
+
+    if ( p == NULL ) {
+        return -1;
+    }
+
     l = strlen(p);
-    if ( l && --l && p[l] == '\n' ) {
-        p[l] = '\0';
+
+    if ( l == unnl_len(p, (ssize_t)l) ) {
         return 1;
     }
+
     return 0;
+}
+
+/* unnl_len: using ssize_t rather than size_t so that return
+ * from read funcs may be passed directly */
+static ssize_t
+unnl_len(char *p, ssize_t len)
+{
+    if ( p != NULL && len > 0 && p[len - 1] == '\n' ) {
+        p[--len] = '\0';
+    }
+
+    return len;
+}
+
+static volatile int mpris_signal_count = 0;
+
+/* event 'timeout' */
+static gboolean
+on_glib_timer(gpointer user_data)
+{
+    time_event_cb_data *timecb_dat = *(time_event_cb_data **)user_data;
+
+#   if _DEBUG
+    if ( mpris_signal_count > 0 ) {
+        fprintf(fpinfo, "%s: in on_glib_timer -- flag is now %d\n",
+                        prog, mpris_signal_count);
+    }
+#   endif
+
+    if ( timecb_dat == NULL ) {
+        return G_SOURCE_REMOVE;
+    }
+
+    while ( mpris_signal_count > 0 ) {
+        int r;
+
+        r = signal_mpris_service(timecb_dat->dat);
+
+        if ( r < 0 ) {
+            /* IO failure; quit this */
+            return G_SOURCE_REMOVE;
+        } else if ( r == _EXCHGHS_ACK_NA ) {
+            /* coproc response: no signals queued */
+            mpris_signal_count = 0;
+        } else if ( r > 0 ) {
+            /* other error; retain handler */
+            break;
+        }
+    }
+
+    return G_SOURCE_CONTINUE;
 }
 
 /* event on read end of client pipe */
@@ -805,11 +915,19 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
     gboolean ret = TRUE;
     const GIOCondition errbits = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 
-    fprintf(fpinfo, "%s re. %d: %s\n", prog,
-            reenter_guard, "on_mpris_sig_read");
+    fprintf(fpinfo, "%s re. %d: %s (MPRIS2_ok == %d)\n", prog,
+            reenter_guard, "on_mpris_sig_read", MPRIS2_ok);
+
+    if ( MPRIS2_ok == 0 ){
+        return FALSE;
+    }
 
     if ( ++reenter_guard > 1 ) {
         --reenter_guard;
+        if ( fd == fileno(mpris_sig_rfp) ) {
+            fputs("FAIL:blocked\n", mpris_sig_wfp);
+            fflush(mpris_sig_wfp);
+        }
         return ret;
     }
 
@@ -847,7 +965,7 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
             break;
         }
 
-        unnl(buf);
+        unnl_len(buf, rdlen);
 
         fprintf(fpinfo, "%s: mpris client read: '%s'\n", prog, buf);
 
@@ -868,29 +986,9 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
         } else if ( S_CI_EQ(p, "off") ) {
             stop_mpris_service(dat);
         } else if ( S_CI_EQ(p, "signal") ) {
-            mpris_data_struct ldat;
-            int r;
-
-            /* the user_data arg passed here has all the dbus/gio
-             * items wanted, but this is a separate IPC pipe pair,
-             * so use pertinent file objects and buffer */
-            memcpy(&ldat, dat, sizeof(ldat));
-            ldat.fprd  = mpris_sig_rfp;
-            ldat.fpwr  = mpris_sig_wfp;
-            ldat.bufsz = bufsz;
-            ldat.buf   = buf;
-
-            r = signal_mpris_service(&ldat);
-
-            /* read calls might realloc() buffer,
-             * so don't lose track */
-            bufsz = ldat.bufsz;
-            buf   = ldat.buf;
-
-            if ( r ) {
-                fprintf(fpinfo, "%s: failed signal_mpris_service: %d\n",
-                        prog, r);
-            }
+            ++mpris_signal_count;
+            fprintf(fpinfo, "%s: signal flag is now %d\n",
+                        prog, mpris_signal_count);
         }
     } while ( 0 ); /* breakable block */
 
@@ -899,16 +997,8 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
     return ret;
 }
 
-/*
-** org.mpris.MediaPlayer2 [base]
-*/
 
 /* a handshake proc for the procs that communicate with client */
-#define _EXCHGHS_WR_ERR -1
-#define _EXCHGHS_RD_ERR -2
-#define _EXCHGHS_ALL_OK  0
-#define _EXCHGHS_ACKREJ  1
-#define _EXCHGHS_ACK_NG  2
 static int
 _exchange_handshake(mpris_data_struct *dat,
                     const char        *ini,
@@ -935,7 +1025,7 @@ _exchange_handshake(mpris_data_struct *dat,
         return _EXCHGHS_RD_ERR;
     }
 
-    unnl(dat->buf);
+    unnl_len(dat->buf, rdlen);
 
     fprintf(fpinfo, "%s got ack '%s' from client\n",
             prog, dat->buf);
@@ -945,6 +1035,13 @@ _exchange_handshake(mpris_data_struct *dat,
         fprintf(fpinfo, "%s mpris client ack for '%s' is '%s'\n",
                 prog, ini, dat->buf);
         return _EXCHGHS_ACKREJ;
+    }
+
+    /* available? */
+    if ( strcmp(dat->buf, "ACK:NA") == 0 ) {
+        fprintf(fpinfo, "%s mpris client ack for '%s' is '%s'\n",
+                prog, ini, dat->buf);
+        return _EXCHGHS_ACK_NA;
     }
 
     /* ack */
@@ -971,7 +1068,7 @@ _exchange_handshake(mpris_data_struct *dat,
         return _EXCHGHS_RD_ERR;
     }
 
-    unnl(dat->buf);
+    unnl_len(dat->buf, rdlen);
 
     return _EXCHGHS_ALL_OK;
 }
@@ -1292,7 +1389,7 @@ gvar_from_strings(const char *type,
                     break;
                 }
 
-                unnl(dat->buf);
+                unnl_len(dat->buf, rdlen);
                 v = dat->buf;
             }
 
@@ -1402,7 +1499,7 @@ gvar_from_strings(const char *type,
             }
             v = dat->buf;
 
-            unnl(v);
+            unnl_len(v, rdlen);
 
             /* value needn't be a simple type */
             var = gvar_from_strings(t, v, dat);
@@ -1494,6 +1591,10 @@ gvar_from_strings(const char *type,
  * and signal emission
  */
 
+/* dore proc to *fetch* mpris signal -- this returns
+ * 0 (_EXCHGHS_ALL_OK) on success, else greater than 0;
+ * must only return < 0 when indicating IO error, as
+ * in return from _exchange_handshake() */
 static int
 _mpris_emit_signal(const char        *ini,
                    const char        *ack,
@@ -1540,11 +1641,11 @@ _mpris_emit_signal(const char        *ini,
                 fprintf(fpinfo,
                     "%s: unexpected read sigparams (%ld) (%lu)\n",
                     prog, (long int)rdlen, (unsigned long)sz);
-                ret = (int)sz;
+                ret = (int)sz + _EXCHGHS_ERRMAX;
                 br = 1; break;
             }
 
-            unnl(dat->buf);
+            unnl_len(dat->buf, rdlen);
             sigparams[sz] = g_strdup(dat->buf);
 
             fprintf(fpinfo, "%s: %s signal datum %zu '%s'\n", prog,
@@ -1568,7 +1669,7 @@ _mpris_emit_signal(const char        *ini,
             fprintf(fpinfo,
                 "%s: fail building gvariant '%s' sigparams\n",
                 prog, sigparams[_ix_format_str]);
-            ret = _n_sigparams;
+            ret = _n_sigparams + _EXCHGHS_ERRMAX;
             break;
         }
 
@@ -1645,7 +1746,7 @@ _mpris_emit_signal(const char        *ini,
                             (char *)sigparams[_ix_signal_type],
                             (char *)sigparams[_ix_signal_name]);
 
-            ret = _n_sigparams + 2;
+            ret = _n_sigparams + _EXCHGHS_ERRMAX + 2;
             break;
         }
 
@@ -1656,7 +1757,7 @@ _mpris_emit_signal(const char        *ini,
             g_error_free(error);
         }
         if ( gret != TRUE ) {
-            ret = _n_sigparams + 1;
+            ret = _n_sigparams + _EXCHGHS_ERRMAX + 1;
             break;
         }
     } while ( 0 );
@@ -1750,7 +1851,7 @@ _mpris_call_method(GDBusConnection *connection,
                 p2 = "ERROR: read(d)"; break;
             }
 
-            unnl(dat->buf);
+            unnl_len(dat->buf, rdlen);
 
             p = strchr(dat->buf, _TSEPC);
             if ( p == NULL ) {
