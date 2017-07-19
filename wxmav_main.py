@@ -6232,10 +6232,6 @@ class TopWnd(wx.Frame):
             obj, ifc = self.get_dbus_dom_app()
             gid = _T(grp.uniq)
             uid = _T(item.uniq)
-            # cannot include desc in dbus object path -- chars restrict
-            #dsc = self._get_dbuspath_clean(
-            #    item.get_desc_disp_str(True) or item.get_res_disp_str())
-            #return _T("{}/{}/{}/{}").format(obj, gid, uid, dsc)
             return _T("{}/{}/{}").format(obj, gid, uid)
 
         def get_dbus_itempath_current(self, zmsg = "null_data"):
@@ -6245,148 +6241,162 @@ class TopWnd(wx.Frame):
                 return _T("{}/{}").format(p, _T(zmsg))
             return self.get_dbus_itempath(g, g.get_at_index(i))
 
-        def mpris_timer_check(self):
-            didemit = False
+        if _in_xws:
+            def mpris_sendsignal_check(self):
+                didemit = False
 
-            try:
-                b = self.cangonext
-            except AttributeError:
-                b = self.cangonext = None
-            c = True if (self.get_next_index() != None) else False
-            if b != c:
-                self.cangonext = c
-                self.mpris2_signal_emit(_T("CanGoNext"))
-                didemit = True
+                try:
+                    b = self.cangonext
+                except AttributeError:
+                    b = self.cangonext = None
+                c = True if (self.get_next_index() != None) else False
+                if b != c:
+                    self.cangonext = c
+                    self.mpris2_signal_emit(_T("CanGoNext"))
+                    didemit = True
 
-            try:
-                b = self.cangoprev
-            except AttributeError:
-                b = self.cangoprev = None
-            c = True if (self.get_prev_index() != None) else False
-            if b != c:
-                self.cangoprev = c
-                self.mpris2_signal_emit(_T("CanGoPrevious"))
-                didemit = True
+                try:
+                    b = self.cangoprev
+                except AttributeError:
+                    b = self.cangoprev = None
+                c = True if (self.get_prev_index() != None) else False
+                if b != c:
+                    self.cangoprev = c
+                    self.mpris2_signal_emit(_T("CanGoPrevious"))
+                    didemit = True
 
-            try:
-                b = self.canplay
-            except AttributeError:
-                b = self.canplay = None
-            c = True if (
+                try:
+                    b = self.canplay
+                except AttributeError:
+                    b = self.canplay = None
+                c = True if (
                     self.reslist and len(self.reslist) > 0) else False
-            if b != c:
-                self.canplay = c
-                self.mpris2_signal_emit(_T("CanPlay"))
-                self.mpris2_signal_emit(_T("CanPause"))
-                didemit = True
+                if b != c:
+                    self.canplay = c
+                    self.mpris2_signal_emit(_T("CanPlay"))
+                    self.mpris2_signal_emit(_T("CanPause"))
+                    didemit = True
 
-            try:
-                b = self.canseek
-            except AttributeError:
-                b = self.canseek = None
-            c = True if (
+                try:
+                    b = self.canseek
+                except AttributeError:
+                    b = self.canseek = None
+                c = True if (
                     self.medi and self.medi.Length() > 0) else False
-            if b != c:
-                self.canseek = c
-                self.mpris2_signal_emit(_T("CanSeek"))
-                didemit = True
+                if b != c:
+                    self.canseek = c
+                    self.mpris2_signal_emit(_T("CanSeek"))
+                    didemit = True
 
-            # hack: wanting a flush-like effect --
-            # This proves necessary, else 'CanGo{Previous,Next}'
-            # signals are not recognized by MPRIS2 control programs
-            # until more MPRIS2 activity occurs (seen in KDE
-            # "Now Playing" widget and Ubuntu 16.04 enhanced
-            # volume taskbar widget).
-            # Adding g_dbus_connection_flush() in the coprocess
-            # does not help, but emitting "PlaybackStatus" here
-            # makes the control programs work as expected --
-            # maybe there is an expected sequence of signal
-            # emissions that is not documented for MPRIS2.
-            if didemit:
-                self.mpris2_signal_emit(_T("PlaybackStatus"))
+                # hack: wanting a flush-like effect --
+                # This proves necessary, else 'CanGo{Previous,Next}'
+                # signals are not recognized by MPRIS2 control programs
+                # until more MPRIS2 activity occurs (seen in KDE
+                # "Now Playing" widget and Ubuntu 16.04 enhanced
+                # volume taskbar widget).
+                # Adding g_dbus_connection_flush() in the coprocess
+                # does not help, but emitting "PlaybackStatus" here
+                # makes the control programs work as expected --
+                # maybe there is an expected sequence of signal
+                # emissions that is not documented for MPRIS2.
+                if didemit:
+                    self.mpris2_signal_emit(_T("PlaybackStatus"))
 
-        def metadata_check(self):
-            g, i = self.get_res_group_with_index()
-            curtuple = None
-            try:
-                curtuple = self.cur_uniq_tuple
-            except AttributeError:
-                pass
-            if curtuple == None and (g == None or i == None):
-                self.cur_uniq_tuple = None
-                return
-            elif g == None or i == None:
-                self.cur_uniq_tuple = None
-                self.mpris2_signal_emit(_T("Metadata"))
-                return
+            def metadata_check(self):
+                g, i = self.get_res_group_with_index()
+                curtuple = None
+                try:
+                    curtuple = self.cur_uniq_tuple
+                except AttributeError:
+                    pass
+                if curtuple == None and (g == None or i == None):
+                    self.cur_uniq_tuple = None
+                    return
+                elif g == None or i == None:
+                    self.cur_uniq_tuple = None
+                    #self.mpris_sendsignal_check()
+                    self.mpris2_signal_emit(_T("Metadata"))
+                    return
 
-            item = g.get_at_index(i)
-            gid = _T(g.uniq)
-            uid = _T(item.uniq)
-            if (curtuple == None or
-                curtuple[0] != gid or curtuple[1] != uid):
-                self.cur_uniq_tuple = (gid, uid)
-                self.mpris2_signal_emit(_T("Metadata"))
-                return
+                item = g.get_at_index(i)
+                gid = _T(g.uniq)
+                uid = _T(item.uniq)
+                if (curtuple == None or
+                    curtuple[0] != gid or curtuple[1] != uid):
+                    self.cur_uniq_tuple = (gid, uid)
+                    #self.mpris_sendsignal_check()
+                    self.mpris2_signal_emit(_T("Metadata"))
+                    return
 
-        def get_mpris2_metadata(self, idx = None, zmsg = "null_data"):
-            #  return a list of (attribute, value), like dbus a{sv}
-            r = []
-            g, i = self.get_res_group_with_index(idx)
+            def get_mpris2_metadata(self, idx = None, zmsg = "no_data"):
+                #  return a list of (attribute, value), like dbus a{sv}
+                r = []
+                g, i = self.get_res_group_with_index(idx)
 
-            if g == None or i == None:
-                p, i = self.get_dbus_dom_app()
-                ob = _T("{}/{}").format(p, _T(zmsg))
-                r.append((_T("mpris:trackid"), _T('o:{}').format(ob)))
+                if g == None or i == None:
+                    p, i = self.get_dbus_dom_app()
+                    ob = _T("{}/{}").format(p, _T(zmsg))
+                    r.append((_T("mpris:trackid"),
+                              _T('o:{}').format(ob)))
+                    return r
+
+                i = g.get_at_index(i)
+                resid = self.get_dbus_itempath(g, i)
+                # TODO - objects made here can be cached in a map
+                # keyed on resid
+
+                r.append((_T("mpris:trackid"),
+                          _T('o:{}').format(resid)))
+
+                l = i.length if (i.length >= 0) else 0
+                # length attribute needs microsecs (we have millisecs)
+                r.append((_T("mpris:length"),
+                          _T('x:{}').format(l * 1000)))
+                # note: we do not do 'mpris:artUrl'
+
+                # xesam items:
+                ids = i.get_desc_disp_str(allow_none = True)
+                if ids == None or ids == i.resname:
+                    # if title must be the resource name,
+                    # then just show the name w/o path
+                    ids = os.path.split(i.resname)[1]
+
+                nam = _T(i.resname)
+                ids = _T(ids)
+                gds = _T(g.get_desc())
+
+                xm = get_xesam_map(nam)
+                r.append((_T("xesam:title"),
+                          _T('s:{}').format(xm['title'] or ids)))
+                r.append((_T("xesam:album"),
+                          _T('s:{}').format(xm['album'] or gds)))
+
+                # artist, genre: to send type 'as' join w/ '\n'
+                if xm['artist'] != None:
+                    if isinstance(xm['artist'], list):
+                        v = '\n'.join(xm['artist'])
+                    else:
+                        v = xm['artist']
+                    r.append((_T("xesam:artist"),
+                              _T('as:{}').format(v)))
+
+                if xm['genre'] != None:
+                    if isinstance(xm['genre'], list):
+                        v = '\n'.join(xm['genre'])
+                    else:
+                        v = xm['genre']
+                    r.append((_T("xesam:genre"),
+                              _T('as:{}').format(v)))
+
+                if xm['trackNumber'] != None:
+                    r.append((_T("xesam:trackNumber"),
+                              _T('i:{}').format(xm['trackNumber'])))
+
+                if xm['url'] != None:
+                    r.append((_T("xesam:url"),
+                              _T('s:{}').format(xm['url'])))
+
                 return r
-
-            i = g.get_at_index(i)
-            resid = self.get_dbus_itempath(g, i)
-            # TODO - objects made here can be cached in a map
-            # keyed on resid
-
-            r.append((_T("mpris:trackid"), _T('o:{}').format(resid)))
-
-            l = i.length if (i.length >= 0) else 0
-            # length attribute needs microsecs (we have millisecs)
-            r.append((_T("mpris:length"), _T('x:{}').format(l * 1000)))
-            # note: we do not do 'mpris:artUrl'
-
-            # xesam items:
-            nam = _T(i.resname)
-            ids = _T(i.get_desc_disp_str())
-            gds = _T(g.get_desc())
-
-            xm = get_xesam_map(nam)
-            r.append((_T("xesam:title"),
-                      _T('s:{}').format(xm['title'] or ids)))
-            r.append((_T("xesam:album"),
-                      _T('s:{}').format(xm['album'] or gds)))
-
-            # artist, genre: to send type 'as' join w/ '\n'
-            if xm['artist'] != None:
-                if isinstance(xm['artist'], list):
-                    v = '\n'.join(xm['artist'])
-                else:
-                    v = xm['artist']
-                r.append((_T("xesam:artist"), _T('as:{}').format(v)))
-
-            if xm['genre'] != None:
-                if isinstance(xm['genre'], list):
-                    v = '\n'.join(xm['genre'])
-                else:
-                    v = xm['genre']
-                r.append((_T("xesam:genre"), _T('as:{}').format(v)))
-
-            if xm['trackNumber'] != None:
-                r.append((_T("xesam:trackNumber"),
-                      _T('i:{}').format(xm['trackNumber'])))
-
-            if xm['url'] != None:
-                r.append((_T("xesam:url"),
-                      _T('s:{}').format(xm['url'])))
-
-            return r
 
     # END dbus interface/object misc.
 
@@ -8922,8 +8932,9 @@ class TopWnd(wx.Frame):
 
             self.tittime -= 1
 
-        # timer checks for state chenges for mpris2
-        self.mpris_timer_check()
+        if _in_xws:
+            # timer checks for state chenges for mpris2
+            self.mpris_sendsignal_check()
 
 
     def get_medi_state(self):
@@ -9274,6 +9285,82 @@ class TopWnd(wx.Frame):
             self.io_obj = dat[1]
             self.donefd = dat[2]
 
+        def go(self):
+            self.on_mpris2(self.line_1, self.io_obj)
+
+        def done(self):
+            #self.err_msg(_T(
+            #    "mpris2hdlr::done donefd '{}'").format(self.donefd))
+            if self.donefd >= 0:
+                # rapid pace of property queries at startup
+                # seems to overwhelm something (wx wvent loop?
+                # python poll()?) and lockups occur -- try using
+                # bothe callafter and sleep to slow things down
+                def _done_mp(w, fd, sl):
+                    if sl > 0:
+                        wx.MilliSleep(sl)
+                    # use try in case reentrant events closed this
+                    try:
+                        fd_write(fd, _T("poll"))
+                    except (IOError, OSError) as e:
+                        w.err_msg(_T(
+                            "mpris2hdlr::done donefd write error '{}'"
+                            ).format(e.strerror))
+                    w.block_mpris_signals = False
+
+                if True:
+                    _done_mp(self.w, self.donefd, 0)
+                else:
+                    wx.CallAfter(_done_mp, self.w, self.donefd, 0)
+
+        def wr(self, fd, v):
+            return fd_write(fd, _Tnec(v))
+
+        def rd(self, fd, nbuf = 128):
+            return _T(os.read(fd, nbuf))
+
+        def rdstp(self, fd, nbuf = 128):
+            return self.rd(fd, nbuf).strip(_T('\n'))
+
+        def mpris2_send_ack(self, fd_rd, fd_wr, ack):
+            ack = _T(ack).rstrip(_T('\n')) + _T('\n')
+            self.err_msg(_T("mpris2_send_ack '{}'").format(ack))
+
+            try:
+                self.wr(fd_wr, ack)
+                self.err_msg(_T("MPRIS2 after mpris2_send_ack"))
+            except (IOError, OSError) as e:
+                self.err_msg(_T("MPRIS2 write error '{}' in {}").format(
+                    e.strerror, _T('mpris2_send_ack')))
+                return False
+            except:
+                self.err_msg(_T("MPRIS2 exception in '{}'").format(
+                    _T('mpris2_send_ack')))
+                return False
+
+            return True
+
+        def mpris2_send(self, fd_rd, fd_wr, ack, level):
+            if not self.mpris2_send_ack(fd_rd, fd_wr, ack):
+                return False
+
+            if s_eq(level, "base"):
+                return self.mpris2_send_base(fd_rd, fd_wr)
+            elif s_eq(level, "player"):
+                return self.mpris2_send_player(fd_rd, fd_wr)
+
+            return False
+
+        def mpris2_send_base(self, fd_rd, fd_wr):
+            prop = self.rdstp(fd_rd, 128)
+            return self.mpris2_send_prop_or_signal(fd_rd, fd_wr,
+                                                   prop, "base")
+
+        def mpris2_send_player(self, fd_rd, fd_wr):
+            prop = self.rdstp(fd_rd, 128)
+            return self.mpris2_send_prop_or_signal(fd_rd, fd_wr,
+                                                   prop, "player")
+
         def mpris2_send_signal(self, rd_ch, wr_ch, signal):
             # dbus signal/property maps as tuples:
             # (object_path, interface_name,
@@ -9383,82 +9470,6 @@ class TopWnd(wx.Frame):
 
             # cleanup and return
             return r
-
-        def go(self):
-            self.on_mpris2(self.line_1, self.io_obj)
-
-        def done(self):
-            #self.err_msg(_T(
-            #    "mpris2hdlr::done donefd '{}'").format(self.donefd))
-            if self.donefd >= 0:
-                # rapid pace of property queries at startup
-                # seems to overwhelm something (wx wvent loop?
-                # python poll()?) and lockups occur -- try using
-                # bothe callafter and sleep to slow things down
-                def _done_mp(w, fd, sl):
-                    if sl > 0:
-                        wx.MilliSleep(sl)
-                    # use try in case reentrant events closed this
-                    try:
-                        fd_write(fd, _T("poll"))
-                    except (IOError, OSError) as e:
-                        w.err_msg(_T(
-                            "mpris2hdlr::done donefd write error '{}'"
-                            ).format(e.strerror))
-                    w.block_mpris_signals = False
-
-                if True:
-                    _done_mp(self.w, self.donefd, 0)
-                else:
-                    wx.CallAfter(_done_mp, self.w, self.donefd, 0)
-
-        def wr(self, fd, v):
-            return fd_write(fd, _Tnec(v))
-
-        def rd(self, fd, nbuf = 128):
-            return _T(os.read(fd, nbuf))
-
-        def rdstp(self, fd, nbuf = 128):
-            return self.rd(fd, nbuf).strip(_T('\n'))
-
-        def mpris2_send_ack(self, fd_rd, fd_wr, ack):
-            ack = _T(ack).rstrip(_T('\n')) + _T('\n')
-            self.err_msg(_T("mpris2_send_ack '{}'").format(ack))
-
-            try:
-                self.wr(fd_wr, ack)
-                self.err_msg(_T("MPRIS2 after mpris2_send_ack"))
-            except (IOError, OSError) as e:
-                self.err_msg(_T("MPRIS2 write error '{}' in {}").format(
-                    e.strerror, _T('mpris2_send_ack')))
-                return False
-            except:
-                self.err_msg(_T("MPRIS2 exception in '{}'").format(
-                    _T('mpris2_send_ack')))
-                return False
-
-            return True
-
-        def mpris2_send(self, fd_rd, fd_wr, ack, level):
-            if not self.mpris2_send_ack(fd_rd, fd_wr, ack):
-                return False
-
-            if s_eq(level, "base"):
-                return self.mpris2_send_base(fd_rd, fd_wr)
-            elif s_eq(level, "player"):
-                return self.mpris2_send_player(fd_rd, fd_wr)
-
-            return False
-
-        def mpris2_send_base(self, fd_rd, fd_wr):
-            prop = self.rdstp(fd_rd, 128)
-            return self.mpris2_send_prop_or_signal(fd_rd, fd_wr,
-                                                   prop, "base")
-
-        def mpris2_send_player(self, fd_rd, fd_wr):
-            prop = self.rdstp(fd_rd, 128)
-            return self.mpris2_send_prop_or_signal(fd_rd, fd_wr,
-                                                   prop, "player")
 
         def mpris2_send_prop_or_signal(self,
                                        fd_rd, fd_wr,
