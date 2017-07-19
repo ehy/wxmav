@@ -6291,7 +6291,17 @@ class TopWnd(wx.Frame):
                 self.mpris2_signal_emit(_T("CanSeek"))
                 didemit = True
 
-            # hack: wanting a flush-like effect
+            # hack: wanting a flush-like effect --
+            # This proves necessary, else 'CanGo{Previous,Next}'
+            # signals are not recognized by MPRIS2 control programs
+            # until more MPRIS2 activity occurs (seen in KDE
+            # "Now Playing" widget and Ubuntu 16.04 enhanced
+            # volume taskbar widget).
+            # Adding g_dbus_connection_flush() in the coprocess
+            # does not help, but emitting "PlaybackStatus" here
+            # makes the control programs work as expected --
+            # maybe there is an expected sequence of signal
+            # emissions that is not documented for MPRIS2.
             if didemit:
                 self.mpris2_signal_emit(_T("PlaybackStatus"))
 

@@ -618,14 +618,16 @@ dbus_gio_main(const dbus_proc_in *in)
     g_unix_signal_add(glib_quit_signal, on_glib_quit_signal,
                       (gpointer)dat);
 
-    /* DO NOT use g_idle_add: it really spins!
-    timecb_dat->reg_id = g_idle_add(on_glib_timer,
-                                    (gpointer)&timecb_dat);
-    Instead, use timer */
-    /* note: *address* of pointer is passed so that . . . */
-    timecb_dat->reg_id = g_timeout_add(500,
-                                       on_glib_timer,
-                                       (gpointer)&timecb_dat);
+    if ( MPRIS2_ok ) {
+        /* DO NOT use g_idle_add: it really spins!
+        timecb_dat->reg_id = g_idle_add(on_glib_timer,
+                                        (gpointer)&timecb_dat);
+        Instead, use timer */
+        /* note: *address* of pointer is passed so that . . . */
+        timecb_dat->reg_id = g_timeout_add(500,
+                                           on_glib_timer,
+                                           (gpointer)&timecb_dat);
+    }
 
     /* the loop is poised twixt setup and teardown */
     g_main_loop_run(loop);
@@ -880,20 +882,31 @@ on_glib_timer(gpointer user_data)
         return G_SOURCE_REMOVE;
     }
 
-    while ( mpris_signal_count > 0 ) {
-        int r;
+    if ( MPRIS2_ok ) {
+        unsigned nsigrecv = 0;
 
-        r = signal_mpris_service(timecb_dat->dat);
+        while ( mpris_signal_count > 0 ) {
+            int r;
 
-        if ( r < 0 ) {
-            /* IO failure; quit this */
-            return G_SOURCE_REMOVE;
-        } else if ( r == _EXCHGHS_ACK_NA ) {
-            /* coproc response: no signals queued */
-            mpris_signal_count = 0;
-        } else if ( r > 0 ) {
-            /* other error; retain handler */
-            break;
+            r = signal_mpris_service(timecb_dat->dat);
+
+            if ( r < 0 ) {
+                /* IO failure; quit this */
+                return G_SOURCE_REMOVE;
+            } else if ( r == _EXCHGHS_ACK_NA ) {
+                /* coproc response: no signals queued */
+                mpris_signal_count = 0;
+            } else if ( r > 0 ) {
+                /* other error; retain handler */
+                break;
+            } else {
+                ++nsigrecv;
+            }
+        }
+
+        if ( nsigrecv ) {
+            g_dbus_connection_flush(timecb_dat->dat->connection,
+                                    NULL, NULL, NULL);
         }
     }
 
