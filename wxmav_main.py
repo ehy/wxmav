@@ -6241,162 +6241,167 @@ class TopWnd(wx.Frame):
                 return _T("{}/{}").format(p, _T(zmsg))
             return self.get_dbus_itempath(g, g.get_at_index(i))
 
-        if _in_xws:
-            def mpris_sendsignal_check(self):
-                didemit = False
+        def mpris_sendsignal_check(self):
+            didemit = False
 
-                try:
-                    b = self.cangonext
-                except AttributeError:
-                    b = self.cangonext = None
-                c = True if (self.get_next_index() != None) else False
-                if b != c:
-                    self.cangonext = c
-                    self.mpris2_signal_emit(_T("CanGoNext"))
-                    didemit = True
+            try:
+                b = self.cangonext
+            except AttributeError:
+                b = self.cangonext = None
+            c = True if (self.get_next_index() != None) else False
+            if b != c:
+                self.cangonext = c
+                self.mpris2_signal_emit(_T("CanGoNext"))
+                didemit = True
 
-                try:
-                    b = self.cangoprev
-                except AttributeError:
-                    b = self.cangoprev = None
-                c = True if (self.get_prev_index() != None) else False
-                if b != c:
-                    self.cangoprev = c
-                    self.mpris2_signal_emit(_T("CanGoPrevious"))
-                    didemit = True
+            try:
+                b = self.cangoprev
+            except AttributeError:
+                b = self.cangoprev = None
+            c = True if (self.get_prev_index() != None) else False
+            if b != c:
+                self.cangoprev = c
+                self.mpris2_signal_emit(_T("CanGoPrevious"))
+                didemit = True
 
-                try:
-                    b = self.canplay
-                except AttributeError:
-                    b = self.canplay = None
-                c = True if (
-                    self.reslist and len(self.reslist) > 0) else False
-                if b != c:
-                    self.canplay = c
-                    self.mpris2_signal_emit(_T("CanPlay"))
-                    self.mpris2_signal_emit(_T("CanPause"))
-                    didemit = True
+            try:
+                b = self.canplay
+            except AttributeError:
+                b = self.canplay = None
+            c = True if (
+                self.reslist and len(self.reslist) > 0) else False
+            if b != c:
+                self.canplay = c
+                self.mpris2_signal_emit(_T("CanPlay"))
+                self.mpris2_signal_emit(_T("CanPause"))
+                didemit = True
 
-                try:
-                    b = self.canseek
-                except AttributeError:
-                    b = self.canseek = None
-                c = True if (
-                    self.medi and self.medi.Length() > 0) else False
-                if b != c:
-                    self.canseek = c
-                    self.mpris2_signal_emit(_T("CanSeek"))
-                    didemit = True
+            try:
+                b = self.canseek
+            except AttributeError:
+                b = self.canseek = None
+            c = True if (
+                self.medi and self.medi.Length() > 0) else False
+            if b != c:
+                self.canseek = c
+                self.mpris2_signal_emit(_T("CanSeek"))
+                didemit = True
 
-                # hack: wanting a flush-like effect --
-                # This proves necessary, else 'CanGo{Previous,Next}'
-                # signals are not recognized by MPRIS2 control programs
-                # until more MPRIS2 activity occurs (seen in KDE
-                # "Now Playing" widget and Ubuntu 16.04 enhanced
-                # volume taskbar widget).
-                # Adding g_dbus_connection_flush() in the coprocess
-                # does not help, but emitting "PlaybackStatus" here
-                # makes the control programs work as expected --
-                # maybe there is an expected sequence of signal
-                # emissions that is not documented for MPRIS2.
-                if didemit:
-                    self.mpris2_signal_emit(_T("PlaybackStatus"))
+            # hack: wanting a flush-like effect --
+            # This proves necessary, else 'CanGo{Previous,Next}'
+            # signals are not recognized by MPRIS2 control programs
+            # until more MPRIS2 activity occurs (seen in KDE
+            # "Now Playing" widget and Ubuntu 16.04 enhanced
+            # volume taskbar widget).
+            # Adding g_dbus_connection_flush() in the coprocess
+            # does not help, but emitting "PlaybackStatus" here
+            # makes the control programs work as expected --
+            # maybe there is an expected sequence of signal
+            # emissions that is not documented for MPRIS2.
+            if didemit:
+                self.mpris2_signal_emit(_T("PlaybackStatus"))
 
-            def metadata_check(self):
-                g, i = self.get_res_group_with_index()
-                curtuple = None
-                try:
-                    curtuple = self.cur_uniq_tuple
-                except AttributeError:
-                    pass
-                if curtuple == None and (g == None or i == None):
-                    self.cur_uniq_tuple = None
-                    return
-                elif g == None or i == None:
-                    self.cur_uniq_tuple = None
-                    #self.mpris_sendsignal_check()
-                    self.mpris2_signal_emit(_T("Metadata"))
-                    return
+        def metadata_check(self):
+            g, i = self.get_res_group_with_index()
+            curtuple = None
+            try:
+                curtuple = self.cur_uniq_tuple
+            except AttributeError:
+                pass
+            if curtuple == None and (g == None or i == None):
+                self.cur_uniq_tuple = None
+                return
+            elif g == None or i == None:
+                self.cur_uniq_tuple = None
+                #self.mpris_sendsignal_check()
+                self.mpris2_signal_emit(_T("Metadata"))
+                return
 
-                item = g.get_at_index(i)
-                gid = _T(g.uniq)
-                uid = _T(item.uniq)
-                if (curtuple == None or
-                    curtuple[0] != gid or curtuple[1] != uid):
-                    self.cur_uniq_tuple = (gid, uid)
-                    #self.mpris_sendsignal_check()
-                    self.mpris2_signal_emit(_T("Metadata"))
-                    return
+            item = g.get_at_index(i)
+            gid = _T(g.uniq)
+            uid = _T(item.uniq)
+            if (curtuple == None or
+                curtuple[0] != gid or curtuple[1] != uid):
+                self.cur_uniq_tuple = (gid, uid)
+                #self.mpris_sendsignal_check()
+                self.mpris2_signal_emit(_T("Metadata"))
+                return
 
-            def get_mpris2_metadata(self, idx = None, zmsg = "no_data"):
-                #  return a list of (attribute, value), like dbus a{sv}
-                r = []
-                g, i = self.get_res_group_with_index(idx)
+        def get_mpris2_metadata(self, idx = None, zmsg = "no_data"):
+            #  return a list of (attribute, value), like dbus a{sv}
+            r = []
+            g, i = self.get_res_group_with_index(idx)
 
-                if g == None or i == None:
-                    p, i = self.get_dbus_dom_app()
-                    ob = _T("{}/{}").format(p, _T(zmsg))
-                    r.append((_T("mpris:trackid"),
-                              _T('o:{}').format(ob)))
-                    return r
-
-                i = g.get_at_index(i)
-                resid = self.get_dbus_itempath(g, i)
-                # TODO - objects made here can be cached in a map
-                # keyed on resid
-
+            if g == None or i == None:
+                p, i = self.get_dbus_dom_app()
+                ob = _T("{}/{}").format(p, _T(zmsg))
                 r.append((_T("mpris:trackid"),
-                          _T('o:{}').format(resid)))
-
-                l = i.length if (i.length >= 0) else 0
-                # length attribute needs microsecs (we have millisecs)
-                r.append((_T("mpris:length"),
-                          _T('x:{}').format(l * 1000)))
-                # note: we do not do 'mpris:artUrl'
-
-                # xesam items:
-                ids = i.get_desc_disp_str(allow_none = True)
-                if ids == None or ids == i.resname:
-                    # if title must be the resource name,
-                    # then just show the name w/o path
-                    ids = os.path.split(i.resname)[1]
-
-                nam = _T(i.resname)
-                ids = _T(ids)
-                gds = _T(g.get_desc())
-
-                xm = get_xesam_map(nam)
-                r.append((_T("xesam:title"),
-                          _T('s:{}').format(xm['title'] or ids)))
-                r.append((_T("xesam:album"),
-                          _T('s:{}').format(xm['album'] or gds)))
-
-                # artist, genre: to send type 'as' join w/ '\n'
-                if xm['artist'] != None:
-                    if isinstance(xm['artist'], list):
-                        v = '\n'.join(xm['artist'])
-                    else:
-                        v = xm['artist']
-                    r.append((_T("xesam:artist"),
-                              _T('as:{}').format(v)))
-
-                if xm['genre'] != None:
-                    if isinstance(xm['genre'], list):
-                        v = '\n'.join(xm['genre'])
-                    else:
-                        v = xm['genre']
-                    r.append((_T("xesam:genre"),
-                              _T('as:{}').format(v)))
-
-                if xm['trackNumber'] != None:
-                    r.append((_T("xesam:trackNumber"),
-                              _T('i:{}').format(xm['trackNumber'])))
-
-                if xm['url'] != None:
-                    r.append((_T("xesam:url"),
-                              _T('s:{}').format(xm['url'])))
-
+                          _T('o:{}').format(ob)))
                 return r
+
+            i = g.get_at_index(i)
+            resid = self.get_dbus_itempath(g, i)
+            # TODO - objects made here can be cached in a map
+            # keyed on resid
+
+            r.append((_T("mpris:trackid"),
+                      _T('o:{}').format(resid)))
+
+            l = i.length if (i.length >= 0) else 0
+            # length attribute needs microsecs (we have millisecs)
+            r.append((_T("mpris:length"),
+                      _T('x:{}').format(l * 1000)))
+            # note: we do not do 'mpris:artUrl'
+
+            # xesam items:
+            ids = i.get_desc_disp_str(allow_none = True)
+            if ids == None or ids == i.resname:
+                # if title must be the resource name,
+                # then just show the name w/o path
+                ids = os.path.split(i.resname)[1]
+
+            nam = _T(i.resname)
+            ids = _T(ids)
+            gds = _T(g.get_desc())
+
+            xm = get_xesam_map(nam)
+            r.append((_T("xesam:title"),
+                      _T('s:{}').format(xm['title'] or ids)))
+            r.append((_T("xesam:album"),
+                      _T('s:{}').format(xm['album'] or gds)))
+
+            # artist, genre: to send type 'as' join w/ '\n'
+            if xm['artist'] != None:
+                if isinstance(xm['artist'], list):
+                    v = '\n'.join(xm['artist'])
+                else:
+                    v = xm['artist']
+                r.append((_T("xesam:artist"),
+                          _T('as:{}').format(v)))
+
+            if xm['genre'] != None:
+                if isinstance(xm['genre'], list):
+                    v = '\n'.join(xm['genre'])
+                else:
+                    v = xm['genre']
+                r.append((_T("xesam:genre"),
+                          _T('as:{}').format(v)))
+
+            if xm['trackNumber'] != None:
+                r.append((_T("xesam:trackNumber"),
+                          _T('i:{}').format(xm['trackNumber'])))
+
+            if xm['url'] != None:
+                r.append((_T("xesam:url"),
+                          _T('s:{}').format(xm['url'])))
+
+            return r
+
+
+    # not in _in_xws, but stubs convenient
+    else:
+        def mpris_sendsignal_check(self):
+            pass
 
     # END dbus interface/object misc.
 
@@ -7106,6 +7111,9 @@ class TopWnd(wx.Frame):
 
         self.set_tb_combos()
         self.set_statusbar(msg, 0)
+
+        self.mpris2_signal_emit(_T("Metadata"))
+        self.mpris_sendsignal_check()
 
         return True
 
@@ -8425,6 +8433,9 @@ class TopWnd(wx.Frame):
                     break
                 l = gl
             self.set_tb_combos()
+
+            self.mpris2_signal_emit(_T("Metadata"))
+            self.mpris_sendsignal_check()
 
         wx.CallAfter(_sub_del_grp, self, self.in_play)
 
