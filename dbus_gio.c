@@ -60,10 +60,12 @@
 
 #ifndef   DBUS_GIO_DEBUGFILE_TEMPLATE
 #define   DBUS_GIO_DEBUGFILE_TEMPLATE "/tmp/wxmav.debug.XXXXXXXXXX"
-#endif /* DBUS_GIO_DEBUGFILE_TEMPLATE */
+#endif
 #endif /* _DEBUG */
 
-/* token separator for multi-token lines */
+/* token separator for multi-token lines --
+ * used here mostly for simple cases where a dbus signature
+ * can be followed by a value inline; e.g., 'b:true' */
 #define _TSEPC ':'
 #define _TSEPS ":"
 
@@ -76,6 +78,15 @@
 #define _EXCHGHS_ACK_NA  3 /* NOT AVAILABLE e.g. pending signal */
 #define _EXCHGHS_ERRMAX  3 /* additional test */
 
+/* DBUS types (simple and complex) are stated by signature strings,
+ * referred to simply as 'types' herein, and these strings have a
+ * maximum length of 255, as asserted at:
+ * https://dbus.freedesktop.org/doc/dbus-specification.html#type-system
+ */
+#define _DBUS_DATATYPE_MAXLEN 255u
+/* check a type string length */
+#define CHECK_DATATYPE_LEN(len) ((len) < _DBUS_DATATYPE_MAXLEN)
+#define CHECK_DATATYPE_LEN_STR(str) CHECK_DATATYPE_LEN(strlen(str))
 
 /* for MPRIS2 support: items both pertinent to glib/gio,
  * and necessary to this code */
@@ -931,10 +942,6 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
     fprintf(fpinfo, "%s re. %d: %s (MPRIS2_ok == %d)\n", prog,
             reenter_guard, "on_mpris_sig_read", MPRIS2_ok);
 
-    if ( MPRIS2_ok == 0 ){
-        return FALSE;
-    }
-
     if ( ++reenter_guard > 1 ) {
         --reenter_guard;
         if ( fd == fileno(mpris_sig_rfp) ) {
@@ -981,6 +988,11 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
         unnl_len(buf, rdlen);
 
         fprintf(fpinfo, "%s: mpris client read: '%s'\n", prog, buf);
+
+        /* this test is suitable only after the line is read */
+        if ( MPRIS2_ok == 0 ){
+            return FALSE;
+        }
 
         /* not mpris prefix? */
         if ( strncasecmp(buf, pfx, pfxsz) ) {
@@ -1125,6 +1137,14 @@ put_args_from_gvar(const char *types,
     char        *p, *tfrptr;
     size_t      tlen  = strlen(types);
     int         ret   = 0;
+
+    if ( ! CHECK_DATATYPE_LEN(tlen) ) {
+        fprintf(fpinfo, "%s: internal error - type length %zu [%s]\n",
+                prog, tlen, "put_args_from_gvar");
+        fputs("ERROR:typelength\n", dat->fpwr);
+        fflush(dat->fpwr);
+        return -1;
+    }
 
     /* copy types string so that we may modify it
      * with a clear conscience */
@@ -1356,6 +1376,12 @@ gvar_from_strings(const char *type,
     size_t    vlen    = 1;
     size_t    tlen    = strlen(type);
 	GVariant  *result = NULL;
+
+    if ( ! CHECK_DATATYPE_LEN(tlen) ) {
+        fprintf(fpinfo, "%s: internal error - type length %zu [%s]\n",
+                prog, tlen, "gvar_from_strings");
+        return result;
+    }
 
     fprintf(fpinfo, "%s: %s type '%s' value '%s'\n", prog,
             "gvar_from_strings", type,
