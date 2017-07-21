@@ -6887,7 +6887,7 @@ class TopWnd(wx.Frame):
 
             # xesam items:
             ids = i.get_desc_disp_str(allow_none = True)
-            if ids == None or ids == i.resname:
+            if ids == None or s_eq(ids, i.resname):
                 # if title must be the resource name,
                 # then just show the name w/o path
                 ids = os.path.split(i.resname)[1]
