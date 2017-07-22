@@ -1157,10 +1157,16 @@ put_args_from_gvar(const char *types,
         }
         --tlen;
 
+        fprintf(fpinfo, "%s: put_args_from_gvar - tokens '%s'\n",
+                prog, p);
+
         for ( ix = 0, p = strtok(p, _TSEPS);
               p != NULL;
               ix++, p = strtok(NULL, _TSEPS) ) {
             int r = 0;
+
+            fprintf(fpinfo, "%s: put_args_from_gvar - cur tok '%s'\n",
+                    prog, p);
 
             if ( *p == '\0' ) {
                 r = fprintf(dat->fpwr, "%s\n", "");
@@ -1236,6 +1242,10 @@ put_args_from_gvar(const char *types,
             ret += r;
             fflush(dat->fpwr);
         }
+
+        fprintf(fpinfo, "%s: put_args_from_gvar - tokens all done\n",
+                prog);
+
     } while ( 0 ); /* breakable block */
 
     LAFREE(tfrptr);

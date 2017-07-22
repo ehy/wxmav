@@ -3283,6 +3283,8 @@ elif _in_xws:
             self.io_obj = dat[1]
             self.donefd = dat[2]
 
+            self._rbuf = _T("")
+
         def go(self):
             self.on_mpris2(self.line_1, self.io_obj)
 
@@ -3315,7 +3317,14 @@ elif _in_xws:
             return fd_write(fd, _Tnec(v))
 
         def rd(self, fd, nbuf = 128):
-            return _T(os.read(fd, nbuf))
+            while True:
+                p = self._rbuf.find(_T('\n'))
+                if p >= 0:
+                    p += 1
+                    r = self._rbuf[:p]
+                    self._rbuf = self._rbuf[p:]
+                    return r
+                self._rbuf += _T(os.read(fd, nbuf))
 
         def rdstp(self, fd, nbuf = 128):
             return self.rd(fd, nbuf).strip(_T('\n'))
@@ -3548,8 +3557,9 @@ elif _in_xws:
                 v = float(self.w.vol_cur - self.w.vol_min) / d
                 m = _T("d:{:f}\n").format(v)
             elif s_eq(prop, "Position"):
-                v = 0 if (self.w.medi.Length() < 1) else (
-                    self.w.medi.Tell() * 1000)
+                v = 0 if (self.w.medi and
+                          self.w.medi.Length() < 1) else (
+                              self.w.medi.Tell() * 1000)
                 m = _T("x:{:d}\n").format(v)
             elif s_eq(prop, "Seeked"):
                 # dbus signal -- glib wants a tuple
@@ -3725,11 +3735,22 @@ elif _in_xws:
                 fd_write(fd_wr, _T("ARGS:x\n"))
                 val = self.rdstp(fd_rd, 128)
                 if self.w.load_ok and self.w.medi.Length() > 0:
-                    self.w.medi.Seek(int(val) / 1000)
+                    ln = self.w.medi.Length()
+                    val = int(val) / 1000 + ln
+                    val = min(ln, max(0, val))
+                    self.w.medi.Seek(val)
                 _methresp("VOID", True)
             elif s_eq(meth, "SetPosition"):
-                # TODO when metadata etc. ready
-                _methresp("UNSUPPORTED", True)
+                fd_write(fd_wr, _T("ARGS:o:x\n"))
+                pth = self.rdstp(fd_rd, 4096)
+                val = self.rdstp(fd_rd, 128)
+                if self.w.check_dbus_itempath_current(pth):
+                    if self.w.load_ok and self.w.medi.Length() > 0:
+                        ln = self.w.medi.Length()
+                        val = int(val) / 1000
+                        val = min(ln, max(0, val))
+                        self.w.medi.Seek(val)
+                _methresp("VOID", True)
             elif s_eq(meth, "OpenUri"):
                 self.wr(fd_wr, _T("ARGS:s\n"))
                 val = self.rdstp(fd_rd, 4096)
@@ -6767,6 +6788,12 @@ class TopWnd(wx.Frame):
                 p, i = self.get_dbus_dom_app()
                 return _T("{}/{}").format(p, _T(zmsg))
             return self.get_dbus_itempath(g, g.get_at_index(i))
+
+        def check_dbus_itempath_current(self, objpath):
+            curpath = self.get_dbus_itempath_current()
+            if s_eq(objpath, curpath):
+                return True
+            return False
 
         def mpris_sendsignal_check(self):
             didemit = False
