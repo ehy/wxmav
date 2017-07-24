@@ -3741,6 +3741,8 @@ elif _in_xws:
                     val = int(val) / 1000 + ln
                     val = min(ln, max(0, val))
                     self.w.medi.Seek(val)
+                    wx.CallAfter(
+                        self.w.mpris2_signal_emit, _T("Seeked"))
                 _methresp("VOID", True)
             elif s_eq(meth, "SetPosition"):
                 fd_write(fd_wr, _T("ARGS:o:x\n"))
@@ -3752,6 +3754,8 @@ elif _in_xws:
                         val = int(val) / 1000
                         val = min(ln, max(0, val))
                         self.w.medi.Seek(val)
+                        wx.CallAfter(
+                            self.w.mpris2_signal_emit, _T("Seeked"))
                 _methresp("VOID", True)
             elif s_eq(meth, "OpenUri"):
                 self.wr(fd_wr, _T("ARGS:s\n"))
