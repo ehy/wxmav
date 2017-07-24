@@ -3557,9 +3557,11 @@ elif _in_xws:
                 v = float(self.w.vol_cur - self.w.vol_min) / d
                 m = _T("d:{:f}\n").format(v)
             elif s_eq(prop, "Position"):
-                v = 0 if (self.w.medi and
-                          self.w.medi.Length() < 1) else (
-                              self.w.medi.Tell() * 1000)
+                # Note >=0 : unbounded Tell() gives playing time
+                if self.w.load_ok and self.w.medi.Length() >= 0:
+                    v = self.w.medi.Tell() * 1000
+                else:
+                    v = 0
                 m = _T("x:{:d}\n").format(v)
             elif s_eq(prop, "Seeked"):
                 # dbus signal -- glib wants a tuple
@@ -6834,10 +6836,18 @@ class TopWnd(wx.Frame):
                 b = self.canseek
             except AttributeError:
                 b = self.canseek = None
-            c = True if (
-                self.medi and self.medi.Length() > 0) else False
-            if b != c:
+            try:
+                l = self.lastlen
+            except AttributeError:
+                l = self.lastlen = None
+            c = False
+            lcur = 0
+            if self.load_ok and self.medi.Length() > 0:
+                c = True
+                lcur = self.medi.Length()
+            if b != c or l != lcur:
                 self.canseek = c
+                self.lastlen = lcur
                 self.mpris2_signal_emit(_T("CanSeek"))
                 didemit = True
 
@@ -6872,18 +6882,32 @@ class TopWnd(wx.Frame):
                 return
             elif g == None or i == None:
                 self.cur_uniq_tuple = None
-                #self.mpris_sendsignal_check()
                 self.mpris2_signal_emit(_T("Metadata"))
+                self.mpris_sendsignal_check()
                 return
 
             item = g.get_at_index(i)
             gid = _T(g.uniq)
             uid = _T(item.uniq)
+
+            # for streams, metadata might have been sent before
+            # length was known; check for difference here
+            try:
+                l = self.lastlen
+            except AttributeError:
+                l = self.lastmetalen = None
+            lcur = 0
+            if self.load_ok and self.medi.Length() > 0:
+                c = True
+                lcur = self.medi.Length()
+
             if (curtuple == None or
-                curtuple[0] != gid or curtuple[1] != uid):
+                curtuple[0] != gid or curtuple[1] != uid or
+                l != lcur):
                 self.cur_uniq_tuple = (gid, uid)
-                #self.mpris_sendsignal_check()
+                self.lastmetalen = lcur
                 self.mpris2_signal_emit(_T("Metadata"))
+                self.mpris_sendsignal_check()
                 return
 
         def get_mpris2_metadata(self, idx = None, zmsg = "no_data"):
@@ -6906,7 +6930,11 @@ class TopWnd(wx.Frame):
             r.append((_T("mpris:trackid"),
                       _T('o:{}').format(resid)))
 
-            l = i.length if (i.length >= 0) else 0
+            l = 0
+            if self.load_ok and self.medi.Length() > 0:
+                l = self.medi.Length()
+            elif i.length > 0:
+                l = i.length
             # length attribute needs microsecs (we have millisecs)
             r.append((_T("mpris:length"),
                       _T('x:{}').format(l * 1000)))
@@ -8606,6 +8634,8 @@ class TopWnd(wx.Frame):
             wx.CallAfter(self.medi.Play)
             self.focus_medi_opt()
 
+        self.mpris2_signal_emit(_T("Metadata"))
+        self.mpris_sendsignal_check()
         #self.mpris2_signal_emit(_T("CanSeek"))
 
     def slider_setup(self, pos = None):
