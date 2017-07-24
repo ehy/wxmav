@@ -5759,7 +5759,7 @@ classes for simple undo/redo as usual in GUI app
 """
 
 class UndoItem:
-    """Simply holds dat -- using code may place additional
+    """Simply holds data -- using code may place additional
     attributed as needed
     """
     def __init__(self, data = None):
@@ -5862,9 +5862,10 @@ class UndoRedoManager:
 
 # No, didn't want to do this -- original intent was to use
 # wxComboBox or wxChoice, but on MSW the dropdown does not
-# resize for long strings (GTK does, and is fine) -- hence
+# resize for long strings (GTK-2 does, and is fine) -- hence
 # this additional program bloat:
-class BecauseMSWComboPop(wxcombo.ComboPopup):
+# NOTE: GTK-3 is as broken as MSW
+class TailorMadeComboPop(wxcombo.ComboPopup):
     def __init__(self):
         self.Init()
         wxcombo.ComboPopup.__init__(self)
@@ -6042,9 +6043,10 @@ class BecauseMSWComboPop(wxcombo.ComboPopup):
 
 # No, didn't want to do this -- original intent was to use
 # wxComboBox or wxChoice, but on MSW the dropdown does not
-# resize for long strings (GTK does, and is fine) -- hence
+# resize for long strings (GTK-2 does, and is fine) -- hence
 # this additional program bloat:
-class ComboCtrlBecauseMSW(wxcombo.ComboCtrl):
+# NOTE: GTK-3 is as broken as MSW
+class ComboCtrlTailorMade(wxcombo.ComboCtrl):
     def __init__(self, *args, **kw):
         wxcombo.ComboCtrl.__init__(self, *args, **kw)
 
@@ -7510,16 +7512,12 @@ class TopWnd(wx.Frame):
         #                wx.NullBitmap, wx.ITEM_NORMAL,
         #                lbl, hlp)
 
-        # In GTK the wxChoice is far better than this app's
-        # 'ComboCtrlBecauseMSW' which exists just because
-        # MSW Choice and ComboBox suck WRT dropdown size
-        # NOTE wxChoice is broken on fedora/gnome3: does not
+        # In GTK2 the wxChoice is far better than this app's
+        # 'ComboCtrlTailorMade' but MSW Choice and ComboBox
+        # suck WRT dropdown size and GTK-3 wxChoice does not
         # truncate long strings and if too long, just destroys
         # the control, never to be seen again, soo . . .
-        choice_ng = 'Red Hat' in sys.version
-        # . . . of course, that test is insufficient, but
-        # it will have to do for now
-        if _in_gtk and not choice_ng:
+        if _in_gtk and 'gtk2' in wx.PlatformInfo:
             sty = 0
 
             self.cbox_group_id = cur = wx.NewId()
@@ -7544,8 +7542,8 @@ class TopWnd(wx.Frame):
             sty = wx.CB_DROPDOWN | wx.CB_READONLY
 
             self.cbox_group_id = cur = wx.NewId()
-            self.cbox_group = ComboCtrlBecauseMSW(tb, cur, style = sty)
-            self.cbox_group.SetPopupControl(BecauseMSWComboPop())
+            self.cbox_group = ComboCtrlTailorMade(tb, cur, style = sty)
+            self.cbox_group.SetPopupControl(TailorMadeComboPop())
             self.cbox_group.SetSize((240, -1))
             self.cbox_group.SetMinSize((120, -1))
 
@@ -7554,8 +7552,8 @@ class TopWnd(wx.Frame):
             self.Bind(wx.EVT_COMBOBOX, self.on_cbox, id = cur)
 
             self.cbox_resrc_id = cur = wx.NewId()
-            self.cbox_resrc = ComboCtrlBecauseMSW(tb, cur, style = sty)
-            self.cbox_resrc.SetPopupControl(BecauseMSWComboPop())
+            self.cbox_resrc = ComboCtrlTailorMade(tb, cur, style = sty)
+            self.cbox_resrc.SetPopupControl(TailorMadeComboPop())
             self.cbox_resrc.SetSize((200, -1))
             self.cbox_resrc.SetMinSize((100, -1))
 
