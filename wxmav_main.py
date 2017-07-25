@@ -3741,8 +3741,10 @@ elif _in_xws:
                     val = int(val) / 1000 + ln
                     val = min(ln, max(0, val))
                     self.w.medi.Seek(val)
-                    wx.CallAfter(
-                        self.w.mpris2_signal_emit, _T("Seeked"))
+                    if self.w.pos_seek_paused == 0:
+                        self.w.pos_seek_paused = -200
+                    elif self.w.pos_seek_paused != -200:
+                        self.w.mpris2_signal_emit(_T("Seeked"))
                 _methresp("VOID", True)
             elif s_eq(meth, "SetPosition"):
                 fd_write(fd_wr, _T("ARGS:o:x\n"))
@@ -3754,8 +3756,10 @@ elif _in_xws:
                         val = int(val) / 1000
                         val = min(ln, max(0, val))
                         self.w.medi.Seek(val)
-                        wx.CallAfter(
-                            self.w.mpris2_signal_emit, _T("Seeked"))
+                        if self.w.pos_seek_paused == 0:
+                            self.w.pos_seek_paused = -200
+                        elif self.w.pos_seek_paused != -200:
+                            self.w.mpris2_signal_emit(_T("Seeked"))
                 _methresp("VOID", True)
             elif s_eq(meth, "OpenUri"):
                 self.wr(fd_wr, _T("ARGS:s\n"))
@@ -6152,6 +6156,13 @@ class TopWnd(wx.Frame):
         self.in_play = False
         self.in_stop = False
         self.load_ok = False
+
+        # flag to indicate self.Destroy() should be called by timer:
+        # a complication arising from from problems with
+        # Linux/gstreamer/pulseaudio on shutdown, where pulseaudio
+        # complains or even abort()s (braindead)
+        self.destroy_flag = 0
+
         # grrr
         self.seek_and_pause_hack =  0
         self.seek_and_play_hack  = -1
@@ -8430,6 +8441,7 @@ class TopWnd(wx.Frame):
             self.seek_and_play_hack = -1
             if seek_pos > 0:
                 self.medi.Seek(seek_pos)
+                self.pos_seek_paused = -200
             self.prdbg(_T("EVT_MEDIA_PLAY - seek_and_play_hack"))
 
             if self.seek_and_pause_hack > 0:
@@ -9508,6 +9520,12 @@ class TopWnd(wx.Frame):
                 elif self.in_play:
                     self.set_statusbar(self.get_time_str(tm = ms), 1)
             self.focus_medi_opt()
+            # -200 is a special value set by MPRIS2 handler on
+            # Seek() or SetPosition() methods -- indicates
+            # medi.Seek() was called directly
+            if self.pos_seek_paused == -200:
+                self.pos_seek_paused = 0
+                self.mpris2_signal_emit(_T("Seeked"))
         else:
             self.pos_seek_paused -= 1
             if self.pos_seek_paused == 0:
@@ -9520,7 +9538,8 @@ class TopWnd(wx.Frame):
                 v = self.pos_sld.GetValue()
                 v = float(v - self.pos_sld.GetMin()) / self.pos_mul
                 wx.CallAfter(self.medi.Seek, v)
-                wx.CallAfter(self.mpris2_signal_emit, _T("Seeked"))
+
+            self.mpris2_signal_emit(_T("Seeked"))
 
         if self.tittime > 0:
             if self.tittime == 3:
@@ -9710,6 +9729,9 @@ class TopWnd(wx.Frame):
         self.Close(False)
 
     def on_close(self, event):
+        if self.destroy_flag != 0:
+            return
+
         wx.GetApp().set_reslist(self.reslist)
 
         if event.CanVeto():
@@ -9731,10 +9753,7 @@ class TopWnd(wx.Frame):
                 self.unload_media(True)
                 self.err_msg.register_ms_hotkeys(False)
                 self.del_taskbar_object()
-                self.main_timer.Stop()
-                self.Destroy()
-                #wx.MilliSleep(2000)
-                #wx.CallAfter(self.Destroy)
+                self.destroy_flag = 3
             else:
                 event.Veto(True)
                 self.prdbg(_T("DID Veto 2"))
@@ -9746,10 +9765,7 @@ class TopWnd(wx.Frame):
             wx.GetApp().test_exit()
             self.register_ms_hotkeys(False)
             self.del_taskbar_object()
-            self.main_timer.Stop()
-            self.Destroy()
-            #wx.MilliSleep(2000)
-            #wx.CallAfter(self.Destroy)
+            self.destroy_flag = 3
             self.prdbg(_T("DID Destroy"))
 
     def on_destroy(self, event):
@@ -9775,6 +9791,16 @@ class TopWnd(wx.Frame):
 
 
     def on_wx_timer(self, event):
+        if self.destroy_flag > 0:
+            self.destroy_flag -= 1
+            if self.destroy_flag == 0:
+                self.main_timer.Stop()
+                self.Destroy()
+                self.destroy_flag = -1
+            return
+        elif self.destroy_flag < 0:
+            return
+
         self.cmd_on_wx_timer(from_user = True, event = event)
 
     def cmd_on_wx_timer(self, from_user = False, event = None):
