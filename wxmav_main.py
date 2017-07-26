@@ -9519,8 +9519,8 @@ class TopWnd(wx.Frame):
                 if self.pos_seek_state == wx.media.MEDIASTATE_PLAYING:
                     self.medi.Play()
                 self.pos_seek_state = None
-                # this might be an oppotune time for:
-                self.config_wr()
+                #XXX this might be an oppotune time for:
+                #self.config_wr()
             else:
                 v = self.pos_sld.GetValue()
                 v = float(v - self.pos_sld.GetMin()) / self.pos_mul
@@ -9657,6 +9657,8 @@ class TopWnd(wx.Frame):
         config.WriteInt(_T("volume"), self.vol_cur)
         st = self.get_medi_state()
         cur = self.medi.Length()
+        t = int(float(self.pos_mul) * self.medi.Tell() + 0.5)
+        print("CURRENT: len {} -- pos {}".format(cur,t))
         if (st == wx.media.MEDIASTATE_PLAYING or
             st == wx.media.MEDIASTATE_PAUSED) and cur > 0:
             cur = int(float(self.pos_mul) * self.medi.Tell() + 0.5)
@@ -9719,6 +9721,8 @@ class TopWnd(wx.Frame):
         wx.GetApp().set_reslist(self.reslist)
 
         if event.CanVeto():
+            self.config_wr(flush = True)
+
             if self.opt_quit_query:
                 rs = wx.MessageBox(
                     _("Do you really want to quit?"),
@@ -9730,7 +9734,6 @@ class TopWnd(wx.Frame):
                     self.prdbg(_T("DID Veto 1"))
                     return
 
-            self.config_wr(flush = True)
             self.register_ms_hotkeys(False)
             self.Show(False)
 
@@ -9740,12 +9743,11 @@ class TopWnd(wx.Frame):
                 event.Veto(True)
                 self.prdbg(_T("DID Veto 2"))
         else:
-            self.config_wr(flush = True)
             self.cmd_on_stop()
             wx.GetApp().test_exit()
             self.register_ms_hotkeys(False)
             self.Show(False)
-            self.unload_media(True)
+            #self.unload_media(True)
             self.del_taskbar_object()
             self.Destroy()
             self.prdbg(_T("DID Destroy"))
