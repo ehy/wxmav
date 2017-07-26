@@ -9657,8 +9657,6 @@ class TopWnd(wx.Frame):
         config.WriteInt(_T("volume"), self.vol_cur)
         st = self.get_medi_state()
         cur = self.medi.Length()
-        t = int(float(self.pos_mul) * self.medi.Tell() + 0.5)
-        print("CURRENT: len {} -- pos {}".format(cur,t))
         if (st == wx.media.MEDIASTATE_PLAYING or
             st == wx.media.MEDIASTATE_PAUSED) and cur > 0:
             cur = int(float(self.pos_mul) * self.medi.Tell() + 0.5)
