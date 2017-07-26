@@ -6994,6 +6994,9 @@ class TopWnd(wx.Frame):
         def mpris_sendsignal_check(self):
             pass
 
+        def metadata_check(self):
+            pass
+
     # END dbus interface/object misc.
 
     def set_statusbar(self, txt, pane, notify = False):
@@ -9736,16 +9739,19 @@ class TopWnd(wx.Frame):
             self.Show(False)
 
             if wx.GetApp().test_exit():
+                self.cmd_on_stop()
+                self.unload_media(True)
+                self.del_taskbar_object()
                 self.Destroy()
             else:
                 event.Veto(True)
                 self.prdbg(_T("DID Veto 2"))
         else:
-            self.cmd_on_stop()
             wx.GetApp().test_exit()
             self.register_ms_hotkeys(False)
             self.Show(False)
-            #self.unload_media(True)
+            self.cmd_on_stop()
+            self.unload_media(True)
             self.del_taskbar_object()
             self.Destroy()
             self.prdbg(_T("DID Destroy"))
