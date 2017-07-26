@@ -52,6 +52,14 @@
 #define SIZE_MAX ULONG_MAX
 #endif
 
+#ifndef DO_MEDIAKEYS
+#define DO_MEDIAKEYS 1
+#endif
+
+#ifndef DO_MPRIS2
+#define DO_MPRIS2 1
+#endif
+
 #if _DEBUG
 /* e.g., if a specific file is preferred over
  * a /tmp/template, then define DBUS_GIO_DEBUGFILE
@@ -454,6 +462,7 @@ GDBusProxy *keys_proxy_all[A_SIZE(keys_path_attempts)];
 static void
 _get_media_keys_proxies(const dbus_proc_in *in, const char *prg, int fd)
 {
+#if DO_MEDIAKEYS
     size_t i;
 
     for ( i = 0; i < A_SIZE(keys_path_attempts); i++ ) {
@@ -498,11 +507,13 @@ _get_media_keys_proxies(const dbus_proc_in *in, const char *prg, int fd)
                           G_DBUS_CALL_FLAGS_NO_AUTO_START,
                           -1, NULL, NULL, NULL);
     }
+#endif /* DO_MEDIAKEYS */
 }
 
 static void
 _free_media_keys_proxies(const dbus_proc_in *in, const char *prg)
 {
+#if DO_MEDIAKEYS
     size_t i;
 
     for ( i = 0; i < A_SIZE(keys_path_attempts); i++ ) {
@@ -519,11 +530,13 @@ _free_media_keys_proxies(const dbus_proc_in *in, const char *prg)
 
         g_object_unref(proxy);
     }
+#endif /* DO_MEDIAKEYS */
 }
 
 static void
 _mpris2_app_setup(const char *prg, mpris_data_struct *dat)
 {
+#if DO_MPRIS2
     if ( mpris_fd_read >= 0 && mpris_fd_write >= 0 ) {
         if ( (mpris_rfp = fdopen(mpris_fd_read, "r")) == NULL ) {
             perror("fdopen(mpris_fd_read, \"r\") (MPRIS2 coproc)");
@@ -573,11 +586,13 @@ _mpris2_app_setup(const char *prg, mpris_data_struct *dat)
 
     fprintf(fpinfo, "%s: MPRIS2 support is %s\n", prog,
             MPRIS2_ok ? "on" : "off");
+#endif /* DO_MPRIS2 */
 }
 
 static void
 _mpris2_app_setdown(const char *prg, mpris_data_struct *dat)
 {
+#if DO_MPRIS2
     if ( MPRIS2_ok == 0 ){
         return;
     }
@@ -598,6 +613,7 @@ _mpris2_app_setdown(const char *prg, mpris_data_struct *dat)
     if ( mpris_wfp != NULL ) {
         fclose(mpris_wfp);
     }
+#endif /* DO_MPRIS2 */
 }
 
 /* main procedure for dbus gio coprocess */
@@ -629,6 +645,7 @@ dbus_gio_main(const dbus_proc_in *in)
     g_unix_signal_add(glib_quit_signal, on_glib_quit_signal,
                       (gpointer)dat);
 
+#if DO_MPRIS2
     if ( MPRIS2_ok ) {
         /* DO NOT use g_idle_add: it really spins!
         timecb_dat->reg_id = g_idle_add(on_glib_timer,
@@ -639,6 +656,7 @@ dbus_gio_main(const dbus_proc_in *in)
                                            on_glib_timer,
                                            (gpointer)&timecb_dat);
     }
+#endif /* DO_MPRIS2 */
 
     /* the loop is poised twixt setup and teardown */
     g_main_loop_run(loop);
@@ -928,16 +946,16 @@ on_glib_timer(gpointer user_data)
 static gboolean
 on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
 {
-    mpris_data_struct *dat = (mpris_data_struct *)user_data;
-    static size_t bufsz = 0;  /* buffer from dat not used, */
-    static char  *buf = NULL; /* in case of reentrence */
-    static const char  *pfx = "mpris:";
-    static const size_t pfxsz = sizeof("mpris:") - 1;
+    static size_t bufsz        = 0;    /* buffer from dat not used, */
+    static char  *buf          = NULL; /* in case of reentrence */
+    static const char  *pfx    = "mpris:";
+    static const size_t pfxsz  = sizeof("mpris:") - 1;
 
+#   define GIO_ERRBITS (G_IO_HUP | G_IO_ERR | G_IO_NVAL)
     ssize_t rdlen;
     char    *p;
-    gboolean ret = TRUE;
-    const GIOCondition errbits = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+    gboolean ret               = TRUE;
+    mpris_data_struct *dat     = (mpris_data_struct *)user_data;
 
     fprintf(fpinfo, "%s re. %d: %s (MPRIS2_ok == %d)\n", prog,
             reenter_guard, "on_mpris_sig_read", MPRIS2_ok);
@@ -960,14 +978,15 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
             break;
         }
 
-        if ( condition & errbits ) {
-            GMainLoop *loop = dat->loop;
-
+        if ( condition & GIO_ERRBITS ) {
             fprintf(fpinfo,
                     "%s: %s on mpris client read fd; quitting\n",
                     prog, condition & G_IO_HUP ? "close" : "error");
 
-            g_main_loop_quit(loop);
+#if DO_MPRIS2
+            stop_mpris_service(dat);
+#endif /* DO_MPRIS2 */
+            g_main_loop_quit(dat->loop);
 
             ret = FALSE;
             break;
@@ -1006,6 +1025,7 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
         p = buf + pfxsz;
         rdlen -= pfxsz;
 
+#if DO_MPRIS2
         if ( S_CI_EQ(p, "on") ) {
             start_mpris_service(dat);
         } else if ( S_CI_EQ(p, "off") ) {
@@ -1013,8 +1033,9 @@ on_mpris_sig_read(gint fd, GIOCondition condition, gpointer user_data)
         } else if ( S_CI_EQ(p, "signal") ) {
             ++mpris_signal_count;
             fprintf(fpinfo, "%s: signal flag is now %d\n",
-                        prog, mpris_signal_count);
+                    prog, mpris_signal_count);
         }
+#endif /* DO_MPRIS2 */
     } while ( 0 ); /* breakable block */
 
     --reenter_guard;

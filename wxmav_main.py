@@ -2674,6 +2674,7 @@ elif _in_xws:
                     fcntl.fcntl(fd, fcntl.F_GETFL, 0)
                 except IOError:
                     # descriptor n is not open
+                    print("UNEXPECTED: fd {} not open".format(fd))
                     n = os.open(os.devnull)
                     if n != fd:
                         os.dup2(n, fd)
@@ -2758,24 +2759,22 @@ elif _in_xws:
 
         def close_mpris_io(self):
             t = (self.mpris2_parent,
-                 self.mpris2_child,
                  self.mpris2_parsig,
+                 self.mpris2_child,
                  self.mpris2_chsig,
                  self.mpris2_control)
 
             for io in t:
                 if not io:
                     continue
-                for fd in io.get_fds():
-                    if fd >= 0:
-                        try:
-                            os.close(fd)
-                        except (OSError, IOError) as e:
-                            self.err_msg(_T(
-                                "close mpris fd: error '{e}'").format(
-                                e = e.strerror))
-                        except:
-                            pass
+                try:
+                    io.close()
+                except (OSError, IOError) as e:
+                    self.err_msg(_T(
+                        "close mpris fd: error '{e}'").format(
+                        e = e.strerror))
+                except:
+                    pass
 
             self.mpris2_parent  = None
             self.mpris2_child   = None
@@ -2934,16 +2933,10 @@ elif _in_xws:
                     self.ch_proc.wait()
                     pid = -1
 
-            if self.mpris2_child:
-                ch_r, ch_w = self.mpris2_child.get_fds()
-                sigr, sigw = self.mpris2_chsig.get_fds()
-                if sigr != ch_r:
-                    os.close(sigr)
-                if sigw != ch_w:
-                    os.close(sigw)
-                os.close(ch_r)
-                os.close(ch_w)
-                self.mpris2_child = self.mpris2_chsig = None
+            # XXX: close child fds here?
+            # did have code, which was wrong, and caused
+            # a bad descriptor in libpulse->abort() --
+            # not closing child fds is safe, at least
 
             # error?
             if pid < 0:
@@ -6156,12 +6149,6 @@ class TopWnd(wx.Frame):
         self.in_play = False
         self.in_stop = False
         self.load_ok = False
-
-        # flag to indicate self.Destroy() should be called by timer:
-        # a complication arising from from problems with
-        # Linux/gstreamer/pulseaudio on shutdown, where pulseaudio
-        # complains or even abort()s (braindead)
-        self.destroy_flag = 0
 
         # grrr
         self.seek_and_pause_hack =  0
@@ -9729,9 +9716,6 @@ class TopWnd(wx.Frame):
         self.Close(False)
 
     def on_close(self, event):
-        if self.destroy_flag != 0:
-            return
-
         wx.GetApp().set_reslist(self.reslist)
 
         if event.CanVeto():
@@ -9746,26 +9730,24 @@ class TopWnd(wx.Frame):
                     self.prdbg(_T("DID Veto 1"))
                     return
 
+            self.config_wr(flush = True)
+            self.register_ms_hotkeys(False)
+            self.Show(False)
+
             if wx.GetApp().test_exit():
-                self.config_wr(flush = True)
-                self.Show(False)
-                self.cmd_on_stop()
-                self.unload_media(True)
-                self.err_msg.register_ms_hotkeys(False)
-                self.del_taskbar_object()
-                self.destroy_flag = 3
+                self.Destroy()
             else:
                 event.Veto(True)
                 self.prdbg(_T("DID Veto 2"))
         else:
             self.config_wr(flush = True)
-            self.Show(False)
             self.cmd_on_stop()
-            self.unload_media(True)
             wx.GetApp().test_exit()
             self.register_ms_hotkeys(False)
+            self.Show(False)
+            self.unload_media(True)
             self.del_taskbar_object()
-            self.destroy_flag = 3
+            self.Destroy()
             self.prdbg(_T("DID Destroy"))
 
     def on_destroy(self, event):
@@ -9791,16 +9773,6 @@ class TopWnd(wx.Frame):
 
 
     def on_wx_timer(self, event):
-        if self.destroy_flag > 0:
-            self.destroy_flag -= 1
-            if self.destroy_flag == 0:
-                self.main_timer.Stop()
-                self.Destroy()
-                self.destroy_flag = -1
-            return
-        elif self.destroy_flag < 0:
-            return
-
         self.cmd_on_wx_timer(from_user = True, event = event)
 
     def cmd_on_wx_timer(self, from_user = False, event = None):
