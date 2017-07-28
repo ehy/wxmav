@@ -52,14 +52,6 @@
 #define SIZE_MAX ULONG_MAX
 #endif
 
-#ifndef DO_MEDIAKEYS
-#define DO_MEDIAKEYS 1
-#endif
-
-#ifndef DO_MPRIS2
-#define DO_MPRIS2 1
-#endif
-
 #if _DEBUG
 /* e.g., if a specific file is preferred over
  * a /tmp/template, then define DBUS_GIO_DEBUGFILE
@@ -76,6 +68,60 @@
  * can be followed by a value inline; e.g., 'b:true' */
 #define _TSEPC ':'
 #define _TSEPS ":"
+
+/* for dbus method calls via glib/gio proxies:
+ * object attributes that are commonly required together
+ */
+typedef struct _dbus_object_ids {
+    const gchar *well_known_name; /*  org.foo.BarDaemon */
+    const gchar *object_path;     /* /org/foo/BarDaemon/BazBits */
+    const gchar *interface;       /*  org.foo.BarDaemon.BazBits */
+} dbus_object_ids;
+
+/* macros to help with struct _dbus_object_ids
+ */
+#define _PUT_DBUS_IDS_3(tld, dom, site) { \
+     tld "." dom "." site , \
+ "/" tld "/" dom "/" site , \
+     tld "." dom "." site \
+    }
+#define _PUT_DBUS_IDS_RES3(tld, dom, site, respth, resifc) { \
+     tld "." dom "." site , \
+ "/" tld "/" dom "/" site "/" respth , \
+     tld "." dom "." site "." resifc \
+    }
+#define _PUT_DBUS_IDS_KEYS(v) \
+_PUT_DBUS_IDS_RES3("org", v, "SettingsDaemon", "MediaKeys", "MediaKeys")
+
+/* data for the dbus objects that we hope will provide
+ * mediakeys (PlayPause, Next, etc.) signals
+ */
+dbus_object_ids keys_path_attempts[] = {
+    _PUT_DBUS_IDS_KEYS("freedesktop"), /* found in xdg-screensaver */
+    _PUT_DBUS_IDS_KEYS("xfce"),        /* just a guess */
+    _PUT_DBUS_IDS_KEYS("unity"),       /* just a guess */
+    _PUT_DBUS_IDS_KEYS("mate"),        /* found in xdg-screensaver */
+    _PUT_DBUS_IDS_KEYS("cinnamon"),    /* found in xdg-screensaver */
+    _PUT_DBUS_IDS_KEYS("gnome")        /* found in xdg-screensaver */
+};
+
+GDBusProxy *keys_proxy_all[A_SIZE(keys_path_attempts)];
+
+/* data for the dbus objects that we hope will provide
+ * screensaver control (Inhibit, UnInhibit)
+ */
+dbus_object_ids ssav_path_attempts[] = {
+    _PUT_DBUS_IDS_3("org", "freedesktop", "ScreenSaver"),
+    /* as of 2017, the xdg-screensaver script still works for
+     * mate and cinnamon -- also must check if these have the
+     * Inhibit/UnInhibit methods with expected args and results
+    _PUT_DBUS_IDS_3("org", "mate", "ScreenSaver"),
+    _PUT_DBUS_IDS_3("org", "cinnamon", "ScreenSaver"),
+    */
+    _PUT_DBUS_IDS_3("org", "gnome", "SessionManager")
+};
+
+GDBusProxy *ssav_proxy_all[A_SIZE(ssav_path_attempts)];
 
 /* handshake proc return value macros */
 #define _EXCHGHS_WR_ERR -1
@@ -122,15 +168,28 @@ typedef struct _time_event_cb_data {
 /* main procedure for dbus gio coprocess */
 static int
 dbus_gio_main(const dbus_proc_in *in);
+
 /* signal handler for specified quit signal,
  * (system signal, not glib)
  */
 static void
 handle_quit_signal(int s);
+
+/* signal handler for specified screensaver signals,
+ * (system signal, not glib)
+ */
+static void
+handle_screensaver_signal(int s);
+int screensaver_on_signal  = SIGUSR1;
+int screensaver_off_signal = SIGUSR2;
+volatile int got_screensaver_on_signal  = 0;
+volatile int got_screensaver_off_signal = 0;
+
 /* signal handler for glib (app arbitrary) quit signals */
 int glib_quit_signal = SIGTERM;
 static gboolean
 on_glib_quit_signal(gpointer user_data);
+
 /* signal handler for glib signals (i.e., callback) */
 static void
 on_glib_signal_mediakey(GDBusProxy *proxy,
@@ -170,6 +229,19 @@ static GVariant*
 gvar_from_simple_type(int type,
                       const char *value,
                       mpris_data_struct *dat);
+/* convenience function: get from GVariant with g_variant_get
+ * if type matches type (format) string; else, _assume_ the
+ * variant is a container type and use g_variant_get_child --
+ * note that g_variant_get_child *might crash* the program
+ * if passed a variant of simple type --
+ * Args:
+ *       param      -- pointer to GVariant with data
+ *       idx        -- index to use if not a type match
+ *       fmt        -- the type (format) string to check against
+ *       dest       -- location to receive the value
+ */
+static void
+get_gvar_one(GVariant *param, gsize idx, const char *fmt, void *dest);
 /* when client wants arguments -- method invocation, set property --
  * client calls for them with string "ARGS" and a colon sep'd
  * type string, e.g. 'b:x:a{sv}' -- call this to print args extracted
@@ -319,6 +391,9 @@ start_dbus_coproc(const dbus_proc_in *in,
         signal(in->quit_sig, handle_quit_signal);
     }
 
+    signal(screensaver_on_signal, handle_screensaver_signal);
+    signal(screensaver_off_signal, handle_screensaver_signal);
+
     if ( av != NULL ) {
         int        r;
         char       *prg;
@@ -375,6 +450,142 @@ start_dbus_coproc(const dbus_proc_in *in,
     _exit(dbus_gio_main(in));
 }
 
+/* END EXTERNAL API:
+ */
+
+/* INTERNAL PROCEDURES:
+ */
+
+/*
+ * invoke Inhibit method on dbus screensaver object:
+ * pass application name in appname, reason for inhibit
+ * in reason (e.g., "A/V medium playing"), and address of pointer
+ * to 32 bit unsigned integers in ppcookie to receive the cookies
+ * that must be passed to the uninhibit method --
+ * returns 0 on success else non-zero
+ * -- NOTE ppcookie is not terminated -- consider it opaque
+ */
+int
+dbus_inhibit_screensaver(const char *appname,
+                         const char *reason,
+                         uint32_t   **ppcookie)
+{
+#if DO_DBUS_SSAVERS
+    static const char *method = "Inhibit";
+    uint32_t *pcookie;
+    size_t   i;
+    int      n_ok = 0;
+
+    pcookie = xcalloc(A_SIZE(ssav_path_attempts), sizeof(*pcookie));
+
+    for ( i = 0; i < A_SIZE(ssav_path_attempts); i++ ) {
+        guint32  cookie;
+        GVariant *res;
+        GVariant *parameters;
+        GError   *error = NULL;
+
+        if ( ssav_proxy_all[i] == NULL ) {
+            continue;
+        }
+
+        parameters = g_variant_new((const gchar *)"(ss)",
+                                   (const gchar *)appname,
+                                   (const gchar *)reason);
+
+        res = g_dbus_proxy_call_sync(ssav_proxy_all[i],
+                                     (const gchar *)method,
+                                     parameters,
+                                     G_DBUS_CALL_FLAGS_NONE,
+                                     (gint)-1,
+                                     NULL,
+                                     &error);
+
+        if ( error != NULL || res == NULL ) {
+            fprintf(fpinfo, "%s: ssaver %s for '%s': \"%s\"\n",
+                    prog, method, ssav_path_attempts[i].well_known_name,
+                    error == NULL ?
+                        "[unknown]" : (char *)error->message);
+
+            if ( error != NULL ) {
+                g_error_free(error);
+            }
+
+            g_object_unref(ssav_proxy_all[i]);
+            ssav_proxy_all[i] = NULL;
+
+            continue;
+        }
+
+        ++n_ok;
+
+        get_gvar_one(res, 0, "u", &cookie);
+
+        pcookie[i] = (uint32_t)cookie;
+
+        fprintf(fpinfo, "%s: ssaver %s success (%zu) for '%s'\n",
+                prog, method, (size_t)cookie,
+                ssav_path_attempts[i].well_known_name);
+    }
+
+    fprintf(fpinfo, "%s: ssaver proxy count %d\n", prog, n_ok);
+
+    if ( n_ok ) {
+        *ppcookie = pcookie;
+        return 0;
+    }
+
+    free(pcookie);
+    *ppcookie = NULL;
+#endif /* DO_DBUS_SSAVERS */
+
+    return -1;
+}
+
+/*
+ * invoke UnInhibit method on dbus screensaver object:
+ * pass the pcookie assigned by *successful* call to
+ * dbus_inhibit_screensaver --
+ * returns 0 on success else non-zero
+ */
+int
+dbus_uninhibit_screensaver(uint32_t *pcookie)
+{
+#if DO_DBUS_SSAVERS
+    static const char *method = "UnInhibit";
+    size_t i;
+
+    if ( pcookie == NULL ) {
+        return -1;
+    }
+
+    for ( i = 0; i < A_SIZE(ssav_path_attempts); i++ ) {
+        GVariant *parameters;
+
+        if ( ssav_proxy_all[i] == NULL || pcookie[i] == 0 ) {
+            continue;
+        }
+
+        parameters = g_variant_new((const gchar *)"(u)",
+                                   (guint32)pcookie[i]);
+
+        g_dbus_proxy_call(ssav_proxy_all[i],
+                          (const gchar *)method,
+                          parameters,
+                          G_DBUS_CALL_FLAGS_NONE,
+                          (gint)-1,
+                          NULL, NULL, NULL);
+
+        fprintf(fpinfo, "%s: ssaver %s done (%zu) for '%s'\n",
+                prog, method, (size_t)pcookie[i],
+                ssav_path_attempts[i].well_known_name);
+    }
+
+    free(pcookie);
+#endif /* DO_DBUS_SSAVERS */
+
+    return 0;
+}
+
 static void
 handle_quit_signal(int s)
 {
@@ -383,6 +594,16 @@ handle_quit_signal(int s)
 
     /* this is working with on_glib_quit_signal() below */
     kill(getpid(), glib_quit_signal);
+}
+
+static void
+handle_screensaver_signal(int s)
+{
+    if ( s == screensaver_on_signal ) {
+        ++got_screensaver_on_signal;
+    } else if ( s == screensaver_off_signal ) {
+        ++got_screensaver_off_signal;
+    }
 }
 
 /* signal handler for glib (app arbitrary) quit signals */
@@ -432,92 +653,79 @@ on_glib_signal_mediakey(GDBusProxy *proxy,
     g_free(param_str);
 }
 
-typedef struct _dbus_path_mediakeys {
-    const gchar *well_known_name; /*  org.foo.BarDaemon */
-    const gchar *object_path;     /* /org/foo/BarDaemon/BazBits */
-    const gchar *interface;       /*  org.foo.BarDaemon.BazBits */
-    const  char *domain_name;     /*      foo */
-} dbus_path_mediakeys;
+static GDBusProxy*
+_get_object_proxy(const dbus_object_ids *object_ids,
+                  GDBusProxyFlags flags,
+                  const char *prg)
+{
+    GDBusProxy *proxy = NULL;
+    GError     *error = NULL;
 
-#define _PUT_DBUS_BY_NAMES(tld, dom, site, respth, resifc) { \
-     tld "." dom "." site , \
- "/" tld "/" dom "/" site "/" respth , \
-     tld "." dom "." site "." resifc , \
-             dom \
+    proxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+                                          flags,
+                                          NULL, /* GDBusInterfaceInfo */
+                                          object_ids->well_known_name,
+                                          object_ids->object_path,
+                                          object_ids->interface,
+                                          NULL, /* GCancellable */
+                                          &error);
+
+    if ( error != NULL || proxy == NULL ) {
+        if ( prg != NULL ) {
+            fprintf(fpinfo, "%s: failed proxy for '%s': \"%s\"\n",
+                    prg, object_ids->well_known_name,
+                    error == NULL ?
+                        "[unknown]" : (char *)error->message);
+        }
+
+        if ( error != NULL ) {
+            g_error_free(error);
+        }
+
+        return NULL;
     }
-#define _PUT_DBUS_PATH_KEYS(v) \
-_PUT_DBUS_BY_NAMES("org", v, "SettingsDaemon", "MediaKeys", "MediaKeys")
 
-dbus_path_mediakeys keys_path_attempts[] = {
-    _PUT_DBUS_PATH_KEYS("freedesktop"), /* found in xdg-screensaver */
-    _PUT_DBUS_PATH_KEYS("xfce"),        /* just a guess */
-    _PUT_DBUS_PATH_KEYS("unity"),       /* just a guess */
-    _PUT_DBUS_PATH_KEYS("mate"),        /* found in xdg-screensaver */
-    _PUT_DBUS_PATH_KEYS("cinnamon"),    /* found in xdg-screensaver */
-    _PUT_DBUS_PATH_KEYS("gnome")        /* found in xdg-screensaver */
-};
-
-GDBusProxy *keys_proxy_all[A_SIZE(keys_path_attempts)];
+    return proxy;
+}
 
 static void
 _get_media_keys_proxies(const dbus_proc_in *in, const char *prg, int fd)
 {
-#if DO_MEDIAKEYS
+#if DO_DBUS_KEYS
     size_t i;
 
     for ( i = 0; i < A_SIZE(keys_path_attempts); i++ ) {
-        GDBusProxy      *proxy;
         GDBusProxyFlags flags  = 0;
-        GError          *error = NULL;
-        const char      *nm = keys_path_attempts[i].domain_name;
 
-        proxy = g_dbus_proxy_new_for_bus_sync(
-                    G_BUS_TYPE_SESSION,
-                    flags,
-                    NULL, /* GDBusInterfaceInfo */
-                    keys_path_attempts[i].well_known_name,
-                    keys_path_attempts[i].object_path,
-                    keys_path_attempts[i].interface,
-                    NULL, /* GCancellable */
-                    &error);
+        keys_proxy_all[i] =
+            _get_object_proxy(&keys_path_attempts[i], flags, prg);
 
-        if ( error != NULL || proxy == NULL ) {
-            if ( prg != NULL ) {
-                fprintf(fpinfo, "%s: failed proxy for '%s': \"%s\"\n",
-                        prg, nm, error == NULL ?
-                                 "[unknown]" : (char *)error->message);
-            }
-
-            if ( error != NULL ) {
-                g_error_free(error);
-            }
-
-            keys_proxy_all[i] = NULL;
+        if ( keys_proxy_all[i] == NULL ) {
             continue;
         }
 
-        keys_proxy_all[i] = proxy;
-
-        g_signal_connect(proxy, "g-signal",
+        g_signal_connect(keys_proxy_all[i], "g-signal",
                          G_CALLBACK(on_glib_signal_mediakey),
                          (gpointer)(ptrdiff_t)fd);
 
-        g_dbus_proxy_call(proxy, "GrabMediaPlayerKeys",
+        g_dbus_proxy_call(keys_proxy_all[i], "GrabMediaPlayerKeys",
                           g_variant_new("(su)", in->app_name, 0),
                           G_DBUS_CALL_FLAGS_NO_AUTO_START,
                           -1, NULL, NULL, NULL);
     }
-#endif /* DO_MEDIAKEYS */
+#endif /* DO_DBUS_KEYS */
 }
 
 static void
 _free_media_keys_proxies(const dbus_proc_in *in, const char *prg)
 {
-#if DO_MEDIAKEYS
+#if DO_DBUS_KEYS
     size_t i;
 
     for ( i = 0; i < A_SIZE(keys_path_attempts); i++ ) {
         GDBusProxy *proxy = keys_proxy_all[i];
+
+        keys_proxy_all[i] = NULL;
 
         if ( proxy == NULL ) {
             continue;
@@ -530,7 +738,38 @@ _free_media_keys_proxies(const dbus_proc_in *in, const char *prg)
 
         g_object_unref(proxy);
     }
-#endif /* DO_MEDIAKEYS */
+#endif /* DO_DBUS_KEYS */
+}
+
+static void
+_get_ssaver_proxies(const char *prg)
+{
+#if DO_DBUS_SSAVERS
+    size_t i;
+
+    for ( i = 0; i < A_SIZE(ssav_path_attempts); i++ ) {
+        GDBusProxyFlags flags  = 0;
+
+        ssav_proxy_all[i] =
+            _get_object_proxy(&ssav_path_attempts[i], flags, prg);
+    }
+#endif /* DO_DBUS_SSAVERS */
+}
+
+static void
+_free_ssaver_proxies(const char *prg)
+{
+#if DO_DBUS_SSAVERS
+    size_t i;
+
+    for ( i = 0; i < A_SIZE(ssav_path_attempts); i++ ) {
+        if ( ssav_proxy_all[i] != NULL ) {
+            g_object_unref(ssav_proxy_all[i]);
+        }
+
+        ssav_proxy_all[i] = NULL;
+    }
+#endif /* DO_DBUS_SSAVERS */
 }
 
 static void
@@ -639,6 +878,7 @@ dbus_gio_main(const dbus_proc_in *in)
     dat->loop = loop;
 
     _get_media_keys_proxies(in, prg, outfd);
+    _get_ssaver_proxies(prg);
 
     _mpris2_app_setup(prg, dat);
 
@@ -665,6 +905,7 @@ dbus_gio_main(const dbus_proc_in *in)
     timecb_dat = NULL;
 
     _free_media_keys_proxies(in, prg);
+    _free_ssaver_proxies(prg);
 
     _mpris2_app_setdown(prg, dat);
 
@@ -892,6 +1133,36 @@ unnl_len(char *p, ssize_t len)
     return len;
 }
 
+#if DO_DBUS_SSAVERS
+uint32_t *dbus_inhibit_cookies = NULL;
+
+static void
+_screensaver_off(void)
+{
+    if ( dbus_inhibit_cookies == NULL ) {
+        if ( dbus_inhibit_screensaver("wxmav",
+                                      "A/V medium playing",
+                                      &dbus_inhibit_cookies) ) {
+            dbus_inhibit_cookies = NULL;
+            fprintf(stderr, "%s: failed dbus screensaver disable\n",
+                    prog);
+        }
+    }
+}
+
+static void
+_screensaver_on(void)
+{
+    if ( dbus_inhibit_cookies != NULL ) {
+        if ( dbus_uninhibit_screensaver(dbus_inhibit_cookies) ) {
+            fprintf(stderr, "%s: failed dbus screensaver enable\n",
+                    prog);
+        }
+        dbus_inhibit_cookies = NULL;
+    }
+}
+#endif /* DO_DBUS_SSAVERS */
+
 static volatile int mpris_signal_count = 0;
 
 /* event 'timeout' */
@@ -938,6 +1209,17 @@ on_glib_timer(gpointer user_data)
                                     NULL, NULL, NULL);
         }
     }
+
+#if DO_DBUS_SSAVERS
+    if ( got_screensaver_off_signal ) {
+        --got_screensaver_off_signal;
+        _screensaver_off();
+    }
+    if ( got_screensaver_on_signal ) {
+        --got_screensaver_on_signal;
+        _screensaver_on();
+    }
+#endif /* DO_DBUS_SSAVERS */
 
     return G_SOURCE_CONTINUE;
 }
@@ -1131,7 +1413,7 @@ _exchange_handshake(mpris_data_struct *dat,
  *       dest       -- location to receive the value
  */
 static void
-_get_gvar_one(GVariant *param, gsize idx, const char *fmt, void *dest)
+get_gvar_one(GVariant *param, gsize idx, const char *fmt, void *dest)
 {
     gboolean gb = g_variant_is_of_type(param, G_VARIANT_TYPE(fmt));
 
@@ -1193,44 +1475,44 @@ put_args_from_gvar(const char *types,
                 r = fprintf(dat->fpwr, "%s\n", "");
             } else if ( S_CS_EQ(p, "b") ) {
                 gboolean v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%s\n",
                         v == TRUE ? "true" : "false");
             } else if ( S_CS_EQ(p, "y") ) {
                 guchar v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%u\n", (unsigned int)v);
             } else if ( S_CS_EQ(p, "n") ) {
                 gint16 v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%d\n", (int)v);
             } else if ( S_CS_EQ(p, "q") ) {
                 guint16 v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%u\n", (unsigned int)v);
             } else if ( S_CS_EQ(p, "i") ) {
                 gint32 v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%ld\n", (long int)v);
             } else if ( S_CS_EQ(p, "u") ) {
                 guint32 v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%lu\n", (unsigned long int)v);
             } else if ( S_CS_EQ(p, "x") ) {
                 gint64 v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%lld\n", (long long)v);
             } else if ( S_CS_EQ(p, "t") ) {
                 guint64 v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%llu\n", (unsigned long long)v);
             } else if ( S_CS_EQ(p, "h") ) {
                 gint32 v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%ld\n", (long int)v);
             } else if ( S_CS_EQ(p, "d") ) {
                 gdouble v;
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
                 r = fprintf(dat->fpwr, "%f\n", (double)v);
             } else if ( S_CS_EQ(p, "s") ||
                         S_CS_EQ(p, "o") ||
@@ -1238,7 +1520,7 @@ put_args_from_gvar(const char *types,
                 gchar *v;
                 int ok = 0;
 
-                _get_gvar_one(parameters, ix, p, &v);
+                get_gvar_one(parameters, ix, p, &v);
 
                 if ( v == NULL ) {
                     v = "error";

@@ -18,10 +18,26 @@
  */
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 
-typedef struct dbus_gio_proc_data_out {
+/* do: request multimedia keys over dbus */
+#ifndef DO_DBUS_KEYS
+#define DO_DBUS_KEYS 1
+#endif
+
+/* do: try screensaver control over dbus */
+#ifndef DO_DBUS_SSAVERS
+#define DO_DBUS_SSAVERS 1
+#endif
+
+/* do: support the MPRIS2 player control spec (over dbus) */
+#ifndef DO_MPRIS2
+#define DO_MPRIS2 1
+#endif
+
+typedef struct _dbus_gio_proc_data_out {
     pid_t   proc_pid;
     int     fd_rd;    /* read end of pipe, only assigned if fd_wr */
                       /* is not given (i.e. < 0) in */
@@ -29,7 +45,7 @@ typedef struct dbus_gio_proc_data_out {
     int     err_no;   /* 0 if success, else errno */
 } dbus_proc_out;
 
-typedef struct dbus_gio_proc_data_in {
+typedef struct _dbus_gio_proc_data_in {
     int     quit_sig; /* if > 0 handle this signal as quit command */
     int     *def_sig; /* signals to be set to default */
     size_t  num_sig;  /* count in def_sig */
@@ -59,3 +75,25 @@ start_dbus_coproc(const dbus_proc_in *in,
                   dbus_proc_out *out,
                   char **av);
 
+/*
+ * invoke Inhibit method on dbus screensaver object:
+ * pass application name in appname, reason for inhibit
+ * in reason (e.g., "A/V medium playing"), and address of pointer
+ * to 32 bit unsigned integers in ppcookie to receive the cookies
+ * that must be passed to the uninhibit method --
+ * returns 0 on success else non-zero
+ * -- NOTE ppcookie is not terminated -- consider it opaque
+ */
+int
+dbus_inhibit_screensaver(const char *appname,
+                         const char *reason,
+                         uint32_t   **ppcookie);
+
+/*
+ * invoke UnInhibit method on dbus screensaver object:
+ * pass the pcookie assigned by *successful* call to
+ * dbus_inhibit_screensaver --
+ * returns 0 on success else non-zero
+ */
+int
+dbus_uninhibit_screensaver(uint32_t *pcookie);

@@ -135,6 +135,27 @@ const char *appname;
  * use p_exit */
 void (*p_exit)(int) = NULL;
 
+/* these are associated with macro HAVE_GIO20,
+ * but define them for unconditional use
+ */
+int dbus_proc_status = -1;
+int dbus_fd = -1;
+int mpris_fd_write = -1;
+int mpris_fd_read  = -1;
+int mpris_fd_sig_write = -1;
+int mpris_fd_sig_read  = -1;
+
+/* these are associated with macro HAVE_GIO20,
+ * but but not for unconditional use
+ */
+#if HAVE_GIO20
+dbus_proc_out dbus_out;
+dbus_proc_in  dbus_in;
+#ifndef DBUS_PROC_QUIT_SIG
+#define DBUS_PROC_QUIT_SIG SIGINT
+#endif
+#endif /* HAVE_GIO20 */
+
 /* store parent pid for child coprocess */
 pid_t app_main_pid;
 
@@ -1243,6 +1264,11 @@ ssave_enable(void)
 #if HAVE_XEXT
     _DPMI_on();
 #endif
+#if HAVE_GIO20
+    if ( dbus_proc_status == 0 ) {
+        kill(dbus_out.proc_pid, SIGUSR1);
+    }
+#endif /* HAVE_GIO20 */
 }
 
 static void
@@ -1268,7 +1294,7 @@ ssave_disable(Display *dpy)
             XScreenSaverSuspend(dpy, True);
             _xssave_dpy = dpy;
             fprintf(stderr, "%s: Xss query true (%d, %d)\n",
-                prog, evt, err);
+                    prog, evt, err);
         }
 #endif
         _ssave_off(dpy);
@@ -1276,6 +1302,11 @@ ssave_disable(Display *dpy)
 #if HAVE_XEXT
     _DPMI_off(dpy);
 #endif
+#if HAVE_GIO20
+    if ( dbus_proc_status == 0 ) {
+        kill(dbus_out.proc_pid, SIGUSR2);
+    }
+#endif /* HAVE_GIO20 */
 }
 
 /*
@@ -1340,24 +1371,6 @@ check_poll_data_error(void)
     }
     return 0;
 }
-
-
-/* these are associated with macro HAVE_GIO20,
- * but define them for unconditional use
- */
-int dbus_proc_status = -1;
-int dbus_fd = -1;
-int mpris_fd_write = -1;
-int mpris_fd_read  = -1;
-int mpris_fd_sig_write = -1;
-int mpris_fd_sig_read  = -1;
-#if HAVE_GIO20
-dbus_proc_out dbus_out;
-dbus_proc_in  dbus_in;
-#ifndef DBUS_PROC_QUIT_SIG
-#define DBUS_PROC_QUIT_SIG SIGINT
-#endif
-#endif /* HAVE_GIO20 */
 
 static int
 do_dbus_proc(char *av[])
