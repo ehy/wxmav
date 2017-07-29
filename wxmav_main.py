@@ -3450,7 +3450,7 @@ elif _in_xws:
                 self.err_msg(
                     _T("signal_emit: unexpected method '{}'").format(r))
 
-            if True:
+            if False:
                 # write object path
                 self.wr(wr_ch, opath)
                 # write interface name
@@ -3727,32 +3727,16 @@ elif _in_xws:
                 if st == wx.media.MEDIASTATE_PLAYING:
                     self.w.do_command_button(self.w.id_play)
             elif s_eq(meth, "Seek"):
-                fd_write(fd_wr, _T("ARGS:x\n"))
+                self.wr(fd_wr, _T("ARGS:x\n"))
                 val = self.rdstp(fd_rd, 128)
-                if self.w.load_ok and self.w.medi.Length() > 0:
-                    ln = self.w.medi.Length()
-                    val = int(val) / 1000 + ln
-                    val = min(ln, max(0, val))
-                    self.w.medi.Seek(val)
-                    if self.w.pos_seek_paused == 0:
-                        self.w.pos_seek_paused = -200
-                    elif self.w.pos_seek_paused != -200:
-                        self.w.mpris2_signal_emit(_T("Seeked"))
+                self.w.mpris_seek_method(val, True)
                 _methresp("VOID", True)
             elif s_eq(meth, "SetPosition"):
-                fd_write(fd_wr, _T("ARGS:o:x\n"))
+                self.wr(fd_wr, _T("ARGS:o:x\n"))
                 pth = self.rdstp(fd_rd, 4096)
                 val = self.rdstp(fd_rd, 128)
                 if self.w.check_dbus_itempath_current(pth):
-                    if self.w.load_ok and self.w.medi.Length() > 0:
-                        ln = self.w.medi.Length()
-                        val = int(val) / 1000
-                        val = min(ln, max(0, val))
-                        self.w.medi.Seek(val)
-                        if self.w.pos_seek_paused == 0:
-                            self.w.pos_seek_paused = -200
-                        elif self.w.pos_seek_paused != -200:
-                            self.w.mpris2_signal_emit(_T("Seeked"))
+                    self.w.mpris_seek_method(val, False)
                 _methresp("VOID", True)
             elif s_eq(meth, "OpenUri"):
                 self.wr(fd_wr, _T("ARGS:s\n"))
@@ -6251,6 +6235,9 @@ class TopWnd(wx.Frame):
             # handler should discard first when put() fails
             self.coproc_fifo = q_fifo(32)
             self.block_mpris_signals = False
+        # set by MPRIS2 Seek and SetPosition handlers --
+        # must be scrupulously reset to -1
+        self.mpris_seek = -1
 
         # get config values here, in case a setting applies
         # to interface objects created below
@@ -7003,7 +6990,7 @@ class TopWnd(wx.Frame):
         sb = self.GetStatusBar()
         t = _WX(txt)
         sb.SetStatusText(t, pane)
-        if pane == 0:
+        if pane == 0 and self.mpris_seek < 0:
             self.set_taskbar_tooltip(t, notify = notify)
 
     def set_tb_combos(self, do_group = True, do_resrc = True):
@@ -8804,12 +8791,16 @@ class TopWnd(wx.Frame):
             return
 
         if self.in_play:
+            pval = 2
+            if isinstance(event, int):
+                pval = event
+
             if self.pos_seek_state == None:
                 st = self.get_medi_state()
                 if st == wx.media.MEDIASTATE_PLAYING:
                     self.pos_seek_state = st
                     self.medi.Pause()
-            self.pos_seek_paused = 2
+            self.pos_seek_paused = pval
 
     # on_volume is only called when slider widget is manipulated by
     # user, not when slider.SetValue() is used, so there is no loop
@@ -9468,6 +9459,30 @@ class TopWnd(wx.Frame):
 
             self.SetCursor(select_cursor(wx.CURSOR_BLANK))
 
+
+    def mpris_seek_method(self, val, is_seek = False):
+        if not self.load_ok:
+            return
+
+        ln = self.medi.Length()
+        if ln < 1:
+            return
+
+        v = int(val) / 1000 # value from MPRIS2 is in usecs
+        if is_seek:
+            # this was MPRIS2.Playlist Seek method, not SetPosition
+            v += ln
+        v = min(ln, max(0, v))
+        do_seek = (self.mpris_seek < 0)
+        self.mpris_seek = v
+
+        if True or self.pos_seek_paused <= 0:
+            cur = int(float(self.pos_mul) * v + 0.5)
+            self.pos_sld.SetValue(cur)
+            self.on_position(None)
+            if do_seek:
+                self.medi.Seek(v)
+
     def do_timep(self, timer):
         # test a member that does not exist _unless_
         # the App object sets it, which means close up
@@ -9505,31 +9520,28 @@ class TopWnd(wx.Frame):
             if self.medi and self.load_ok:
                 ms = self.medi.Tell()
                 if bounded:
+                    if self.mpris_seek >= 0:
+                        ms = self.mpris_seek
                     cur = int(float(self.pos_mul) * ms + 0.5)
                     self.pos_sld.SetValue(cur)
                 elif self.in_play:
                     self.set_statusbar(self.get_time_str(tm = ms), 1)
             self.focus_medi_opt()
-            # -200 is a special value set by MPRIS2 handler on
-            # Seek() or SetPosition() methods -- indicates
-            # medi.Seek() was called directly
-            if self.pos_seek_paused == -200:
-                self.pos_seek_paused = 0
-                self.mpris2_signal_emit(_T("Seeked"))
         else:
             self.pos_seek_paused -= 1
             if self.pos_seek_paused == 0:
                 if self.pos_seek_state == wx.media.MEDIASTATE_PLAYING:
                     self.medi.Play()
                 self.pos_seek_state = None
+
+                self.mpris2_signal_emit(_T("Seeked"))
+                self.mpris_seek = -1
                 #XXX this might be an oppotune time for:
                 #self.config_wr()
             else:
                 v = self.pos_sld.GetValue()
                 v = float(v - self.pos_sld.GetMin()) / self.pos_mul
                 wx.CallAfter(self.medi.Seek, v)
-
-            self.mpris2_signal_emit(_T("Seeked"))
 
         if self.tittime > 0:
             if self.tittime == 3:
