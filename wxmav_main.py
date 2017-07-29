@@ -157,6 +157,8 @@ if py_v_is_3:
         return list(filter(*args))
     def p_map(*args):
         return list(map(*args))
+    def long(v):
+        return int(v)
 else:
     import Queue
     q_fifo       = Queue.Queue
@@ -3555,12 +3557,12 @@ elif _in_xws:
                     v = self.w.medi.Tell() * 1000
                 else:
                     v = 0
-                m = _T("x:{:d}\n").format(v)
+                m = _T("x:{}\n").format(long(v))
             elif s_eq(prop, "Seeked"):
                 # dbus signal -- glib wants a tuple
                 v = 0 if (self.w.medi.Length() < 1) else (
                     self.w.medi.Tell() * 1000)
-                m = _T("(x):{:d}\n").format(v)
+                m = _T("(x):{}\n").format(long(v))
             elif s_eq(prop, "MinimumRate") or s_eq(prop, "MaximumRate"):
                 m = _T("d:1.0\n")
             elif s_eq(prop, "CanGoNext"):
@@ -9468,7 +9470,7 @@ class TopWnd(wx.Frame):
         if ln < 1:
             return
 
-        v = int(val) / 1000 # value from MPRIS2 is in usecs
+        v = long(val) / 1000 # value from MPRIS2 is in usecs
         if is_seek:
             # this was MPRIS2.Playlist Seek method, not SetPosition
             v += ln
@@ -9477,7 +9479,7 @@ class TopWnd(wx.Frame):
         self.mpris_seek = v
 
         if True or self.pos_seek_paused <= 0:
-            cur = int(float(self.pos_mul) * v + 0.5)
+            cur = long(float(self.pos_mul) * v + 0.5)
             self.pos_sld.SetValue(cur)
             self.on_position(None)
             if do_seek:
@@ -9522,11 +9524,13 @@ class TopWnd(wx.Frame):
                 if bounded:
                     if self.mpris_seek >= 0:
                         ms = self.mpris_seek
-                    cur = int(float(self.pos_mul) * ms + 0.5)
+                    cur = long(float(self.pos_mul) * ms + 0.5)
                     self.pos_sld.SetValue(cur)
                 elif self.in_play:
                     self.set_statusbar(self.get_time_str(tm = ms), 1)
             self.focus_medi_opt()
+            if self.pos_seek_paused == -200:
+                self.pos_seek_paused = 2
         else:
             self.pos_seek_paused -= 1
             if self.pos_seek_paused == 0:
@@ -9539,9 +9543,13 @@ class TopWnd(wx.Frame):
                 #XXX this might be an oppotune time for:
                 #self.config_wr()
             else:
+                def _sk_mse(self, v, sig):
+                    self.medi.Seek(v)
+                    wx.CallAfter(self.mpris2_signal_emit, sig)
                 v = self.pos_sld.GetValue()
-                v = float(v - self.pos_sld.GetMin()) / self.pos_mul
-                wx.CallAfter(self.medi.Seek, v)
+                v = long(float(v - self.pos_sld.GetMin()) /self.pos_mul)
+                wx.CallAfter(_sk_mse, self, v, _T("Seeked"))
+                #wx.CallAfter(self.medi.Seek, v)
 
         if self.tittime > 0:
             if self.tittime == 3:

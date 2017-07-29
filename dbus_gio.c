@@ -191,8 +191,8 @@ static void
 handle_screensaver_signal(int s);
 int screensaver_on_signal  = SIGUSR1;
 int screensaver_off_signal = SIGUSR2;
-volatile int got_screensaver_on_signal  = 0;
-volatile int got_screensaver_off_signal = 0;
+volatile sig_atomic_t got_screensaver_on_signal  = 0;
+volatile sig_atomic_t got_screensaver_off_signal = 0;
 
 /* signal handler for glib (app arbitrary) quit signals */
 int glib_quit_signal = SIGTERM;
