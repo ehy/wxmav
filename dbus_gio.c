@@ -1149,7 +1149,7 @@ static void
 _screensaver_off(void)
 {
     if ( dbus_inhibit_cookies == NULL ) {
-        if ( dbus_inhibit_screensaver("wxmav",
+        if ( dbus_inhibit_screensaver(appname,
                                       "A/V medium playing",
                                       &dbus_inhibit_cookies) ) {
             dbus_inhibit_cookies = NULL;
