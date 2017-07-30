@@ -189,10 +189,12 @@ handle_quit_signal(int s);
  */
 static void
 handle_screensaver_signal(int s);
-int screensaver_on_signal  = SIGUSR1;
-int screensaver_off_signal = SIGUSR2;
-volatile sig_atomic_t got_screensaver_on_signal  = 0;
-volatile sig_atomic_t got_screensaver_off_signal = 0;
+const static
+    int screensaver_on_signal  = DBUS_UNINHIBIT_SCREENSAVER_SIGNAL;
+const static
+    int screensaver_off_signal = DBUS_INHIBIT_SCREENSAVER_SIGNAL;
+static volatile sig_atomic_t got_screensaver_on_signal  = 0;
+static volatile sig_atomic_t got_screensaver_off_signal = 0;
 
 /* signal handler for glib (app arbitrary) quit signals */
 int glib_quit_signal = SIGTERM;
@@ -475,7 +477,7 @@ start_dbus_coproc(const dbus_proc_in *in,
  * -- NOTE ppcookie is not terminated -- consider it opaque
  */
 int
-dbus_inhibit_screensaver(const char *appname,
+dbus_inhibit_screensaver(const char *app_name,
                          const char *reason,
                          uint32_t   **ppcookie)
 {
@@ -498,7 +500,7 @@ dbus_inhibit_screensaver(const char *appname,
         }
 
         parameters = g_variant_new((const gchar *)"(ss)",
-                                   (const gchar *)appname,
+                                   (const gchar *)app_name,
                                    (const gchar *)reason);
 
         res = g_dbus_proxy_call_sync(ssav_proxy_all[i],
@@ -531,9 +533,9 @@ dbus_inhibit_screensaver(const char *appname,
 
         pcookie[i] = (uint32_t)cookie;
 
-        fprintf(fpinfo, "%s: ssaver %s success (%zu) for '%s'\n",
+        fprintf(fpinfo, "%s: ssaver %s success (%zu) for '%s' (n %d)\n",
                 prog, method, (size_t)cookie,
-                ssav_path_attempts[i].well_known_name);
+                ssav_path_attempts[i].well_known_name, n_ok);
     }
 
     fprintf(fpinfo, "%s: ssaver proxy count %d\n", prog, n_ok);
@@ -562,6 +564,7 @@ dbus_uninhibit_screensaver(uint32_t *pcookie)
 #if DO_DBUS_SSAVERS
     static const char *method = "UnInhibit";
     size_t i;
+    int    n_ok = 0;
 
     if ( pcookie == NULL ) {
         return -1;
@@ -584,15 +587,21 @@ dbus_uninhibit_screensaver(uint32_t *pcookie)
                           (gint)-1,
                           NULL, NULL, NULL);
 
-        fprintf(fpinfo, "%s: ssaver %s done (%zu) for '%s'\n",
+        ++n_ok;
+
+        fprintf(fpinfo, "%s: ssaver %s done (%zu) for '%s' (n %d)\n",
                 prog, method, (size_t)pcookie[i],
-                ssav_path_attempts[i].well_known_name);
+                ssav_path_attempts[i].well_known_name, n_ok);
     }
 
     free(pcookie);
+
+    if ( n_ok ) {
+        return 0;
+    }
 #endif /* DO_DBUS_SSAVERS */
 
-    return 0;
+    return -1;
 }
 
 static void
@@ -1150,7 +1159,7 @@ _screensaver_off(void)
 {
     if ( dbus_inhibit_cookies == NULL ) {
         if ( dbus_inhibit_screensaver(appname,
-                                      "A/V medium playing",
+                                      "A/V medium active",
                                       &dbus_inhibit_cookies) ) {
             dbus_inhibit_cookies = NULL;
             fprintf(stderr, "%s: failed dbus screensaver disable\n",

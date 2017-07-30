@@ -1266,7 +1266,7 @@ ssave_enable(void)
 #endif
 #if HAVE_GIO20
     if ( dbus_proc_status == 0 ) {
-        kill(dbus_out.proc_pid, SIGUSR1);
+        kill(dbus_out.proc_pid, DBUS_UNINHIBIT_SCREENSAVER_SIGNAL);
     }
 #endif /* HAVE_GIO20 */
 }
@@ -1304,7 +1304,7 @@ ssave_disable(Display *dpy)
 #endif
 #if HAVE_GIO20
     if ( dbus_proc_status == 0 ) {
-        kill(dbus_out.proc_pid, SIGUSR2);
+        kill(dbus_out.proc_pid, DBUS_INHIBIT_SCREENSAVER_SIGNAL);
     }
 #endif /* HAVE_GIO20 */
 }

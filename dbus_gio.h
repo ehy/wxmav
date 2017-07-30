@@ -85,7 +85,7 @@ start_dbus_coproc(const dbus_proc_in *in,
  * -- NOTE ppcookie is not terminated -- consider it opaque
  */
 int
-dbus_inhibit_screensaver(const char *appname,
+dbus_inhibit_screensaver(const char *app_name,
                          const char *reason,
                          uint32_t   **ppcookie);
 
@@ -97,3 +97,15 @@ dbus_inhibit_screensaver(const char *appname,
  */
 int
 dbus_uninhibit_screensaver(uint32_t *pcookie);
+
+/* the above procedures have external visibility, but
+ * to be useful to a separate process, provide trigger
+ * signals
+ */
+#ifndef   DBUS_UNINHIBIT_SCREENSAVER_SIGNAL
+#define   DBUS_UNINHIBIT_SCREENSAVER_SIGNAL SIGUSR1
+#endif /* DBUS_UNINHIBIT_SCREENSAVER_SIGNAL */
+
+#ifndef   DBUS_INHIBIT_SCREENSAVER_SIGNAL
+#define   DBUS_INHIBIT_SCREENSAVER_SIGNAL SIGUSR2
+#endif /* DBUS_INHIBIT_SCREENSAVER_SIGNAL */
