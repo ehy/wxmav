@@ -4064,7 +4064,7 @@ class TheAppClass(wx.App):
         h = config.ReadInt(_T("h"), -1)
         if w < 100 or h < 100:
             w = 800
-            h = 600
+            h = 640
         size = wx.Size(w, h)
 
         self.frame = TopWnd(
@@ -7423,9 +7423,13 @@ class TopWnd(wx.Frame):
 
 
     def make_tool_bar(self):
-        sty = (wx.TB_DOCKABLE | wx.TB_HORIZONTAL |
-               wx.NO_BORDER | wx.TB_FLAT)
-        self.toolbar = tb = self.CreateToolBar(sty, wx.ID_ANY)
+        sty = sty2 = (wx.TB_DOCKABLE | wx.NO_BORDER | wx.TB_FLAT)
+        sty |= wx.TB_HORIZONTAL #wx.TB_VERTICAL
+        sty2 |= wx.TB_HORIZONTAL
+
+        #self.toolbar = tb = self.CreateToolBar(sty, wx.ID_ANY)
+        self.toolbar = tb = wx.ToolBar(self, wx.ID_ANY, style = sty)
+
         tb.SetMargins((2, 2))
         tb.SetToolPacking(2)
         tb.SetToolSeparation(5)
@@ -7506,6 +7510,11 @@ class TopWnd(wx.Frame):
         #                wx.NullBitmap, wx.ITEM_NORMAL,
         #                lbl, hlp)
 
+        tb.Realize()
+
+        self.toolbar2 = tb = wx.ToolBar(self, wx.ID_ANY, style = sty2)
+        tb.SetMargins((3, 1))
+
         # In GTK2 the wxChoice is far better than this app's
         # 'ComboCtrlTailorMade' but MSW Choice and ComboBox
         # suck WRT dropdown size and GTK-3 wxChoice does not
@@ -7555,13 +7564,27 @@ class TopWnd(wx.Frame):
             self.cbox_resrc.SetToolTip(stip)
             self.Bind(wx.EVT_COMBOBOX, self.on_cbox, id = cur)
 
-        tb.AddStretchableSpace();
-
         tb.AddControl(self.cbox_group)
         tb.AddSeparator();
         tb.AddControl(self.cbox_resrc)
 
         tb.Realize()
+
+        self.SetToolBar(self.toolbar2)
+        self.SetToolBar(self.toolbar)
+
+        self.toolbar2.Bind(wx.EVT_SIZE, self.on_tb2_size)
+
+    def on_tb2_size(self, event):
+        clsz = self.toolbar2.GetClientSize()
+        mgin = self.toolbar2.GetMargins()
+        grsz = self.cbox_group.GetSize()
+
+        w = (clsz.width / 2) - (mgin.width * 6)
+        h = grsz.height
+
+        self.cbox_group.SetSize((w, h))
+        self.cbox_resrc.SetSize((w, h))
 
     def make_status_bar(self):
         sty = (wx.STB_DEFAULT_STYLE &
@@ -8855,12 +8878,16 @@ class TopWnd(wx.Frame):
                 self.do_fullscreen_label(False)
                 # let it show at 1st, ticker will hide
                 #self.show_wnd_obj(self.hiders["vszr"], False)
+                self.toolbar.Show(False)
+                self.toolbar2.Show(False)
                 self.medi_tick = self.medi_tick_span
             def _aft(self, b):
                 self.ShowFullScreen(not b)
                 if b:
                     self.do_fullscreen_label(True)
                     self.show_wnd_obj(self.hiders["vszr"], True)
+                    self.toolbar2.Show(True)
+                    self.toolbar.Show(True)
                     self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
                     self.medi_tick = 0
                 else:
@@ -8877,6 +8904,8 @@ class TopWnd(wx.Frame):
                 self.ShowFullScreen(False)
                 self.do_fullscreen_label(True)
                 self.show_wnd_obj(self.hiders["vszr"], True)
+                self.toolbar2.Show(True)
+                self.toolbar.Show(True)
                 self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
                 self.medi_tick = 0
                 wx.GetApp().do_screensave(True)
