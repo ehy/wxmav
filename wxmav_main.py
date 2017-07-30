@@ -6493,6 +6493,10 @@ class TopWnd(wx.Frame):
         for d, e in errs:
             self.err_msg(_T("Error: {} '{}'").format(d, e))
 
+        # force a (re)sizing of 2nd toolbar: needed
+        # depending on widgets/toolkit
+        self.force_hack(use_hack = True)
+
         # setup play state with seek position, but only if
         # started without arguments, which implies load and
         # use last set of media groups -- therefore state
@@ -6535,7 +6539,7 @@ class TopWnd(wx.Frame):
                 if pl or pos > 0:
                     self.load_media()
                     if not self.load_ok:
-                        self.prdbg(_T("RESTORE STATE laod fail of: {}"
+                        self.prdbg(_T("RESTORE STATE load fail of: {}"
                             ).format(
                                 _T(self.get_reslist_item().resname)))
                         self.load_func = None
@@ -7525,8 +7529,8 @@ class TopWnd(wx.Frame):
 
             self.cbox_group_id = cur = wx.NewId()
             self.cbox_group = wx.Choice(tb, cur, style = sty)
-            self.cbox_group.SetSize((240, -1))
-            self.cbox_group.SetMinSize((120, -1))
+            self.cbox_group.SetSize((100, -1))
+            self.cbox_group.SetMinSize((100, -1))
 
             stip = wx.ToolTip(_("Select Group/Playlist"))
             self.cbox_group.SetToolTip(stip)
@@ -7534,7 +7538,7 @@ class TopWnd(wx.Frame):
 
             self.cbox_resrc_id = cur = wx.NewId()
             self.cbox_resrc = wx.Choice(tb, cur, style = sty)
-            self.cbox_resrc.SetSize((200, -1))
+            self.cbox_resrc.SetSize((100, -1))
             self.cbox_resrc.SetMinSize((100, -1))
             self.cbox_resrc.SetMinClientSize((800, -1))
 
@@ -7547,8 +7551,8 @@ class TopWnd(wx.Frame):
             self.cbox_group_id = cur = wx.NewId()
             self.cbox_group = ComboCtrlTailorMade(tb, cur, style = sty)
             self.cbox_group.SetPopupControl(TailorMadeComboPop())
-            self.cbox_group.SetSize((240, -1))
-            self.cbox_group.SetMinSize((120, -1))
+            self.cbox_group.SetSize((100, -1))
+            self.cbox_group.SetMinSize((100, -1))
 
             stip = wx.ToolTip(_("Select Group/Playlist"))
             self.cbox_group.SetToolTip(stip)
@@ -7557,7 +7561,7 @@ class TopWnd(wx.Frame):
             self.cbox_resrc_id = cur = wx.NewId()
             self.cbox_resrc = ComboCtrlTailorMade(tb, cur, style = sty)
             self.cbox_resrc.SetPopupControl(TailorMadeComboPop())
-            self.cbox_resrc.SetSize((200, -1))
+            self.cbox_resrc.SetSize((100, -1))
             self.cbox_resrc.SetMinSize((100, -1))
 
             stip = wx.ToolTip(_("Select Track/Title"))
@@ -7575,7 +7579,7 @@ class TopWnd(wx.Frame):
 
         self.toolbar2.Bind(wx.EVT_SIZE, self.on_tb2_size)
 
-    def on_tb2_size(self, event):
+    def do_tb2_size(self, event):
         clsz = self.toolbar2.GetClientSize()
         mgin = self.toolbar2.GetMargins()
         grsz = self.cbox_group.GetSize()
@@ -8153,6 +8157,29 @@ class TopWnd(wx.Frame):
     def err_msg(self, msg):
         wx.GetApp().err_msg(msg)
 
+    # bad hack: it has historically happened, and continues to happen
+    # on MSW (7) and GTK, that some interface updates don't appear
+    # without being forced, e.g. by resizing; wx 2.8 docs say that
+    # if using sizers, wxWindow::Layout() should be used, but this
+    # hack proves effective regardless
+    def force_hack(self, use_hack = False, sz = None, force = False):
+        if use_hack:
+            if not sz:
+                sz = self.GetSize()
+
+            sz2 = wx.Size((sz.width+1, sz.height+1))
+            self.SetSize(sz2)
+            ev = wx.SizeEvent(sz, self.GetId())
+            wx.CallAfter(wx.PostEvent, self, ev)
+        elif force:
+            self.Layout()
+
+    def get_obj_by_id(self, the_id):
+        for ID, obj in self.ctl_data:
+            if ID == the_id:
+                return obj
+        return None
+
     def get_obj_by_id(self, the_id):
         for ID, obj in self.ctl_data:
             if ID == the_id:
@@ -8184,6 +8211,7 @@ class TopWnd(wx.Frame):
 
     # see comment in ctor, where this is Bind()ed
     def on_iconize_event(self, event):
+        self.do_tb2_size(None)
         # if restored from minimized state:
         if not event.IsIconized():
             if _in_gtk:
@@ -8195,8 +8223,11 @@ class TopWnd(wx.Frame):
             self.err_msg(_T("On Minimize {} at {}").format(
                 (sz.width, sz.height), (pt.x, pt.y)))
 
+        self.force_hack(use_hack = True)
+
     # see comment in ctor, where this is Bind()ed
     def on_maximize_event(self, event):
+        self.do_tb2_size(None)
         # if restored from minimized state:
         if not self.IsMaximized():
             # record windowed size
@@ -8204,6 +8235,8 @@ class TopWnd(wx.Frame):
             self.window_pos  = pt = self.GetPosition()
             self.err_msg(_T("On Maximize {} at {}").format(
                 (sz.width, sz.height), (pt.x, pt.y)))
+
+        self.force_hack(use_hack = True)
 
     def on_sys_color(self, event):
         f = lambda wnd: self._color_proc_per_child(wnd)
@@ -9817,6 +9850,9 @@ class TopWnd(wx.Frame):
         if not from_user or (event.GetId() == self.id_fullscreen):
             self.do_fullscreen()
 
+    def on_tb2_size(self, event):
+        self.do_tb2_size(None)
+
     def on_show(self, event):
         if not (isinstance(event, wx.ShowEvent)): #and event.GetShow()):
             return
@@ -9825,7 +9861,7 @@ class TopWnd(wx.Frame):
             self.register_ms_hotkeys()
 
         self.focus_medi_opt()
-
+        self.force_hack(use_hack = True)
 
     def on_wx_timer(self, event):
         self.cmd_on_wx_timer(from_user = True, event = event)
