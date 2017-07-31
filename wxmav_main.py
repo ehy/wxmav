@@ -6337,6 +6337,9 @@ class TopWnd(wx.Frame):
         self.make_tool_bar()
         self.set_taskbar_object()
 
+        self.SetToolBar(self.toolbar)
+        szr.Add(self.toolbar2, 0, wx.EXPAND | wx.ALL, 0)
+
         self.id_svol = wx.NewId()
         self.vol_panel = SliderPanel(self, wx.ID_ANY,
                                      slider_id = self.id_svol)
@@ -7159,7 +7162,6 @@ class TopWnd(wx.Frame):
         self.SetOwnBackgroundColour(
             self.pos_panel.GetBackgroundColour())
 
-
     def make_menu_bar(self):
         I = wx.NewId
         mb = wx.MenuBar()
@@ -7426,17 +7428,25 @@ class TopWnd(wx.Frame):
         return mtico
 
 
-    def make_tool_bar(self):
+    def make_tool_bar(self, mk_two = True, wxtb_2nd = False):
+        self.make_std_tool_bar(not mk_two)
+        if mk_two:
+            self.make_std_tool_bar2(use_wxtoolbar = wxtb_2nd)
+
+    def make_std_tool_bar(self, include_combos = False):
         sty = sty2 = (wx.TB_DOCKABLE | wx.NO_BORDER | wx.TB_FLAT)
         sty |= wx.TB_HORIZONTAL #wx.TB_VERTICAL
         sty2 |= wx.TB_HORIZONTAL
-
-        #self.toolbar = tb = self.CreateToolBar(sty, wx.ID_ANY)
-        self.toolbar = tb = wx.ToolBar(self, wx.ID_ANY, style = sty)
+        #tb = self.CreateToolBar(sty, wx.ID_ANY)
+        tb = wx.ToolBar(self, wx.ID_ANY, style = sty)
 
         tb.SetMargins((2, 2))
         tb.SetToolPacking(2)
         tb.SetToolSeparation(5)
+
+        _art = wx.ArtProvider
+
+        self.toolbar = tb
 
         def _mi_tup(mnu, mid):
             mi = mnu.FindItemById(mid)
@@ -7452,7 +7462,7 @@ class TopWnd(wx.Frame):
 
         lbl, hlp = _mi_tup(self.mfile, self.mfile_quit)
         _t_add(tb, self.mfile_quit, lbl,
-                        wx.ArtProvider.GetBitmap(
+                        _art.GetBitmap(
                             wx.ART_QUIT, wx.ART_TOOLBAR),
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
@@ -7461,14 +7471,14 @@ class TopWnd(wx.Frame):
 
         lbl, hlp = _mi_tup(self.mfile, self.mfile_openfile)
         _t_add(tb, self.mfile_openfile, lbl,
-                        wx.ArtProvider.GetBitmap(
+                        _art.GetBitmap(
                             wx.ART_FILE_OPEN, wx.ART_TOOLBAR),
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
 
         lbl, hlp = _mi_tup(self.mfile, self.mfile_savegrp)
         _t_add(tb, self.mfile_savegrp, lbl,
-                        wx.ArtProvider.GetBitmap(
+                        _art.GetBitmap(
                             wx.ART_FILE_SAVE, wx.ART_TOOLBAR),
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
@@ -7477,14 +7487,14 @@ class TopWnd(wx.Frame):
 
         lbl, hlp = _mi_tup(self.medit, self.medit_undo)
         _t_add(tb, self.medit_undo, lbl,
-                        wx.ArtProvider.GetBitmap(
+                        _art.GetBitmap(
                             wx.ART_UNDO, wx.ART_TOOLBAR),
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
 
         lbl, hlp = _mi_tup(self.medit, self.medit_redo)
         _t_add(tb, self.medit_redo, lbl,
-                        wx.ArtProvider.GetBitmap(
+                        _art.GetBitmap(
                             wx.ART_REDO, wx.ART_TOOLBAR),
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
@@ -7493,14 +7503,14 @@ class TopWnd(wx.Frame):
 
         lbl, hlp = _mi_tup(self.mctrl, self.mctrl_previous_grp)
         _t_add(tb, self.mctrl_previous_grp, lbl,
-                        wx.ArtProvider.GetBitmap(
+                        _art.GetBitmap(
                             wx.ART_GO_UP, wx.ART_TOOLBAR),
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
 
         lbl, hlp = _mi_tup(self.mctrl, self.mctrl_next_grp)
         _t_add(tb, self.mctrl_next_grp, lbl,
-                        wx.ArtProvider.GetBitmap(
+                        _art.GetBitmap(
                             wx.ART_GO_DOWN, wx.ART_TOOLBAR),
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
@@ -7509,36 +7519,53 @@ class TopWnd(wx.Frame):
         #
         #lbl, hlp = _mi_tup(self.mhelp, self.mhelp_help)
         #_t_add(tb, self.mhelp_help, lbl,
-        #                wx.ArtProvider.GetBitmap(
+        #                _art.GetBitmap(
         #                    wx.ART_HELP, wx.ART_TOOLBAR),
         #                wx.NullBitmap, wx.ITEM_NORMAL,
         #                lbl, hlp)
 
+        if include_combos:
+            self.make_std_tool_bar2(True, tb)
+
         tb.Realize()
 
-        self.toolbar2 = tb = wx.ToolBar(self, wx.ID_ANY, style = sty2)
-        tb.SetMargins((3, 1))
+
+    def make_std_tool_bar2(self, use_wxtoolbar = False, tb_ext = None):
+        if tb_ext != None:
+            tb = tb_ext
+        elif use_wxtoolbar:
+            sty2 = (wx.TB_DOCKABLE | wx.NO_BORDER | wx.TB_FLAT)
+            sty2 |= wx.TB_HORIZONTAL
+            tb = wx.ToolBar(self, wx.ID_ANY, style = sty2)
+            tb.SetMargins((3, 1))
+        else:
+            tb = wx.Panel(self, wx.ID_ANY)
+            self.toolbar2 = tb
 
         # In GTK2 the wxChoice is far better than this app's
         # 'ComboCtrlTailorMade' but MSW Choice and ComboBox
         # suck WRT dropdown size and GTK-3 wxChoice does not
         # truncate long strings and if too long, just destroys
         # the control, never to be seen again, soo . . .
-        if _in_gtk and 'gtk2' in wx.PlatformInfo:
+        use_choice = (_in_gtk and 'gtk2' in wx.PlatformInfo)
+        if use_choice:
             sty = 0
 
             self.cbox_group_id = cur = wx.NewId()
             self.cbox_group = wx.Choice(tb, cur, style = sty)
-            self.cbox_group.SetSize((100, -1))
-            self.cbox_group.SetMinSize((100, -1))
+            if use_wxtoolbar:
+                self.cbox_group.SetSize((100, -1))
 
+            self.cbox_group.SetMinSize((100, -1))
             stip = wx.ToolTip(_("Select Group/Playlist"))
             self.cbox_group.SetToolTip(stip)
             self.Bind(wx.EVT_CHOICE, self.on_cbox, id = cur)
 
             self.cbox_resrc_id = cur = wx.NewId()
             self.cbox_resrc = wx.Choice(tb, cur, style = sty)
-            self.cbox_resrc.SetSize((100, -1))
+            if use_wxtoolbar:
+                self.cbox_resrc.SetSize((100, -1))
+
             self.cbox_resrc.SetMinSize((100, -1))
             self.cbox_resrc.SetMinClientSize((800, -1))
 
@@ -7568,27 +7595,46 @@ class TopWnd(wx.Frame):
             self.cbox_resrc.SetToolTip(stip)
             self.Bind(wx.EVT_COMBOBOX, self.on_cbox, id = cur)
 
-        tb.AddControl(self.cbox_group)
-        tb.AddSeparator();
-        tb.AddControl(self.cbox_resrc)
+        if use_wxtoolbar:
+            tb.AddControl(self.cbox_group)
+            tb.AddSeparator();
+            tb.AddControl(self.cbox_resrc)
 
-        tb.Realize()
+            if tb_ext == None:
+                tb.Realize()
+                self.toolbar2.Bind(wx.EVT_SIZE, self.on_tb2_size)
+        else:
+            if use_choice:
+                grsz = self.cbox_group.GetSize()
+                tb.SetSize((-1, grsz.height + 6))
+                tb.SetMinSize((100, grsz.height + 6))
+                self.toolbar2.Bind(wx.EVT_SIZE, self.on_tb2_size)
+            else:
+                szr = wx.BoxSizer(wx.HORIZONTAL)
+                szr.Add(self.cbox_group, 1, wx.EXPAND | wx.ALL, 6)
+                szr.AddSpacer(6)
+                szr.Add(self.cbox_resrc, 1, wx.EXPAND | wx.ALL, 6)
 
-        self.SetToolBar(self.toolbar2)
-        self.SetToolBar(self.toolbar)
-
-        self.toolbar2.Bind(wx.EVT_SIZE, self.on_tb2_size)
+                tb.SetSizer(szr)
+                tb.Layout()
 
     def do_tb2_size(self, event):
         clsz = self.toolbar2.GetClientSize()
-        mgin = self.toolbar2.GetMargins()
         grsz = self.cbox_group.GetSize()
 
-        w = (clsz.width / 2) - (mgin.width * 6)
+        w = (clsz.width / 2) - 6
         h = grsz.height
+
+        offs = (clsz.height - h) / 2
 
         self.cbox_group.SetSize((w, h))
         self.cbox_resrc.SetSize((w, h))
+
+        pos = self.cbox_group.GetPosition()
+        pos.x = pos.y = offs
+        self.cbox_group.SetPosition(pos)
+        pos.x += w + 6
+        self.cbox_resrc.SetPosition(pos)
 
     def make_status_bar(self):
         sty = (wx.STB_DEFAULT_STYLE &
@@ -8163,7 +8209,7 @@ class TopWnd(wx.Frame):
     # if using sizers, wxWindow::Layout() should be used, but this
     # hack proves effective regardless
     def force_hack(self, use_hack = False, sz = None, force = False):
-        if use_hack:
+        if False and use_hack:
             if not sz:
                 sz = self.GetSize()
 
@@ -8911,7 +8957,6 @@ class TopWnd(wx.Frame):
                 self.do_fullscreen_label(False)
                 # let it show at 1st, ticker will hide
                 #self.show_wnd_obj(self.hiders["vszr"], False)
-                self.toolbar.Show(False)
                 self.toolbar2.Show(False)
                 self.medi_tick = self.medi_tick_span
             def _aft(self, b):
@@ -8920,7 +8965,7 @@ class TopWnd(wx.Frame):
                     self.do_fullscreen_label(True)
                     self.show_wnd_obj(self.hiders["vszr"], True)
                     self.toolbar2.Show(True)
-                    self.toolbar.Show(True)
+                    self.Layout()
                     self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
                     self.medi_tick = 0
                 else:
@@ -8938,7 +8983,7 @@ class TopWnd(wx.Frame):
                 self.do_fullscreen_label(True)
                 self.show_wnd_obj(self.hiders["vszr"], True)
                 self.toolbar2.Show(True)
-                self.toolbar.Show(True)
+                self.Layout()
                 self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
                 self.medi_tick = 0
                 wx.GetApp().do_screensave(True)
