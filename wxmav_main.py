@@ -3962,10 +3962,6 @@ class TheAppClass(wx.App):
         #elif self.xhelper:
         #    self.xhelper.on_exit()
 
-        config = self.get_config()
-        if config:
-            config.Flush()
-
         return 0
 
     def OnInit(self):
@@ -4192,8 +4188,7 @@ class TheAppClass(wx.App):
         with argument True meaning cannot veto, do not query
         user, just close down
         """
-        if not _in_msw:
-            # in msw, this is done in on_query_*
+        if True:
             self.save_self_state()
 
         try:
@@ -4209,7 +4204,8 @@ class TheAppClass(wx.App):
         so this event is merely taken as a sign that data should be
         written
         """
-        self.save_self_state()
+        #self.save_self_state()
+        pass
 
     def save_self_state(self):
         """Save state here, prefereably such that next start
@@ -4223,8 +4219,13 @@ class TheAppClass(wx.App):
             self.reslist = None
 
         if self.reslist:
+            self.frame.config_wr(flush = True)
             dset = self.get_data_dir_curset()
             wr_current_set(self.reslist, dset)
+
+        #config = self.get_config()
+        #if config:
+        #    config.Flush()
 
     def on_chmsg(self, event):
         eid = event.GetId()
@@ -9862,12 +9863,13 @@ class TopWnd(wx.Frame):
                     self.prdbg(_T("DID Veto 1"))
                     return
 
-            self.register_ms_hotkeys(False)
-            self.Show(False)
+            #self.Show(False)
 
             if wx.GetApp().test_exit():
+                self.register_ms_hotkeys(False)
                 self.cmd_on_stop()
                 self.unload_media(True)
+                self.main_timer.Stop()
                 self.del_taskbar_object()
                 self.Destroy()
             else:
@@ -9876,16 +9878,15 @@ class TopWnd(wx.Frame):
         else:
             wx.GetApp().test_exit()
             self.register_ms_hotkeys(False)
-            self.Show(False)
             self.cmd_on_stop()
             self.unload_media(True)
+            self.main_timer.Stop()
             self.del_taskbar_object()
             self.Destroy()
             self.prdbg(_T("DID Destroy"))
 
     def on_destroy(self, event):
         self.prdbg(_T("CLOSE in on_destroy"))
-        self.del_taskbar_object()
         self.Close(True)
 
     def on_fullscreen(self, event):
