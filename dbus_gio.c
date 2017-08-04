@@ -115,19 +115,24 @@ dbus_object_ids ssav_path_attempts[] = {
     /* as of 2017, the xdg-screensaver script still works for
      * mate and cinnamon -- also must check if these have the
      * Inhibit/UnInhibit methods with expected args and results
-    _PUT_DBUS_IDS_3("org", "mate", "ScreenSaver"),
+     * UPDATE: mate takes '(ss)' - try it
+     */
+     ,
+    _PUT_DBUS_IDS_3("org", "mate", "ScreenSaver")
+    /*
+     ,
     _PUT_DBUS_IDS_3("org", "cinnamon", "ScreenSaver"),
-    * do not use org.gnome.SessionManager either: it takes different
-    * args - '(susu)' (we pass '(ss)') - contrary to docs at URL
-    * given in xdg-screensaver script (
-    *  http://people.gnome.org
-    *  /~mccann/gnome-screensaver/docs/gnome-screensaver.html
-    * ) and furthermore xdg-screensaver script is actually passing
-    * (susu) and it is *not* working anyway; finally,
-    * org.freedesktop.ScreenSaver _is_ effective with gnome3 on
-    * Fedora 26, presumably all gnome3 (one hopes)
+     * do not use org.gnome.SessionManager either: it takes different
+     * args - '(susu)' (we pass '(ss)') - contrary to docs at URL
+     * given in xdg-screensaver script (
+     *  http://people.gnome.org
+     *  /~mccann/gnome-screensaver/docs/gnome-screensaver.html
+     * ) and furthermore xdg-screensaver script is actually passing
+     * (susu) and it is *not* working anyway; finally,
+     * org.freedesktop.ScreenSaver _is_ effective with gnome3 on
+     * Fedora 26, presumably all gnome3 (one hopes)
     _PUT_DBUS_IDS_3("org", "gnome", "SessionManager")
-    */
+     */
 };
 
 GDBusProxy *ssav_proxy_all[A_SIZE(ssav_path_attempts)];

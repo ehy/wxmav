@@ -3634,11 +3634,15 @@ elif _in_xws:
             elif s_eq(prop, "LoopStatus"):
                 _propresp("s", True)
                 resp = self.rdstp(fd_rd, 128)
-                if s_eq(resp, "None"):
-                    self.w.loop_track = False
-                elif s_eq(resp, "Track"):
-                    self.w.loop_track = True
-                self.w.set_loop_track()
+                if s_eq(resp, "Track"):
+                    self.w.set_loop_track(do_loop = True)
+                elif s_eq(resp, "Playlist"):
+                    self.w.set_loop_track(
+                        do_loop = False, force_signal = True)
+                elif s_eq(resp, "None"):
+                    self.w.set_loop_track(do_loop = False)
+                else:
+                    self.w.set_loop_track(force_signal = True)
             elif s_eq(prop, "Rate"):
                 _propresp("d", True)
                 resp = self.rdstp(fd_rd, 128)
@@ -8248,12 +8252,16 @@ class TopWnd(wx.Frame):
         self.mctrl.Enable(self.mctrl_pause, True)
         self.mctrl.Enable(self.mctrl_stop, True)
 
-    def set_loop_track(self, do_loop = None):
+    def set_loop_track(self, do_loop = None, force_signal = False):
         if do_loop != None:
             self.loop_track = True if do_loop else False
-        b = self.mctrl.IsChecked()
-        self.mctrl.Check(self.mctrl_loop, self.loop_track)
+
+        b = self.mctrl.IsChecked(self.mctrl_loop)
         if b != self.loop_track:
+            self.mctrl.Check(self.mctrl_loop, self.loop_track)
+            force_signal = True
+
+        if force_signal:
             self.mpris2_signal_emit(_T("LoopStatus"))
 
     # see comment in ctor, where this is Bind()ed
@@ -8772,24 +8780,11 @@ class TopWnd(wx.Frame):
             self.set_medi_state("unloaded force")
             # MS seems to have trouble with 'nul', OTOH gstreamer
             # (GTK) seems to ignore empty string
-            # UPDATE (sigh): on an Ubuntu 16.04 system the hack
-            # of loading /dev/null (gtk/gstreamer) is now a problem
-            # (it had been working), as follows: code spins somewhere
-            # outside of wx event loop, presumably in gstreamer,
-            # taking 100% of one CPU core. Damn. Furthermore, reverting
-            # to loading empty string now causes a series of complaints
-            # on stderr like:
-            # "Media playback error: "/home/foo/" is a directory." --
-            # obviously empty string causes some bug to use the
-            # current directory.  It seems this is otherwise
-            # harmless -- it's not spinning anymore -- but what problem
-            # will arise in future?
-            # Try disabling this hack in spite of 'force arg'
             dn = _T('') if _in_msw else os.devnull
             #dn = _T('')
 
-            #ret = bool(self.medi.Load(dn))
-            ret = False if _in_gtk else bool(self.medi.Load(dn))
+            ret = bool(self.medi.Load(dn))
+            #ret = False if _in_gtk else bool(self.medi.Load(dn))
 
             self.msg_grep = None
             return ret
@@ -9849,6 +9844,18 @@ class TopWnd(wx.Frame):
     def on_close(self, event):
         wx.GetApp().set_reslist(self.reslist)
 
+        def _oncl_xitproc():
+            self.register_ms_hotkeys(False)
+            if self.load_ok and (
+                self.get_medi_state() == wx.media.MEDIASTATE_PLAYING or
+                self.get_medi_state() == wx.media.MEDIASTATE_PAUSED
+                ):
+                self.cmd_on_stop()
+            self.unload_media(True)
+            self.main_timer.Stop()
+            self.del_taskbar_object()
+            self.Destroy()
+
         if event.CanVeto():
             self.config_wr(flush = True)
 
@@ -9866,23 +9873,13 @@ class TopWnd(wx.Frame):
             #self.Show(False)
 
             if wx.GetApp().test_exit():
-                self.register_ms_hotkeys(False)
-                self.cmd_on_stop()
-                self.unload_media(True)
-                self.main_timer.Stop()
-                self.del_taskbar_object()
-                self.Destroy()
+                _oncl_xitproc()
             else:
                 event.Veto(True)
                 self.prdbg(_T("DID Veto 2"))
         else:
             wx.GetApp().test_exit()
-            self.register_ms_hotkeys(False)
-            self.cmd_on_stop()
-            self.unload_media(True)
-            self.main_timer.Stop()
-            self.del_taskbar_object()
-            self.Destroy()
+            _oncl_xitproc()
             self.prdbg(_T("DID Destroy"))
 
     def on_destroy(self, event):
