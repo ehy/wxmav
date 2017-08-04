@@ -91,6 +91,15 @@
 #ifndef XSCREENSAVER
 #define XSCREENSAVER "xscreensaver-command"
 #endif
+/* xscreensaver-command does not effect a persistent change: it must
+ * be called again within the activation period, so a child is forked
+ * and invokes xscreensaver-command in a loop - the loop will sleep
+ * between invocations for this value (seconds), which should be less
+ * than a reasonable minimum ssaver activation period
+ */
+#ifndef XSCREENSAVER_SECS_SLEEP
+#define XSCREENSAVER_SECS_SLEEP (60 * 1)
+#endif
 
 #if defined(_POSIX_PIPE_BUF)
 #    define MAX_RW_SIZE     _POSIX_PIPE_BUF
@@ -1055,9 +1064,6 @@ _child_xscreensaver(void)
     }
 
     /* child: disable, sleep, do it again */
-#ifndef XSCREENSAVER_SECS_SLEEP
-#define XSCREENSAVER_SECS_SLEEP (60 * 2)
-#endif
 
     /* make sure of signals -- we're OK with defaults */
     for ( i = 0; i < A_SIZE(common_signals); i++ ) {
