@@ -96,7 +96,7 @@ _PUT_DBUS_IDS_RES3("org", v, "SettingsDaemon", "MediaKeys", "MediaKeys")
 /* data for the dbus objects that we hope will provide
  * mediakeys (PlayPause, Next, etc.) signals
  */
-dbus_object_ids keys_path_attempts[] = {
+dbus_object_ids keys_path_data[] = {
     _PUT_DBUS_IDS_KEYS("freedesktop"), /* found in xdg-screensaver */
     _PUT_DBUS_IDS_KEYS("xfce"),        /* just a guess */
     _PUT_DBUS_IDS_KEYS("unity"),       /* just a guess */
@@ -105,12 +105,12 @@ dbus_object_ids keys_path_attempts[] = {
     _PUT_DBUS_IDS_KEYS("gnome")        /* found in xdg-screensaver */
 };
 
-GDBusProxy *keys_proxy_all[A_SIZE(keys_path_attempts)];
+GDBusProxy *keys_proxy_all[A_SIZE(keys_path_data)];
 
 /* data for the dbus objects that we hope will provide
  * screensaver control (Inhibit, UnInhibit)
  */
-dbus_object_ids ssav_path_attempts[] = {
+dbus_object_ids ssav_path_data[] = {
     _PUT_DBUS_IDS_3("org", "freedesktop", "ScreenSaver")
     /* as of 2017, the xdg-screensaver script still works for
      * mate and cinnamon -- also must check if these have the
@@ -135,7 +135,7 @@ dbus_object_ids ssav_path_attempts[] = {
      */
 };
 
-GDBusProxy *ssav_proxy_all[A_SIZE(ssav_path_attempts)];
+GDBusProxy *ssav_proxy_all[A_SIZE(ssav_path_data)];
 
 /* handshake proc return value macros */
 #define _EXCHGHS_WR_ERR -1
@@ -492,9 +492,9 @@ dbus_inhibit_screensaver(const char *app_name,
     size_t   i;
     int      n_ok = 0;
 
-    pcookie = xcalloc(A_SIZE(ssav_path_attempts), sizeof(*pcookie));
+    pcookie = xcalloc(A_SIZE(ssav_path_data), sizeof(*pcookie));
 
-    for ( i = 0; i < A_SIZE(ssav_path_attempts); i++ ) {
+    for ( i = 0; i < A_SIZE(ssav_path_data); i++ ) {
         guint32  cookie;
         GVariant *res;
         GVariant *parameters;
@@ -518,7 +518,7 @@ dbus_inhibit_screensaver(const char *app_name,
 
         if ( error != NULL || res == NULL ) {
             fprintf(fpinfo, "%s: ssaver %s for '%s': \"%s\"\n",
-                    prog, method, ssav_path_attempts[i].well_known_name,
+                    prog, method, ssav_path_data[i].well_known_name,
                     error == NULL ?
                         "[unknown]" : (char *)error->message);
 
@@ -540,7 +540,7 @@ dbus_inhibit_screensaver(const char *app_name,
 
         fprintf(fpinfo, "%s: ssaver %s success (%zu) for '%s' (n %d)\n",
                 prog, method, (size_t)cookie,
-                ssav_path_attempts[i].well_known_name, n_ok);
+                ssav_path_data[i].well_known_name, n_ok);
     }
 
     fprintf(fpinfo, "%s: ssaver proxy count %d\n", prog, n_ok);
@@ -575,7 +575,7 @@ dbus_uninhibit_screensaver(uint32_t *pcookie)
         return -1;
     }
 
-    for ( i = 0; i < A_SIZE(ssav_path_attempts); i++ ) {
+    for ( i = 0; i < A_SIZE(ssav_path_data); i++ ) {
         GVariant *parameters;
 
         if ( ssav_proxy_all[i] == NULL || pcookie[i] == 0 ) {
@@ -596,7 +596,7 @@ dbus_uninhibit_screensaver(uint32_t *pcookie)
 
         fprintf(fpinfo, "%s: ssaver %s done (%zu) for '%s' (n %d)\n",
                 prog, method, (size_t)pcookie[i],
-                ssav_path_attempts[i].well_known_name, n_ok);
+                ssav_path_data[i].well_known_name, n_ok);
     }
 
     free(pcookie);
@@ -717,11 +717,11 @@ _get_media_keys_proxies(const dbus_proc_in *in, const char *prg, int fd)
 #if DO_DBUS_KEYS
     size_t i;
 
-    for ( i = 0; i < A_SIZE(keys_path_attempts); i++ ) {
+    for ( i = 0; i < A_SIZE(keys_path_data); i++ ) {
         GDBusProxyFlags flags  = 0;
 
         keys_proxy_all[i] =
-            _get_object_proxy(&keys_path_attempts[i], flags, prg);
+            _get_object_proxy(&keys_path_data[i], flags, prg);
 
         if ( keys_proxy_all[i] == NULL ) {
             continue;
@@ -745,7 +745,7 @@ _free_media_keys_proxies(const dbus_proc_in *in, const char *prg)
 #if DO_DBUS_KEYS
     size_t i;
 
-    for ( i = 0; i < A_SIZE(keys_path_attempts); i++ ) {
+    for ( i = 0; i < A_SIZE(keys_path_data); i++ ) {
         GDBusProxy *proxy = keys_proxy_all[i];
 
         keys_proxy_all[i] = NULL;
@@ -770,11 +770,11 @@ _get_ssaver_proxies(const char *prg)
 #if DO_DBUS_SSAVERS
     size_t i;
 
-    for ( i = 0; i < A_SIZE(ssav_path_attempts); i++ ) {
+    for ( i = 0; i < A_SIZE(ssav_path_data); i++ ) {
         GDBusProxyFlags flags  = 0;
 
         ssav_proxy_all[i] =
-            _get_object_proxy(&ssav_path_attempts[i], flags, prg);
+            _get_object_proxy(&ssav_path_data[i], flags, prg);
     }
 #endif /* DO_DBUS_SSAVERS */
 }
@@ -785,7 +785,7 @@ _free_ssaver_proxies(const char *prg)
 #if DO_DBUS_SSAVERS
     size_t i;
 
-    for ( i = 0; i < A_SIZE(ssav_path_attempts); i++ ) {
+    for ( i = 0; i < A_SIZE(ssav_path_data); i++ ) {
         if ( ssav_proxy_all[i] != NULL ) {
             g_object_unref(ssav_proxy_all[i]);
         }
