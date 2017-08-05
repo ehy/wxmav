@@ -4489,6 +4489,9 @@ class MediaPanel(wx.Panel):
 
         self.last_mouse_pos = wx.DefaultPosition
 
+    def _hack_on_color(self):
+        self.SetBackgroundColour(wx.Colour(0, 0, 0))
+
     def _mk_medi(self):
         # the following try block with the wxMSW code is from an
         # example found at
@@ -5896,6 +5899,9 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
     def Bind(self, *a, **ka):
         return self.lbox.Bind(*a, **ka)
 
+    def SetThemeEnabled(self, boolval):
+        return self.lbox.SetThemeEnabled(boolval)
+
     def on_motion(self, evt):
         item = self.lbox.HitTest(evt.GetPosition())
         if item >= 0:
@@ -6066,6 +6072,25 @@ class ComboCtrlTailorMade(wxcombo.ComboCtrl):
             e.SetInt(idx)
             self.Command(e)
         wx.CallAfter(_s_v_c, self, event.GetSelection())
+
+    def _hack_on_color(self):
+        if True:
+            bclr = self.GetParent().GetBackgroundColour()
+            fclr = self.GetParent().GetForegroundColour()
+        else:
+            c = wx.SYS_COLOUR_MENU
+            bclr = wx.SystemSettings.GetColour(c)
+            c = wx.SYS_COLOUR_MENUTEXT
+            fclr = wx.SystemSettings.GetColour(c)
+
+        self.SetBackgroundColour(bclr)
+        self.SetForegroundColour(fclr)
+
+    def SetThemeEnabled(self, boolval):
+        self.ctrl.SetThemeEnabled(boolval)
+        self.GetControl().SetThemeEnabled(boolval)
+        self.GetPopupWindow().SetThemeEnabled(boolval)
+        return wxcombo.ComboCtrl.SetThemeEnabled(self, boolval)
 
     def Append(self, item):
         self.ctrl.Append(item)
@@ -8295,8 +8320,12 @@ class TopWnd(wx.Frame):
 
     def on_sys_color(self, event):
         f = lambda wnd: self._color_proc_per_child(wnd)
-        invoke_proc_for_window_children(self, f)
-        self.color_hacks()
+        if False:
+            invoke_proc_for_window_children(self, f)
+            self.color_hacks()
+        else:
+            wx.CallAfter(invoke_proc_for_window_children, self, f)
+            wx.CallAfter(self.color_hacks)
 
         if self.theme_support:
             self.Refresh(True)
@@ -8310,13 +8339,16 @@ class TopWnd(wx.Frame):
             return
 
         try:
-            wnd.SetOwnForegroundColour(wx.NullColour)
-        except:
-            wnd.SetForegroundColour(wx.NullColour)
-        try:
-            wnd.SetOwnBackgroundColour(wx.NullColour)
-        except:
-            wnd.SetBackgroundColour(wx.NullColour)
+            wnd._hack_on_color()
+        except AttributeError:
+            try:
+                wnd.SetOwnForegroundColour(wx.NullColour)
+            except:
+                wnd.SetForegroundColour(wx.NullColour)
+            try:
+                wnd.SetOwnBackgroundColour(wx.NullColour)
+            except:
+                wnd.SetBackgroundColour(wx.NullColour)
 
     def on_idle(self, event):
         if self.do_setwname_done == False:
