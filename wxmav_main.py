@@ -6075,8 +6075,9 @@ class ComboCtrlTailorMade(wxcombo.ComboCtrl):
 
     def _hack_on_color(self):
         if True:
-            bclr = self.GetParent().GetBackgroundColour()
-            fclr = self.GetParent().GetForegroundColour()
+            p = self.GetParent()
+            bclr = p.GetBackgroundColour()
+            fclr = p.GetForegroundColour()
         else:
             c = wx.SYS_COLOUR_MENU
             bclr = wx.SystemSettings.GetColour(c)
