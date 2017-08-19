@@ -3091,8 +3091,7 @@ elif _in_xws:
                        "PROC ERR '{}'").format(st, ch_proc.error))
 
                 ch_proc.close_fd(True)
-
-            if pwr != None:
+            elif pwr != None:
                 os.close(pwr)
 
             if self.quitting:
