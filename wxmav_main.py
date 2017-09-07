@@ -123,6 +123,7 @@ except ImportError:
     wxadv = wx
     custom_data_fmt = wx.CustomDataFormat
     phoenix = False
+from wx.lib.embeddedimage import PyEmbeddedImage
 
 have_tagsmod = False
 # mutagen is a media file tag module in pure python
@@ -2661,12 +2662,15 @@ elif _in_xws:
 
         def mpris2_setup(self):
             efd = []
+
+
             def _clerr():
                 for n in efd:
                     try:
                         os.close(n)
                     except:
                         pass
+
 
             # ensure all < 3 are open, so pipe()
             # will not return those -- close all tfd at end
@@ -3174,7 +3178,8 @@ elif _in_xws:
 
                 lin = ""
                 for fd, bits in rl:
-                    if fd < 0: continue
+                    if fd < 0:
+                        continue
                     err = bits & errbits
                     if err:
                         if fd in flist: flist.remove(fd)
@@ -3192,7 +3197,7 @@ elif _in_xws:
                                 self.mpris2_parent.close()
                             except:
                                 pass
-                            if  self.mpris2_parent:
+                            if self.mpris2_parent:
                                 self.mpris2_parent.poll_err = err
                                 put_thd_event(self.app,
                                     AThreadEvent(_T("M"),
@@ -3219,7 +3224,7 @@ elif _in_xws:
                         # internal control fd?
                         if fd == mpctrl[0]:
                             lin = _T(os.read(mpctrl[0], 128))
-                            if s_eq(lin, "poll") and not mprd in flist:
+                            if s_eq(lin, "poll") and mprd not in flist:
                                 flist.append(mprd)
                                 pl.register(mprd, select.POLLIN|errbits)
                             elif s_eq(lin, "unpoll") and mprd in flist:
@@ -3367,14 +3372,16 @@ elif _in_xws:
             # (object_path, interface_name,
             #  signal-type, (tuple-of-property-or-signal-names))
             # do NOT forget NL on strings for witing to coproc!
-            sigbasesigs = ( _T("/org/mpris/MediaPlayer2\n"),
+            sigbasesigs = (
+                _T("/org/mpris/MediaPlayer2\n"),
                 _T("org.mpris.MediaPlayer2\n"),
                 _T("signal\n"),
                 ( # base signal signals
                     _T(""), # this interface ain't got none
                 )
-            )
-            sigbaseprops = ( _T("/org/mpris/MediaPlayer2\n"),
+                )
+            sigbaseprops = (
+                _T("/org/mpris/MediaPlayer2\n"),
                 _T("org.mpris.MediaPlayer2\n"),
                 _T("property\n"),
                 ( # base property signals
@@ -3388,16 +3395,18 @@ elif _in_xws:
                     _T("SupportedUriSchemes"), # as Read only
                     _T("SupportedMimeTypes")   # as Read only
                 )
-            )
+                )
 
-            sigplayersigs = ( _T("/org/mpris/MediaPlayer2\n"),
+            sigplayersigs = (
+                _T("/org/mpris/MediaPlayer2\n"),
                 _T("org.mpris.MediaPlayer2.Player\n"),
                 _T("signal\n"),
                 ( # player signal signals
                     _T("Seeked"), # (x: Position) [usecs]
                 )
-            )
-            sigplayerprops = ( _T("/org/mpris/MediaPlayer2\n"),
+                )
+            sigplayerprops = (
+                _T("/org/mpris/MediaPlayer2\n"),
                 _T("org.mpris.MediaPlayer2.Player\n"),
                 _T("property\n"),
                 ( # player property signals
@@ -3417,7 +3426,7 @@ elif _in_xws:
                     _T("CanSeek"),        # b 	  Read only
                     _T("CanControl")      # b 	  Read only
                 )
-            )
+                )
 
             ttup = (sigbasesigs, sigbaseprops,
                     sigplayersigs, sigplayerprops)
@@ -3425,8 +3434,8 @@ elif _in_xws:
             opath = ifname = sigtype = None
             for tup in ttup:
                 if signal in tup[3]:
-                    opath   = tup[0]
-                    ifname  = tup[1]
+                    opath = tup[0]
+                    ifname = tup[1]
                     sigtype = tup[2]
                     break
 
@@ -5389,12 +5398,11 @@ class GroupSetEditPanel(wx.Panel):
 
 class GroupSetEditDialog(wx.Dialog):
     def __init__(self, parent, ID,
-                       title = _("Edit Media Groups"),
-                       size  =  (600, 450),
-                       pos = wx.DefaultPosition,
-                       style = wx.DEFAULT_DIALOG_STYLE |
-                               wx.RESIZE_BORDER,
-                       data = []):
+                 title = _("Edit Media Groups"),
+                 size  =  (600, 450),
+                 pos = wx.DefaultPosition,
+                 style = wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER,
+                 data = []):
         wx.Dialog.__init__(self, parent, ID,
                            title = title, size = size, pos = pos,
                            style = style)
@@ -5570,7 +5578,7 @@ class uri_list_dataformat(wx.DataFormat):
 
 class uri_list_dataobject(wx.CustomDataObject):
     def __init__(self):
-       wx.CustomDataObject.__init__(self, uri_list_dataformat())
+        wx.CustomDataObject.__init__(self, uri_list_dataformat())
 
 
 class x_moz_url_dataformat(wx.DataFormat):
@@ -5719,7 +5727,7 @@ class multi_droptarget(multi_droptarget_base):
             # first, then the link text on page (e.g., 'click
             # here to download cat video') -- the latter is
             # probably not useful
-            files = [ data[0].strip() ]
+            files = [data[0].strip()]
             self.prdbg(_T("IN OnData -- 01 -- '{}'").format(files))
         elif (datf == self.do.uri_list_dataobject.GetFormat() or
               datf == self.do.file_dataobject.GetFormat() or
@@ -6572,9 +6580,10 @@ class TopWnd(wx.Frame):
                 if pl or pos > 0:
                     self.load_media()
                     if not self.load_ok:
-                        self.prdbg(_T("RESTORE STATE load fail of: {}"
-                            ).format(
-                                _T(self.get_reslist_item().resname)))
+                        self.prdbg(_T(
+                            "RESTORE STATE load fail of: {}"
+                            ).format(_T(
+                                self.get_reslist_item().resname)))
                         self.load_func = None
 
             self.set_tb_combos()
@@ -6778,11 +6787,11 @@ class TopWnd(wx.Frame):
         it = self.get_reslist_item(indice)
         return (
             it.get_res_disp_str() if it else None,
-            it.resname            if it else None,
-            _T(it.desc   )        if it else None,
-            _T(it.comment)        if it else None,
-            _T(it.err    )        if it else None,
-            it.length             if it else None)
+            it.resname if it else None,
+            _T(it.desc) if it else None,
+            _T(it.comment) if it else None,
+            _T(it.err) if it else None,
+            it.length if it else None)
 
     # dbus interface/object misc. (posix or X?)
     if _in_xws:
@@ -7497,7 +7506,7 @@ class TopWnd(wx.Frame):
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
 
-        tb.AddSeparator();
+        tb.AddSeparator()
 
         lbl, hlp = _mi_tup(self.mfile, self.mfile_openfile)
         _t_add(tb, self.mfile_openfile, lbl,
@@ -7513,7 +7522,7 @@ class TopWnd(wx.Frame):
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
 
-        tb.AddSeparator();
+        tb.AddSeparator()
 
         lbl, hlp = _mi_tup(self.medit, self.medit_undo)
         _t_add(tb, self.medit_undo, lbl,
@@ -7529,7 +7538,7 @@ class TopWnd(wx.Frame):
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
 
-        tb.AddSeparator();
+        tb.AddSeparator()
 
         lbl, hlp = _mi_tup(self.mctrl, self.mctrl_previous_grp)
         _t_add(tb, self.mctrl_previous_grp, lbl,
@@ -7545,7 +7554,7 @@ class TopWnd(wx.Frame):
                         wx.NullBitmap, wx.ITEM_NORMAL,
                         lbl, hlp)
 
-        #tb.AddSeparator();
+        #tb.AddSeparator()
         #
         #lbl, hlp = _mi_tup(self.mhelp, self.mhelp_help)
         #_t_add(tb, self.mhelp_help, lbl,
@@ -7627,7 +7636,7 @@ class TopWnd(wx.Frame):
 
         if use_wxtoolbar:
             tb.AddControl(self.cbox_group)
-            tb.AddSeparator();
+            tb.AddSeparator()
             tb.AddControl(self.cbox_resrc)
 
             if tb_ext == None:
@@ -7731,7 +7740,7 @@ class TopWnd(wx.Frame):
     def dialog_set_editor(self):
         try:
             dlg = self.group_edit_dialog
-        except:
+        except AttributeError:
             dlg = GroupSetEditDialog(self, wx.ID_ANY)
             self.group_edit_dialog = dlg
 
@@ -8124,7 +8133,7 @@ class TopWnd(wx.Frame):
     def show_wnd_obj(self, obj, show = True):
         r = False
 
-        if not obj in self.hiders.values():
+        if obj not in self.hiders.values():
             return False
 
         szr = self.GetSizer()
@@ -8375,7 +8384,7 @@ class TopWnd(wx.Frame):
             self.toolbar.EnableTool(self.medit_redo, False)
 
         butid = [
-            self.id_play, self.id_prev, self.id_next, self.id_stop ]
+            self.id_play, self.id_prev, self.id_next, self.id_stop]
 
         if self.reslist and self.medi:
             # activate save menus
@@ -8871,13 +8880,13 @@ class TopWnd(wx.Frame):
                         failed = False
                         break
                 except Exception as e:
-                    self.prdbg(
-                        _T("'{}' on load {} of '{}' due to encoding bug"
-                          ).format(e, i, _T(v)))
+                    self.prdbg(_T(
+                        "'{}' on load {} of '{}' due to encoding bug"
+                        ).format(e, i, _T(v)))
                 except:
-                    self.prdbg(
-                        _T("fail on load {} of '{}' due to encoding bug"
-                          ).format(i, _T(v)))
+                    self.prdbg(_T(
+                        "fail on load {} of '{}' due to encoding bug"
+                        ).format(i, _T(v)))
             ret = not failed
 
         if self.msg_grep:
@@ -8987,6 +8996,8 @@ class TopWnd(wx.Frame):
                 #self.show_wnd_obj(self.hiders["vszr"], False)
                 self.toolbar2.Show(False)
                 self.medi_tick = self.medi_tick_span
+
+
             def _aft(self, b):
                 self.ShowFullScreen(not b)
                 if b:
@@ -9002,6 +9013,8 @@ class TopWnd(wx.Frame):
                     # from a button or menu; but might not be if this
                     # is initiated programmatically, e.g. MPRIS
                     wx.CallAfter(self.Raise)
+
+
             wx.CallAfter(_aft, self, b)
             wx.GetApp().do_screensave(b)
             self.mpris2_signal_emit(_T("Fullscreen"))
@@ -9682,7 +9695,8 @@ class TopWnd(wx.Frame):
                     self.medi.Seek(v)
                     wx.CallAfter(self.mpris2_signal_emit, sig)
                 v = self.pos_sld.GetValue()
-                v = long(float(v - self.pos_sld.GetMin()) /self.pos_mul)
+                v = long(
+                    float(v - self.pos_sld.GetMin()) / self.pos_mul)
                 wx.CallAfter(_sk_mse, self, v, _T("Seeked"))
                 #wx.CallAfter(self.medi.Seek, v)
 
@@ -9842,7 +9856,7 @@ class TopWnd(wx.Frame):
             cur = self.theme_support
         config.WriteBool(_T("theme_support"), cur)
 
-        mn = True if self.IsIconized()  else False
+        mn = True if self.IsIconized() else False
         config.WriteBool(_T("iconized"),  mn)
         mx = True if self.IsMaximized() else False
         config.WriteBool(_T("maximized"), mx)
@@ -9878,10 +9892,11 @@ class TopWnd(wx.Frame):
 
         def _oncl_xitproc():
             self.register_ms_hotkeys(False)
+            st = self.get_medi_state()
             if self.load_ok and (
-                self.get_medi_state() == wx.media.MEDIASTATE_PLAYING or
-                self.get_medi_state() == wx.media.MEDIASTATE_PAUSED
-                ):
+                    st == wx.media.MEDIASTATE_PLAYING or
+                    st == wx.media.MEDIASTATE_PAUSED
+                    ):
                 self.cmd_on_stop()
             self.unload_media(True)
             self.main_timer.Stop()
@@ -10088,7 +10103,6 @@ class TopWnd(wx.Frame):
             self.do_command_button(self.id_play)
 
 
-
 # The program licence, encoded as:
 # CHUNK = 64
 # buf = base64.b64encode(zlib.compress(f_in.read(), 9))
@@ -10241,11 +10255,8 @@ UKJRfjqc72fC7Uus4uajcEJAg2e74hWjuroNUynKEfclJHEKb35I1F/qXhCg8/dn
 DvxdF+rw33WxX9r8P3d/dKk=
 """
 
-
-from wx.lib.embeddedimage import PyEmbeddedImage
-#----------------------------------------------------------------------
-wxmav_16 = PyEmbeddedImage(
-"""
+# ----------------------------------------------------------------------
+wxmav_16 = PyEmbeddedImage("""
 iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlw
 SFlzAAAHYgAAB2IBOHqZ2wAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoA
 AAKOSURBVDiNnZJLaBNRFIbPnbmTzCRNmlfTl7RJSVvE0qZYS7U+CC6kKuLGhboogm5cdCFY
@@ -10261,16 +10272,14 @@ z6M90YS55tKR2Ttzl0k0hGmZtazvU11Mk665ORpMiCA5eEb0OtGHjjCovOPPhoZK2uJvMMWG
 SHltDQjDrR95LYuEkkgR5KFKLpKC3WBtpTVAoK5nOEOjGNLImNy3DRG7n0z21qHlBhdk3E5G
 FaygYQs1WRYhoMCRMmCjDHZZIT4xjwLJnLn9bYphII306b1hRKi/kk+kmIhMJcW/wYTFRQZ0
 7v/RfyEmW/wNCi4jLhj6TdwAAAAASUVORK5CYII=
-"""
-)
+""")
 getwxmav_16Data = wxmav_16.GetData
 getwxmav_16Image = wxmav_16.GetImage
 getwxmav_16Bitmap = wxmav_16.GetBitmap
 getwxmav_16Icon = wxmav_16.GetIcon
 
-#----------------------------------------------------------------------
-wxmav_24 = PyEmbeddedImage(
-"""
+# ----------------------------------------------------------------------
+wxmav_24 = PyEmbeddedImage("""
 iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlw
 SFlzAAALEwAACxMBAJqcGAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoA
 AARzSURBVEiJzVRbbFRVFF3n3HNn6LynM2VmOm0ZWsqbPhCISCEUiWBCIjExIfGdQFQSwwcx
@@ -10295,16 +10304,14 @@ IWXd+VNEcyeuSAa9ovyFAnzzqRP6698MgEy1DunjHW30p+blj8PqxvwDUnz16DbWt3Ajxm1V
 bjtNOuyYtNmJarSA0/L7fzQGLwlzdhL2yTR3TiiiNpYSq7qiqA3nyIR1lOSvbGqUoM9+LAGn
 hIw5ZKgWCVkzg1wSMOR0mHK6mJmaapK/hzIWZH/ZHQBQLn4lSv1taVn4v0L9nwSYETmlKM2I
 PAlyDRPpXwBWW/ifn2GhwQAAAABJRU5ErkJggg==
-"""
-)
+""")
 getwxmav_24Data = wxmav_24.GetData
 getwxmav_24Image = wxmav_24.GetImage
 getwxmav_24Bitmap = wxmav_24.GetBitmap
 getwxmav_24Icon = wxmav_24.GetIcon
 
-#----------------------------------------------------------------------
-wxmav_32 = PyEmbeddedImage(
-"""
+# ----------------------------------------------------------------------
+wxmav_32 = PyEmbeddedImage("""
 iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlw
 SFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoA
 AAaBSURBVFiF7VZpbFxXFf7OfXfmzebxjD2ecWzHS+LYdZzEceqGLo6o1U0sIoiEpS0pUkWp
@@ -10339,16 +10346,14 @@ DG6u4nh5hFLhMC2pJQDRv5HNh6VpO8FsGuF0ElWz8/b2/mneNpSCIwTFS0dIO/KFOlfQbAWu
 IqvmFRip82Oywq9kQ6qT86vIq24UXBKW8q9iIya4CxakYcOvG/DnTY6kNNSP57B2Tod4v29Z
 ZEaWGXyXlk7dUeU25ab/Jsv/FJaU56/1j95Hxv8JfOwEpC/vzRqewvDHEdwDT/of0l3tgKL8
 jBQAAAAASUVORK5CYII=
-"""
-)
+""")
 getwxmav_32Data = wxmav_32.GetData
 getwxmav_32Image = wxmav_32.GetImage
 getwxmav_32Bitmap = wxmav_32.GetBitmap
 getwxmav_32Icon = wxmav_32.GetIcon
 
-#----------------------------------------------------------------------
-wxmav_48 = PyEmbeddedImage(
-"""
+# ----------------------------------------------------------------------
+wxmav_48 = PyEmbeddedImage("""
 iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAABHNCSVQICAgIfAhkiAAAAAlw
 SFlzAAAWJQAAFiUBSVIk8AAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoA
 AArJSURBVGiB7Vl7cJxVFf+d+3377W52N5tkN4/m/WrSpOkjtKEtFduKBaUMCgxoZUQHBRln
@@ -10403,16 +10408,14 @@ hC3GAWBmhSALaUVuuyqvKYeqKiIqzdFvAADyh3XkD08A6I2TkhlpOEORxjwWM5hqxWSKIpkS
 TEFEEymJdBEWk0v2mA4ApqJzuMMaPCEV3oAmnJELtpEgwnQUL3lpKMzMKQyqMuynTQl2Y65+
 43IgvIGY4Q3EAEwASDTsM0vSvA1Wkt4rK2MaIIeNK74d/9/wuQNXG587cLXxuQNXGyQECKe3
 zHpaXxBYVhf6L4MrE7SANK6VAAAAAElFTkSuQmCC
-"""
-)
+""")
 getwxmav_48Data = wxmav_48.GetData
 getwxmav_48Image = wxmav_48.GetImage
 getwxmav_48Bitmap = wxmav_48.GetBitmap
 getwxmav_48Icon = wxmav_48.GetIcon
 
-#----------------------------------------------------------------------
-wxmav_64 = PyEmbeddedImage(
-"""
+# ----------------------------------------------------------------------
+wxmav_64 = PyEmbeddedImage("""
 iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABHNCSVQICAgIfAhkiAAAAAlw
 SFlzAAAdhwAAHYcBj+XxZQAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoA
 AA8ISURBVHic7Vt7cJzVdf+d+3370mtXq9XqZVmSLVk2fr+wsQ0BAhM7JC1M0qYlhQT+6GNo
@@ -10487,8 +10490,7 @@ EU8gdywOTygK/3CUy3ujqG2PoCAigcka4ULRUhIYAkkA0hwaGrLYGEtCScmgD3/iiBRQ2RmR
 lZ0RAP0AphQFM30nZScEc1Nb1pZTYDTfhM1iFIyksk4nay4YmXHFOG/BcdHVCGtDcLKxsdEi
 AEi+9+V1xOy9ENtnCqRjtg2/eeuK/KfTXOJzBVxqAS41PlfApRbgUuNzBVxqAS41PlfApRbg
 UiOlAL6IFPizAuMqnPNM+H9/kssOo3BO/AAAAABJRU5ErkJggg==
-"""
-)
+""")
 getwxmav_64Data = wxmav_64.GetData
 getwxmav_64Image = wxmav_64.GetImage
 getwxmav_64Bitmap = wxmav_64.GetBitmap
@@ -10496,4 +10498,3 @@ getwxmav_64Icon = wxmav_64.GetIcon
 
 if __name__ == '__main__':
     wxmav_main()
-
