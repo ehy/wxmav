@@ -30,25 +30,6 @@ _x_help_path = r"@XHELPERPATH@"
 import os
 import sys
 
-osuname = os.uname()
-if (osuname[0] == 'OpenBSD' and float(osuname[2]) < 6.2 and
-    (osuname[4] == 'amd64' or osuname[4] == 'i386')):
-    # exec self with LD_PRELOAD in environment as workaround
-    # for both libestdc++ and libstdc++ being linked by code
-    # here and there
-    obsdhackopt = '!@openbsd-estdc++hack@!'
-    if len(sys.argv) > 1 and sys.argv[1] == obsdhackopt:
-        print("EXEC'd with hack")
-        del sys.argv[1]
-        del os.environ['LD_PRELOAD']
-        del osuname
-        del obsdhackopt
-    else:
-        stdsonm = 'libestdc++.so'
-        os.environ['LD_PRELOAD'] = stdsonm
-        sys.argv.insert(1, obsdhackopt)
-        os.execve(sys.argv[0], sys.argv, os.environ)
-
 if _inst_py_dir != sys.path[0]:
     sys.path.insert(0, _inst_py_dir)
 
