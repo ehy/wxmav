@@ -50,18 +50,18 @@ AC_SYS_LONG_FILE_NAMES
 
 dnl Configure option: install xdg items?
 AC_ARG_ENABLE([xdg-setup-items],
-	AS_HELP_STRING([--disable-xdg-setup-items],
-		 [do not install the 'desktop' items (icons, menu, etc.) for
+    AS_HELP_STRING([--disable-xdg-setup-items],
+         [do not install the 'desktop' items (icons, menu, etc.) for
           the program -- installation of these items
           requires xdg-icon-resource, xdg-desktop-menu, xdg-mime
           (from package possibly named "xdg-utils") -- installation will
           *not* fail if those programs fail or are absent
          ]),
-	[case "${enableval}" in
-	yes) enable_frontend_xdg=true ;;
-	no)  enable_frontend_xdg=false ;;
-	*) AC_MSG_ERROR([bad value ${enableval} for --enable-xdg-setup-items]) ;;
-	esac],[enable_frontend_xdg=true])
+    [case "${enableval}" in
+    yes) enable_frontend_xdg=true ;;
+    no)  enable_frontend_xdg=false ;;
+    *) AC_MSG_ERROR([bad value ${enableval} for --enable-xdg-setup-items]) ;;
+    esac],[enable_frontend_xdg=true])
 AM_CONDITIONAL([WITH_FRONTEND_XDG], [test x$enable_frontend_xdg = xtrue])
 
 dnl WRT xdg items: scripts such as xdg-desktop-menu check env
@@ -77,6 +77,8 @@ AC_PROG_INSTALL
 AC_PROG_CC
 dnl AC_PROG_CXX
 dnl AC_C_INLINE
+dnl automake 1.11 on OpenBSD is *demanding* AM_PROG_CC_C_O
+AM_PROG_CC_C_O
 
 # proc to warn that the X requiement unsatisfied and
 # helper will not be installed
@@ -249,9 +251,15 @@ dnl
 dnl Now, checks for pkg-config; 1st acoording to comments in
 dnl share/aclocal/pkg.m4, installed by pkgconfig package --
 dnl check version of these macros (for development):
-m4_ifndef([PKG_PREREQ],
-    [m4_fatal([must install pkg-config 0.29 or later before running autoconf/autogen])])
-PKG_PREREQ(0.29)
+dnl UPDATE: OpenBSD (at least 6.1, 6.2, don\'t know 1st version)
+dnl has pkg-config hack in base system, and *no* pkgconfig in
+dnl ports packages -- and as of 6.2 pkg-config --version reports
+dnl 0.27.1 -- so adjust minimum version from 0.29 to 0.27 for
+dnl development on OpenBSD -- but watch this elsewhere --
+dnl no, test fails regardless, just remove this test
+#m4_ifndef([PKG_PREREQ],
+#    [m4_fatal([must install pkg-config 0.27 or later before running autoconf/autogen])])
+#PKG_PREREQ(0.27)
 dnl Now, set the PKG_CONFIG variable to first in path -- optional
 dnl version arg defaults to 0.9.0
 PKG_PROG_PKG_CONFIG

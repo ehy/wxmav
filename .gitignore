@@ -14,3 +14,13 @@ depend
 *-working
 .exrc
 .nexrc
+.INSTALL
+.aclocal.m4
+.compile
+.config.guess
+.config.sub
+.depcomp
+.install-sh
+.missing
+.mkinstalldirs
+.py-compile
