@@ -8839,7 +8839,7 @@ class TopWnd(wx.Frame):
         if not med:
             return False
 
-        s = med #.strip()
+        s = med
         if not s:
             return False
 
@@ -8881,11 +8881,11 @@ class TopWnd(wx.Frame):
                         break
                 except Exception as e:
                     self.prdbg(_T(
-                        "'{}' on load {} of '{}' due to encoding bug"
+                        "'{}' on load {} of '{}' due to charset bug"
                         ).format(e, i, _T(v)))
                 except:
                     self.prdbg(_T(
-                        "fail on load {} of '{}' due to encoding bug"
+                        "fail on load {} of '{}' due to charset bug"
                         ).format(i, _T(v)))
             ret = not failed
 
@@ -9271,6 +9271,7 @@ class TopWnd(wx.Frame):
                 self.pause_ticks = 0 # expired: tested in stop event
                 self.prdbg(_T("on_media_play: pause_ticks == 0"))
                 self.medi.Stop()
+                #self.cmd_on_stop()
                 self.unload_media(force = False)
                 self.load_media()
                 return
