@@ -2751,7 +2751,7 @@ stop_mpris_service(mpris_data_struct *dat)
  * This is a modification of code found in
  *     https://github.com/Serranya/deadbeef-mpris2-plugin.git
  */
-static const char mpris_node_xml[] =
+static const char *mpris_node_xml =
 "<node name='/org/mpris/MediaPlayer2'>"
 "   <interface name='org.mpris.MediaPlayer2'>"
 "       <method name='Raise'/>"
