@@ -1006,58 +1006,58 @@ if _in_xws:
     # https://gstreamer.freedesktop.org/documentation/ [...cont...]
     #  plugin-development/advanced/media-types.html
     gst_mime = [
-    "audio/x-ac3",	#AC-3 or A52 audio streams.
-    "audio/x-adpcm",	#ADPCM Audio streams.
-    "audio/x-cinepak",	#Audio as provided in a Cinepak (Quicktime) stream.
-    "audio/x-dv",	#Audio as provided in a Digital Video stream.
-    "audio/x-flac",	#Free Lossless Audio codec (FLAC).
-    "audio/x-gsm",	#Data encoded by the GSM codec.
-    "audio/x-alaw",	#A-Law Audio.
-    "audio/x-mulaw",	#Mu-Law Audio.
-    "audio/x-mace",	#MACE Audio (used in Quicktime).
-    "audio/mpeg",	#Audio data compressed using the MPEG audio encoding scheme.
-    "audio/x-qdm2",	#Data encoded by the QDM version 2 codec.
-    "audio/x-pn-realaudio",	#Realmedia Audio data.
-    "audio/x-speex",	#Data encoded by the Speex audio codec
-    "audio/x-vorbis",	#Vorbis audio data
-    "audio/x-wma",	#Windows Media Audio
-    "audio/x-paris",	#Ensoniq PARIS audio
-    "audio/x-svx",	#Amiga IFF / SVX8 / SV16 audio
-    "audio/x-nist",	#Sphere NIST audio
-    "audio/x-voc",	#Sound Blaster VOC audio
-    "audio/x-ircam",	#Berkeley/IRCAM/CARL audio
-    "audio/x-w64",	#Sonic Foundry's 64 bit RIFF/WAV
-    "video/x-raw",	#Unstructured and uncompressed raw video data.
-    "video/x-3ivx",	#3ivx video.
-    "video/x-divx",	#DivX video.
-    "video/x-dv",	#Digital Video.
-    "video/x-ffv",	#FFMpeg video.
-    "video/x-h263",	#H-263 video.
-    "video/x-h264",	#H-264 video.
-    "video/x-huffyuv",	#Huffyuv video.
-    "video/x-indeo",	#Indeo video.
-    "video/x-intel-h263",	#H-263 video.
-    "video/x-jpeg",	#Motion-JPEG video.
-    "video/mpeg",	#MPEG video.
-    "video/x-msmpeg",	#Microsoft MPEG-4 video deviations.
-    "video/x-msvideocodec",	#Microsoft Video 1 (oldish codec).
-    "video/x-pn-realvideo",	#Realmedia video.
-    "video/x-rle",	#RLE animation format.
-    "video/x-svq",	#Sorensen Video.
-    "video/x-tarkin",	#Tarkin video.
-    "video/x-theora",	#Theora video.
-    "video/x-vp3",	#VP-3 video.
-    "video/x-wmv",	#Windows Media Video
-    "video/x-xvid",	#XviD video.
-    "video/x-ms-asf",	#Advanced Streaming Format (ASF).
-    "video/x-msvideo",	#AVI.
-    "video/x-dv",	#Digital Video.
-    "video/x-matroska",	#Matroska.
-    "video/mpeg",	#Motion Pictures Expert Group System Stream.
-    "application/ogg",	#Ogg.
-    "video/quicktime",	#Quicktime.
-    "application/vnd.rn-realmedia",	#RealMedia.
-    "audio/x-wav",	#WAV.
+    "audio/x-ac3",  #AC-3 or A52 audio streams.
+    "audio/x-adpcm",    #ADPCM Audio streams.
+    "audio/x-cinepak",  #Audio as provided in a Cinepak (Quicktime) stream.
+    "audio/x-dv",   #Audio as provided in a Digital Video stream.
+    "audio/x-flac", #Free Lossless Audio codec (FLAC).
+    "audio/x-gsm",  #Data encoded by the GSM codec.
+    "audio/x-alaw", #A-Law Audio.
+    "audio/x-mulaw",    #Mu-Law Audio.
+    "audio/x-mace", #MACE Audio (used in Quicktime).
+    "audio/mpeg",   #Audio data compressed using the MPEG audio encoding scheme.
+    "audio/x-qdm2", #Data encoded by the QDM version 2 codec.
+    "audio/x-pn-realaudio", #Realmedia Audio data.
+    "audio/x-speex",    #Data encoded by the Speex audio codec
+    "audio/x-vorbis",   #Vorbis audio data
+    "audio/x-wma",  #Windows Media Audio
+    "audio/x-paris",    #Ensoniq PARIS audio
+    "audio/x-svx",  #Amiga IFF / SVX8 / SV16 audio
+    "audio/x-nist", #Sphere NIST audio
+    "audio/x-voc",  #Sound Blaster VOC audio
+    "audio/x-ircam",    #Berkeley/IRCAM/CARL audio
+    "audio/x-w64",  #Sonic Foundry's 64 bit RIFF/WAV
+    "video/x-raw",  #Unstructured and uncompressed raw video data.
+    "video/x-3ivx", #3ivx video.
+    "video/x-divx", #DivX video.
+    "video/x-dv",   #Digital Video.
+    "video/x-ffv",  #FFMpeg video.
+    "video/x-h263", #H-263 video.
+    "video/x-h264", #H-264 video.
+    "video/x-huffyuv",  #Huffyuv video.
+    "video/x-indeo",    #Indeo video.
+    "video/x-intel-h263",   #H-263 video.
+    "video/x-jpeg", #Motion-JPEG video.
+    "video/mpeg",   #MPEG video.
+    "video/x-msmpeg",   #Microsoft MPEG-4 video deviations.
+    "video/x-msvideocodec", #Microsoft Video 1 (oldish codec).
+    "video/x-pn-realvideo", #Realmedia video.
+    "video/x-rle",  #RLE animation format.
+    "video/x-svq",  #Sorensen Video.
+    "video/x-tarkin",   #Tarkin video.
+    "video/x-theora",   #Theora video.
+    "video/x-vp3",  #VP-3 video.
+    "video/x-wmv",  #Windows Media Video
+    "video/x-xvid", #XviD video.
+    "video/x-ms-asf",   #Advanced Streaming Format (ASF).
+    "video/x-msvideo",  #AVI.
+    "video/x-dv",   #Digital Video.
+    "video/x-matroska", #Matroska.
+    "video/mpeg",   #Motion Pictures Expert Group System Stream.
+    "application/ogg",  #Ogg.
+    "video/quicktime",  #Quicktime.
+    "application/vnd.rn-realmedia", #RealMedia.
+    "audio/x-wav",  #WAV.
     # Added EH -- additional
     "video/x-flv"   # Is this correct?
     ]
@@ -3385,13 +3385,13 @@ elif _in_xws:
                 _T("org.mpris.MediaPlayer2\n"),
                 _T("property\n"),
                 ( # base property signals
-                    _T("CanQuit"),             # b 	Read only
-                    _T("Fullscreen"),          # b 	Read/Write(optional)
-                    _T("CanSetFullscreen"),    # b 	Read only (optional)
-                    _T("CanRaise"),            # b 	Read only
-                    _T("HasTrackList"),        # b 	Read only
-                    _T("Identity"),            # s 	Read only
-                    _T("DesktopEntry"),        # s 	Read only (optional)
+                    _T("CanQuit"),             # b  Read only
+                    _T("Fullscreen"),          # b  Read/Write(optional)
+                    _T("CanSetFullscreen"),    # b  Read only (optional)
+                    _T("CanRaise"),            # b  Read only
+                    _T("HasTrackList"),        # b  Read only
+                    _T("Identity"),            # s  Read only
+                    _T("DesktopEntry"),        # s  Read only (optional)
                     _T("SupportedUriSchemes"), # as Read only
                     _T("SupportedMimeTypes")   # as Read only
                 )
@@ -3413,18 +3413,18 @@ elif _in_xws:
                     _T("PlaybackStatus"), # s     Read only
                     _T("LoopStatus"),     # s     Read/Write (optional)
                     _T("Rate"),           # d     Read/Write
-                    _T("Shuffle"),        # b 	  Read/Write (optional)
+                    _T("Shuffle"),        # b     Read/Write (optional)
                     _T("Metadata"),       # a{sv} Read only
                     _T("Volume"),         # d     Read/Write
                     _T("Position"),       # x     Read only
-                    _T("MinimumRate"),    # d  	  Read only
-                    _T("MaximumRate"),    # d  	  Read only
-                    _T("CanGoNext"),      # b 	  Read only
-                    _T("CanGoPrevious"),  # b 	  Read only
-                    _T("CanPlay"),        # b 	  Read only
-                    _T("CanPause"),       # b 	  Read only
-                    _T("CanSeek"),        # b 	  Read only
-                    _T("CanControl")      # b 	  Read only
+                    _T("MinimumRate"),    # d     Read only
+                    _T("MaximumRate"),    # d     Read only
+                    _T("CanGoNext"),      # b     Read only
+                    _T("CanGoPrevious"),  # b     Read only
+                    _T("CanPlay"),        # b     Read only
+                    _T("CanPause"),       # b     Read only
+                    _T("CanSeek"),        # b     Read only
+                    _T("CanControl")      # b     Read only
                 )
                 )
 
@@ -9270,11 +9270,14 @@ class TopWnd(wx.Frame):
             if tdiff >= self.pause_ticks_interval:
                 self.pause_ticks = 0 # expired: tested in stop event
                 self.prdbg(_T("on_media_play: pause_ticks == 0"))
-                self.medi.Stop()
-                #self.cmd_on_stop()
-                self.unload_media(force = False)
-                self.load_media()
-                return
+                # if medium is an unbounded stream then stop and restart
+                if self.medi.Length() < 1:
+                    self.prdbg(_T("on_media_play: tick expire stop"))
+                    #self.medi.Stop()
+                    self.cmd_on_stop()
+                    self.unload_media(force = False)
+                    self.load_media()
+                    return
             else:
                 self.pause_ticks = -1 # reset: played in time
 
