@@ -965,7 +965,7 @@ dbus_gio_main(const dbus_proc_in *in)
  * gets passed to g_dbus_node_info_new_for_xml() to
  * buy a GDBusNodeInfo *
  */
-static const char mpris_node_xml[];
+static const char *mpris_node_xml;
 
 /* much needed strings */
 #define MPRIS2_NAME_BASE "org.mpris.MediaPlayer2"
@@ -1588,7 +1588,7 @@ gvar_from_simple_type(int type,
                       const char *value,
                       mpris_data_struct *dat)
 {
-	GVariant   *result = NULL;
+    GVariant   *result = NULL;
     const char *p      = value;
 
     fprintf(fpinfo, "%s: %s type '%c' value '%s'\n", prog,
@@ -1600,15 +1600,15 @@ gvar_from_simple_type(int type,
      */
     if ( type == 'b' ) {
         gboolean b = strcasecmp(p, "true") == 0 ? TRUE : FALSE;
-		result = g_variant_new_boolean(b);
+        result = g_variant_new_boolean(b);
     } else if ( type == 's' ||
                 type == 'o' ||
                 type == 'g' ) {
-		gchar pt[2] = {type, '\0'};
+        gchar pt[2] = {type, '\0'};
         result = g_variant_new(pt, p);
     } else if ( type == 'd' ) {
         gdouble v = atof(p);
-		result = g_variant_new_double(v);
+        result = g_variant_new_double(v);
     } else if ( type == 'y' ) {
         unsigned int u;
         if ( sscanf(p, "%u", &u) == 1 ) {
@@ -1658,7 +1658,7 @@ gvar_from_simple_type(int type,
             result = g_variant_new_handle(v);
         }
     } else if ( type == 'v' ) {
-		/* special case here: value (p) must be of form:
+        /* special case here: value (p) must be of form:
          * type:[value-or-none-per-type]*/
         GVariant *var;
         char     *t, *t2;
@@ -1711,7 +1711,7 @@ gvar_from_strings(const char *type,
     ssize_t   rdlen;
     size_t    vlen    = 1;
     size_t    tlen    = strlen(type);
-	GVariant  *result = NULL;
+    GVariant  *result = NULL;
 
     if ( ! CHECK_DATATYPE_LEN(tlen) ) {
         fprintf(fpinfo, "%s: internal error - type length %zu [%s]\n",
@@ -2173,7 +2173,7 @@ _mpris_call_method(GDBusConnection *connection,
         /* error code G_DBUS_ERROR_LIMITS_EXCEEDED
          * is the only one I see that looks as if
          * it may be regarded as temporary */
-		g_dbus_method_invocation_return_error(
+        g_dbus_method_invocation_return_error(
             invocation, G_DBUS_ERROR, G_DBUS_ERROR_LIMITS_EXCEEDED,
             "%s: reenter detected while performing %s.%s call",
             prog, interface_name, method_name);
@@ -2241,35 +2241,35 @@ _mpris_call_method(GDBusConnection *connection,
         }
     } while ( 0 );
 
-	/* error herein */
+    /* error herein */
     if ( strncmp(p2, "IO ERROR: ", 10) == 0 ) {
-		g_dbus_method_invocation_return_error(
+        g_dbus_method_invocation_return_error(
             invocation, G_DBUS_ERROR, G_DBUS_ERROR_IO_ERROR,
             "'%s' while performing %s.%s call",
             p2, interface_name, method_name);
-	/* error herein */
+    /* error herein */
     } else if ( strncmp(p2, "ERROR: ", 7) == 0 ) {
-		g_dbus_method_invocation_return_error(
+        g_dbus_method_invocation_return_error(
             invocation, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN,
             "Error: internal I/O '%s' while performing %s.%s call",
             p2, interface_name, method_name);
-	/* return type and value */
+    /* return type and value */
     } else if ( S_CI_EQ(p2, "UNSUPPORTED") ) {
-		g_dbus_method_invocation_return_error(
+        g_dbus_method_invocation_return_error(
             invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
             "Error: method %s.%s not supported",
             interface_name, method_name);
     } else if ( S_CI_EQ(p2, "VOID") ) {
-		g_dbus_method_invocation_return_value(invocation, NULL);
-	/* TODO: handle return types - before TrackList or Playlists
+        g_dbus_method_invocation_return_value(invocation, NULL);
+    /* TODO: handle return types - before TrackList or Playlists
     } else if (  ) {
     */
     } else {
-		g_dbus_method_invocation_return_error(
+        g_dbus_method_invocation_return_error(
             invocation, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_METHOD,
             "Error: method %s.%s unknown",
             interface_name, method_name);
-	}
+    }
 
     --reenter_guard;
 }
@@ -2287,7 +2287,7 @@ _mpris_get_property(GDBusConnection *connection,
 {
     mpris_data_struct *dat = (mpris_data_struct *)user_data;
     char *p, *p2;
-	GVariant *result = NULL;
+    GVariant *result = NULL;
 
     fprintf(fpinfo, "%s re. %d: %s meth/prop '%s'\n", prog,
             reenter_guard,
@@ -2323,7 +2323,7 @@ _mpris_get_property(GDBusConnection *connection,
     result = gvar_from_strings(p2, p, dat);
 
     --reenter_guard;
-	return result;
+    return result;
 }
 
 static int
@@ -2340,7 +2340,7 @@ _mpris_set_property(GDBusConnection *connection,
 {
     mpris_data_struct *dat = (mpris_data_struct *)user_data;
     char *p, *p2;
-	int      r, result = 0;
+    int      r, result = 0;
 
     fprintf(fpinfo, "%s re. %d: %s meth/prop '%s'\n", prog,
             reenter_guard,
@@ -2474,9 +2474,9 @@ cb_base_set_property(GDBusConnection *connection,
 }
 
 static const GDBusInterfaceVTable base_interface_vtable = {
-	cb_base_methods,
-	cb_base_get_property,
-	cb_base_set_property
+    cb_base_methods,
+    cb_base_get_property,
+    cb_base_set_property
 };
 
 /*
@@ -2555,9 +2555,9 @@ cb_player_set_property(GDBusConnection *connection,
 }
 
 static const GDBusInterfaceVTable player_interface_vtable = {
-	cb_player_methods,
-	cb_player_get_property,
-	cb_player_set_property
+    cb_player_methods,
+    cb_player_get_property,
+    cb_player_set_property
 };
 
 static void
@@ -2567,11 +2567,11 @@ mp_bus_acquired(GDBusConnection *connection,
 {
     mpris_data_struct  *dat         = (mpris_data_struct *)user_data;
     /* see <interface> blocks in XML desc. (mpris_node_xml) */
-	GDBusInterfaceInfo **interfaces = dat->node_info->interfaces;
+    GDBusInterfaceInfo **interfaces = dat->node_info->interfaces;
 
     dat->connection = connection;
 
-	dat->reg_ids[0] =
+    dat->reg_ids[0] =
         g_dbus_connection_register_object(connection,
                                           mpris_path,
                                           interfaces[0],
@@ -2579,7 +2579,7 @@ mp_bus_acquired(GDBusConnection *connection,
                                           user_data,
                                           NULL, NULL);
 
-	dat->reg_ids[1] =
+    dat->reg_ids[1] =
         g_dbus_connection_register_object(connection,
                                           mpris_path,
                                           interfaces[1],
@@ -2656,7 +2656,7 @@ start_mpris_service(mpris_data_struct *dat)
 {
     put_mpris_bus_name(dat, appname, 0);
 
-	dat->node_info = g_dbus_node_info_new_for_xml(mpris_node_xml, NULL);
+    dat->node_info = g_dbus_node_info_new_for_xml(mpris_node_xml, NULL);
 
     dat->bus_id    = g_bus_own_name(G_BUS_TYPE_SESSION,
                                     dat->bus_name,
@@ -2678,7 +2678,7 @@ start_instance_mpris_service(mpris_data_struct *dat)
 {
     put_mpris_bus_name(dat, appname, 1);
 
-	if ( dat->node_info == NULL ) {
+    if ( dat->node_info == NULL ) {
         dat->node_info =
             g_dbus_node_info_new_for_xml(mpris_node_xml, NULL);
     }
@@ -2753,58 +2753,58 @@ stop_mpris_service(mpris_data_struct *dat)
  */
 static const char mpris_node_xml[] =
 "<node name='/org/mpris/MediaPlayer2'>"
-"	<interface name='org.mpris.MediaPlayer2'>"
-"		<method name='Raise'/>"
-"		<method name='Quit'/>"
-"		<property access='read'	name='CanQuit'             type='b'/>"
-"		<property access='readwrite' name='Fullscreen'     type='b'/>"
-"		<property access='read'	name='CanSetFullscreen'    type='b'/>"
-"		<property access='read'	name='CanRaise'            type='b'/>"
-"		<property access='read'	name='HasTrackList'        type='b'/>"
-"		<property access='read'	name='Identity'            type='s'/>"
-"		<property access='read' name='DesktopEntry'        type='s'/>"
-"		<property access='read'	name='SupportedUriSchemes' type='as'/>"
-"		<property access='read'	name='SupportedMimeTypes'  type='as'/>"
-"	</interface>"
-"	<interface name='org.mpris.MediaPlayer2.Player'>"
-"		<method name='Next'/>"
-"		<method name='Previous'/>"
-"		<method name='Pause'/>"
-"		<method name='PlayPause'/>"
-"		<method name='Stop'/>"
-"		<method name='Play'/>"
-"		<method name='Seek'>"
-"			<arg name='Offset'      type='x'/>"
-"		</method>"
-"		<method name='SetPosition'>"
-"			<arg name='TrackId'     type='o'/>"
-"			<arg name='Position'    type='x'/>"
-"		</method>"
-"		<method name='OpenUri'>"
-"			<arg name='Uri'         type='s'/>"
-"		</method>"
-"		<signal name='Seeked'>"
-"			<arg name='Position'    type='x' direction='out'/>"
-"		</signal>"
-"		<property access='read'	     name='PlaybackStatus' type='s'/>"
-"		<property access='readwrite' name='LoopStatus'     type='s'/>"
-"		<property access='readwrite' name='Rate'           type='d'/>"
-"		<property access='readwrite' name='Shuffle'        type='b'/>"
-"		<property access='read'      name='Metadata'       type='a{sv}'/>"
-"		<property access='readwrite' name='Volume'         type='d'/>"
-"		<property access='read'      name='Position'       type='x'>"
-"			<annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='false'/>"
-"		</property>"
-"		<property access='read'         name='MinimumRate'   type='d'/>"
-"		<property access='read'         name='MaximumRate'   type='d'/>"
-"		<property access='read'         name='CanGoNext'     type='b'/>"
-"		<property access='read'         name='CanGoPrevious' type='b'/>"
-"		<property access='read'         name='CanPlay'       type='b'/>"
-"		<property access='read'         name='CanPause'      type='b'/>"
-"		<property access='read'         name='CanSeek'       type='b'/>"
-"		<property access='read'         name='CanControl'    type='b'>"
-"			<annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='false'/>"
-"		</property>"
-"	</interface>"
+"   <interface name='org.mpris.MediaPlayer2'>"
+"       <method name='Raise'/>"
+"       <method name='Quit'/>"
+"       <property access='read' name='CanQuit'             type='b'/>"
+"       <property access='readwrite' name='Fullscreen'     type='b'/>"
+"       <property access='read' name='CanSetFullscreen'    type='b'/>"
+"       <property access='read' name='CanRaise'            type='b'/>"
+"       <property access='read' name='HasTrackList'        type='b'/>"
+"       <property access='read' name='Identity'            type='s'/>"
+"       <property access='read' name='DesktopEntry'        type='s'/>"
+"       <property access='read' name='SupportedUriSchemes' type='as'/>"
+"       <property access='read' name='SupportedMimeTypes'  type='as'/>"
+"   </interface>"
+"   <interface name='org.mpris.MediaPlayer2.Player'>"
+"       <method name='Next'/>"
+"       <method name='Previous'/>"
+"       <method name='Pause'/>"
+"       <method name='PlayPause'/>"
+"       <method name='Stop'/>"
+"       <method name='Play'/>"
+"       <method name='Seek'>"
+"           <arg name='Offset'      type='x'/>"
+"       </method>"
+"       <method name='SetPosition'>"
+"           <arg name='TrackId'     type='o'/>"
+"           <arg name='Position'    type='x'/>"
+"       </method>"
+"       <method name='OpenUri'>"
+"           <arg name='Uri'         type='s'/>"
+"       </method>"
+"       <signal name='Seeked'>"
+"           <arg name='Position'    type='x' direction='out'/>"
+"       </signal>"
+"       <property access='read'      name='PlaybackStatus' type='s'/>"
+"       <property access='readwrite' name='LoopStatus'     type='s'/>"
+"       <property access='readwrite' name='Rate'           type='d'/>"
+"       <property access='readwrite' name='Shuffle'        type='b'/>"
+"       <property access='read'      name='Metadata'       type='a{sv}'/>"
+"       <property access='readwrite' name='Volume'         type='d'/>"
+"       <property access='read'      name='Position'       type='x'>"
+"           <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='false'/>"
+"       </property>"
+"       <property access='read'         name='MinimumRate'   type='d'/>"
+"       <property access='read'         name='MaximumRate'   type='d'/>"
+"       <property access='read'         name='CanGoNext'     type='b'/>"
+"       <property access='read'         name='CanGoPrevious' type='b'/>"
+"       <property access='read'         name='CanPlay'       type='b'/>"
+"       <property access='read'         name='CanPause'      type='b'/>"
+"       <property access='read'         name='CanSeek'       type='b'/>"
+"       <property access='read'         name='CanControl'    type='b'>"
+"           <annotation name='org.freedesktop.DBus.Property.EmitsChangedSignal' value='false'/>"
+"       </property>"
+"   </interface>"
 "</node>";
 
