@@ -33,6 +33,7 @@
 #include <stdint.h> /* TODO: test w/ configure, have alternatives */
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
