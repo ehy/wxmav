@@ -9998,8 +9998,11 @@ class TopWnd(wx.Frame):
         if not _in_xws:
             return
 
+        self.err_msg('ENTER put_coproc_queue')
+        cnt = 0
         fifo = self.coproc_fifo
         while True:
+            cnt += 1
             try:
                 fifo.put(dat, block = False, timeout = -1)
                 break
@@ -10007,11 +10010,11 @@ class TopWnd(wx.Frame):
                 if discardold:
                     t = fifo.get(block = False, timeout = -1)
                     fifo.task_done()
-                    m = _T("put_coproc_queue: FULL: lose old {}")
-                    self.err_msg(m.format(t))
+                    m = _T("put_coproc_queue: FULL: lose old {} [{}]")
+                    self.err_msg(m.format(t, cnt))
                 else:
-                    m = _T("put_coproc_queue: FULL: lose new {}")
-                    self.err_msg(m.format(dat))
+                    m = _T("put_coproc_queue: FULL: lose new {} [{}]")
+                    self.err_msg(m.format(dat, cnt))
                     break
 
     def mpris2_signal_emit(self, signal):
