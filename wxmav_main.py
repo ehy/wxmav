@@ -6838,25 +6838,26 @@ class TopWnd(wx.Frame):
 
         def mpris_sendsignal_check(self):
             didemit = False
+            sset = [_T("PlaybackStatus")]
 
             try:
                 b = self.cangonext
             except AttributeError:
                 b = self.cangonext = None
-            c = True if (self.get_next_index() != None) else False
+            c = self.get_can_do_next()
             if b != c:
                 self.cangonext = c
-                self.mpris2_signal_emit(_T("CanGoNext"))
+                sset.append(_T("CanGoNext"))
                 didemit = True
 
             try:
                 b = self.cangoprev
             except AttributeError:
                 b = self.cangoprev = None
-            c = True if (self.get_prev_index() != None) else False
+            c = self.get_can_do_prev()
             if b != c:
                 self.cangoprev = c
-                self.mpris2_signal_emit(_T("CanGoPrevious"))
+                sset.append(_T("CanGoPrevious"))
                 didemit = True
 
             try:
@@ -6867,8 +6868,8 @@ class TopWnd(wx.Frame):
                 self.reslist and len(self.reslist) > 0) else False
             if b != c:
                 self.canplay = c
-                self.mpris2_signal_emit(_T("CanPlay"))
-                self.mpris2_signal_emit(_T("CanPause"))
+                sset.append(_T("CanPlay"))
+                sset.append(_T("CanPause"))
                 didemit = True
 
             try:
@@ -6887,7 +6888,7 @@ class TopWnd(wx.Frame):
             if b != c or l != lcur:
                 self.canseek = c
                 self.lastlen = lcur
-                self.mpris2_signal_emit(_T("CanSeek"))
+                sset.append(_T("CanSeek"))
                 didemit = True
 
             # hack: wanting a flush-like effect --
@@ -6902,7 +6903,8 @@ class TopWnd(wx.Frame):
             # maybe there is an expected sequence of signal
             # emissions that is not documented for MPRIS2.
             if didemit:
-                self.mpris2_signal_emit(_T("PlaybackStatus"))
+                for s in sset:
+                    self.mpris2_signal_emit(s)
             else:
                 # check if queue is not empty, and if not prod coproc
                 fifo = self.coproc_fifo
@@ -9394,6 +9396,9 @@ class TopWnd(wx.Frame):
     def on_prev(self, event):
         self.cmd_on_prev(from_user = True, event = event)
 
+    def get_can_do_prev(self):
+        return False if self.get_prev_index() is None else True
+
     def get_prev_index(self):
         l = self.get_reslist_len()
         if not l:
@@ -9443,6 +9448,9 @@ class TopWnd(wx.Frame):
 
     def on_next(self, event):
         self.cmd_on_next(from_user = True, event = event)
+
+    def get_can_do_next(self):
+        return False if self.get_next_index() is None else True
 
     def get_next_index(self):
         l = self.get_reslist_len()
