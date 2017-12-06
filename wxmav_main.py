@@ -6881,14 +6881,17 @@ class TopWnd(wx.Frame):
             except AttributeError:
                 l = self.lastlen = None
             c = False
-            lcur = 0
-            if self.load_ok and self.medi.Length() > 0:
-                c = True
-                lcur = self.medi.Length()
-            if b != c or l != lcur:
+            #lcur = 0
+            #if self.load_ok and self.medi.Length() > 0:
+            #    c = True
+            #    lcur = self.medi.Length()
+            lcur = self.medi.Length()
+            if b != c or (l != lcur and lcur > 0):
                 self.canseek = c
                 self.lastlen = lcur
                 sset.append(_T("CanSeek"))
+                if l != lcur:
+                    sset.append(_T("Metadata"))
                 didemit = True
 
             # hack: wanting a flush-like effect --
@@ -6936,11 +6939,13 @@ class TopWnd(wx.Frame):
             try:
                 l = self.lastlen
             except AttributeError:
-                l = self.lastmetalen = None
-            lcur = 0
-            if self.load_ok and self.medi.Length() > 0:
-                c = True
-                lcur = self.medi.Length()
+                #l = self.lastmetalen = None
+                l = self.lastlen = None
+            #lcur = 0
+            #if self.load_ok and self.medi.Length() > 0:
+            #    c = True
+            #    lcur = self.medi.Length()
+            lcur = self.medi.Length()
 
             if (curtuple == None or
                 curtuple[0] != gid or curtuple[1] != uid or
@@ -8727,6 +8732,8 @@ class TopWnd(wx.Frame):
         self.prdbg(_T("Media event: EVT_MEDIA_LOADED"))
 
         self.set_medi_state(wx.media.MEDIASTATE_STOPPED)
+        self.canseek = None
+        self.lastlen = None
 
         call_me = self.load_func
         self.load_func = None
@@ -8782,8 +8789,8 @@ class TopWnd(wx.Frame):
             self.focus_medi_opt()
 
         self.mpris2_signal_emit(_T("Metadata"))
+        self.mpris2_signal_emit(_T("CanSeek"))
         self.mpris_sendsignal_check()
-        #self.mpris2_signal_emit(_T("CanSeek"))
 
     def slider_setup(self, pos = None):
         ln = self.medi.Length()
