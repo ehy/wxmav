@@ -6837,8 +6837,8 @@ class TopWnd(wx.Frame):
             return False
 
         def mpris_sendsignal_check(self):
-            didemit = False
-            sset = [_T("PlaybackStatus")]
+            doemit = False
+            sset = []
 
             try:
                 b = self.cangonext
@@ -6848,7 +6848,7 @@ class TopWnd(wx.Frame):
             if b != c:
                 self.cangonext = c
                 sset.append(_T("CanGoNext"))
-                didemit = True
+                doemit = True
 
             try:
                 b = self.cangoprev
@@ -6858,7 +6858,7 @@ class TopWnd(wx.Frame):
             if b != c:
                 self.cangoprev = c
                 sset.append(_T("CanGoPrevious"))
-                didemit = True
+                doemit = True
 
             try:
                 b = self.canplay
@@ -6870,7 +6870,7 @@ class TopWnd(wx.Frame):
                 self.canplay = c
                 sset.append(_T("CanPlay"))
                 sset.append(_T("CanPause"))
-                didemit = True
+                doemit = True
 
             try:
                 b = self.canseek
@@ -6880,19 +6880,15 @@ class TopWnd(wx.Frame):
                 l = self.lastlen
             except AttributeError:
                 l = self.lastlen = None
-            c = False
-            #lcur = 0
-            #if self.load_ok and self.medi.Length() > 0:
-            #    c = True
-            #    lcur = self.medi.Length()
             lcur = self.medi.Length()
+            c = True if lcur > 0 else False
             if b != c or (l != lcur and lcur > 0):
                 self.canseek = c
                 self.lastlen = lcur
                 sset.append(_T("CanSeek"))
                 if l != lcur:
                     sset.append(_T("Metadata"))
-                didemit = True
+                doemit = True
 
             # hack: wanting a flush-like effect --
             # This proves necessary, else 'CanGo{Previous,Next}'
@@ -6905,7 +6901,8 @@ class TopWnd(wx.Frame):
             # makes the control programs work as expected --
             # maybe there is an expected sequence of signal
             # emissions that is not documented for MPRIS2.
-            if didemit:
+            if doemit:
+                sset.append(_T("PlaybackStatus"))
                 for s in sset:
                     self.mpris2_signal_emit(s)
             else:
@@ -6939,19 +6936,14 @@ class TopWnd(wx.Frame):
             try:
                 l = self.lastlen
             except AttributeError:
-                #l = self.lastmetalen = None
                 l = self.lastlen = None
-            #lcur = 0
-            #if self.load_ok and self.medi.Length() > 0:
-            #    c = True
-            #    lcur = self.medi.Length()
             lcur = self.medi.Length()
 
             if (curtuple == None or
                 curtuple[0] != gid or curtuple[1] != uid or
                 l != lcur):
                 self.cur_uniq_tuple = (gid, uid)
-                self.lastmetalen = lcur
+                self.lastlen = lcur
                 self.mpris2_signal_emit(_T("Metadata"))
                 self.mpris_sendsignal_check()
                 return
