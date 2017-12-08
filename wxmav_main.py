@@ -7188,10 +7188,18 @@ class TopWnd(wx.Frame):
             except:
                 pass
 
-        n = wxadv.NotificationMessage()
-        n.SetTitle(_T(title))
-        n.SetMessage(_T(message))
-        n.Show()
+        self.pending_notification = (title, message)
+
+    def _show_notification_message(self):
+        try:
+            title, message = self.pending_notification
+            self.pending_notification = None
+            n = wxadv.NotificationMessage()
+            n.SetTitle(_T(title))
+            n.SetMessage(_T(message))
+            n.Show()
+        except:
+            pass
 
 
     def color_hacks(self):
@@ -8672,6 +8680,12 @@ class TopWnd(wx.Frame):
         # pause duration limit hack invalid now
         self.pause_ticks = -1
 
+        # should status msg show notification message?
+        try:
+            nmsg = True if self.pending_notification is None else False
+        except:
+            nmsg = True
+
         # TODO: cannot use current index in a message here, because
         # if a next/previous op led us here it has been adjusted
         # already and the message is wrong -- so the todo is:
@@ -8683,10 +8697,10 @@ class TopWnd(wx.Frame):
             self.prdbg(_T("on_media_stop: user stop {}").format(nm))
 
             self.set_statusbar(
-                _("Stopped '{}'").format(des or med), 0, notify = True)
+                _("Stopped '{}'").format(des or med), 0, notify=nmsg)
         else:
             self.prdbg(_T("on_media_stop: user stop medium"))
-            self.set_statusbar(_("Stopped medium"), 0, notify = True)
+            self.set_statusbar(_("Stopped medium"), 0, notify=nmsg)
 
         self.set_statusbar(_T("  "), 1)
 
@@ -9658,6 +9672,9 @@ class TopWnd(wx.Frame):
             self._quit_signal = 0
         except:
             pass
+
+        # show notification popup messages
+        wx.CallAfter(self._show_notification_message)
 
         if self.pos_seek_paused <= 0:
             # unfortunately, it proves necessary to call
