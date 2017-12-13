@@ -39,7 +39,9 @@ MKDIR = mkdir
 GREP = grep -F
 SED = sed
 M4 = m4
-MKNSIS = pynsist
+PYTHON = python3
+PYNSIS = /usr/bin/pynsist
+MKNSIS = $(PYTHON) $(PYNSIS)
 
 all: $(NAME)
 	@P="$$(pwd)"; D="$${P##*/}"; echo $@ made in "$$D" ; exit 0

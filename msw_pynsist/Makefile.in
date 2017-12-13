@@ -31,7 +31,10 @@ MKDIR = mkdir
 GREP = grep -F
 SED = sed
 M4 = m4
-MKNSIS = pynsist
+PYTHON = python3
+PYNSIS = /usr/bin/pynsist
+MKNSIS = $(PYTHON) $(PYNSIS)
+dnl MKNSIS = pynsist
 dnl MKNSIS = pynsist --no-makensis
 
 all: $(NAME)
