@@ -7378,10 +7378,12 @@ class TopWnd(wx.Frame):
         mopts.Check(cur, self.opt_notifymsg)
         # use proxy for media URI? self.can_use_proxy
         self.mopts_proxy = cur = I()
-        mopts.Append(cur, _("Use &URL Proxy"),
-                    _("Use a proxy per protocol if available for URLs"),
-                        wx.ITEM_CHECK)
-        mopts.Check(cur, self.can_use_proxy)
+        # disable this item until further testing
+        #mopts.Append(cur, _("Use &URL Proxy"),
+        #            _("Use a proxy per protocol if available for URLs"),
+        #                wx.ITEM_CHECK)
+        #mopts.Check(cur, self.can_use_proxy)
+        # end disable item
         # use SetThemeEnabled and handle change event
         self.mopts_themeok = cur = I()
         # theme support: option has no effect in GTK or MSW
@@ -9875,7 +9877,10 @@ class TopWnd(wx.Frame):
         config.WriteBool(_T("use_trayicon"), cur)
         cur = self.mopts.IsChecked(self.mopts_notifymsg)
         config.WriteBool(_T("use_notifymsg"), cur)
-        cur = self.mopts.IsChecked(self.mopts_proxy)
+        if False:
+            cur = self.mopts.IsChecked(self.mopts_proxy)
+        else:
+            cur = self.can_use_proxy
         config.WriteBool(_T("use_proxy"), cur)
         # theme support: option has no effect in GTK or MSW
         if False:
