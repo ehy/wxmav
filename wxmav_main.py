@@ -1177,7 +1177,7 @@ class AVItem:
                 err = None,
                 length = -1):
         self.comment = comment
-        self.desc = desc
+        self.desc = desc if desc else resname
         self.resname = resname
         self.err = err
         self.length = length
@@ -1215,9 +1215,6 @@ class AVItem:
         return self.get_resourcename_with_displayname().get_disp_str(a)
 
     def get_description_with_displayname(self):
-        # do not test for None here, make new each request,
-        # because self desc may change at any time (unlike
-        # self.resname which should be constant)
         self.des_dispname = resourcename_with_displayname(
                                 self.desc)
         return self.des_dispname
