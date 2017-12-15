@@ -1422,6 +1422,13 @@ class AVGroup:
         except:
             return None
 
+    def del_at_index(self, idx):
+        try:
+            del self.data[idx]
+            return True
+        except:
+            return False
+
     def get_comment_index(self, idx):
         try:
             return self.get_at_index(idx).comment
@@ -1505,18 +1512,23 @@ class AVGroupList(AVGroup):
         # ... so inefficiently loop and check data
         ver = None
         num = 0
+        dorm = []
         for i, l in enumerate(dat):
             m = re.match(_T(r"Version\s*=\s*([0-9]+)"), _T(l), re.I)
             if m:
                 ver = int(m.group(1))
-                del dat[i]
+                dorm.append(i)
                 continue
             m = re.match(
                 _T(r"NumberOfEntries\s*=\s*([0-9]+)"), _T(l), re.I)
             if m:
                 num = int(m.group(1))
-                del dat[i]
+                dorm.append(i)
                 continue
+
+        dorm.reverse()
+        for i in dorm:
+            del dat[i]
 
         try:
             i = 0
@@ -1531,7 +1543,8 @@ class AVGroupList(AVGroup):
                 # comment used herein
                 got_comment = False
 
-                while True:
+                #while True:
+                while dat:
                     l = _T(dat[0])
                     m = re.match(
                         _T(r"^(File|Title|Length)([0-9]+)\s*=\s*(.*)$"),
@@ -1823,9 +1836,14 @@ def un_uri_file(furi):
     return f
 
 
+playlist_pattern = _T(r".*\.(m3u8?|pls)$")
+playlist_pattern_permissive = _T(r".*[^a-z0-9](m3u8?|pls)(?:\?\S+)?$")
+scheme_pattern = _T(r"^(file|rtp|rtsp|http|https)://")
+scheme_pattern_permissive = _T(r"^([a-z0-9]+)://")
+
 def mk_from_args(*args, **kwargs):
-    fpat  = _T(r".*\.(m3u8?|pls)$")
-    upat  = _T(r"^(file|rtp|rtsp|http|https)://")
+    fpat  = playlist_pattern
+    upat  = scheme_pattern
     ufpat = upat + fpat
 
     wx.GetApp().prdbg(_T("mk_from_args: args '{}'").format(args))
@@ -1849,8 +1867,8 @@ def mk_from_args(*args, **kwargs):
         elif k == "uri_filter_permissive":
             if v != True:
                 continue
-            upat  = _T(r"^([a-z0-9]+)://")
-            ufpat = upat + _T(r".*[^a-z0-9](m3u8?|pls)(?:\?\S+)?$")
+            upat  = scheme_pattern_permissive
+            ufpat = upat + playlist_pattern_permissive
 
     def _mpfn(f):
         fs  = _T(f).strip()
@@ -1879,10 +1897,13 @@ def mk_from_args(*args, **kwargs):
 
 def get_lst_from_args(*args, **kwargs):
     avl = mk_from_args(*args, **kwargs)
+    print("mk_from_args: num {} - n0 {}".format(
+        len(avl), avl[0].data))
 
     res = []
     err = []
     accum = []
+    rm = []
 
     for g in avl:
         if (isinstance(g, AVGroupListFile) or
@@ -1895,8 +1916,20 @@ def get_lst_from_args(*args, **kwargs):
                 rnm = aviitem.resname
                 if rnm == None:
                     err.append((aviitem.desc, aviitem.err))
-                    del g.data[i]
-            if g.get_len():
+                    rm.append(i)
+                elif re.match(playlist_pattern_permissive, rnm, re.I):
+                    # nested playlist file/url?
+                    tl, te = get_lst_from_args(*[rnm], **kwargs)
+                    if tl:
+                        if te:
+                            err += te
+                        rm.append(i)
+                        res += tl
+
+            rm.reverse()
+            for i in rm:
+                g.del_at_index(i)
+            if g.get_len() > 0:
                 res.append(g)
         else:
             for i, aviitem in enumerate(g.data):
