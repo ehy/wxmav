@@ -7009,13 +7009,13 @@ class TopWnd(wx.Frame):
             # note: we do not do 'mpris:artUrl'
 
             # xesam items:
+            nam = _T(i.resname)
             ids = i.get_desc_disp_str(allow_none = True)
             if ids == None or s_eq(ids, i.resname):
                 # if title must be the resource name,
                 # then just show the name w/o path
-                ids = os.path.split(i.resname)[1]
+                ids = os.path.split(i.resname)[1] or nam
 
-            nam = _T(i.resname)
             ids = _T(ids)
             gds = _T(g.get_desc())
 
