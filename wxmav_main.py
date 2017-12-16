@@ -6866,8 +6866,8 @@ class TopWnd(wx.Frame):
                 return True
             return False
 
-        def mpris_sendsignal_check(self):
-            doemit = False
+        def mpris_sendsignal_check(self, force = False):
+            doemit = force
             sset = []
 
             try:
@@ -7055,7 +7055,7 @@ class TopWnd(wx.Frame):
 
     # not in _in_xws, but stubs convenient
     else:
-        def mpris_sendsignal_check(self):
+        def mpris_sendsignal_check(self, force = False):
             pass
 
         def metadata_check(self):
@@ -8828,7 +8828,7 @@ class TopWnd(wx.Frame):
 
         self.mpris2_signal_emit(_T("Metadata"))
         self.mpris2_signal_emit(_T("CanSeek"))
-        self.mpris_sendsignal_check()
+        self.mpris_sendsignal_check(force=True)
 
     def slider_setup(self, pos = None):
         ln = self.medi.Length()
