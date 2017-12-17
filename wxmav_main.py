@@ -1894,8 +1894,6 @@ def mk_from_args(*args, **kwargs):
 
 def get_lst_from_args(*args, **kwargs):
     avl = mk_from_args(*args, **kwargs)
-    print("mk_from_args: num {} - n0 {}".format(
-        len(avl), avl[0].data))
 
     res = []
     err = []
@@ -2710,7 +2708,8 @@ elif _in_xws:
                     fcntl.fcntl(fd, fcntl.F_GETFL, 0)
                 except IOError:
                     # descriptor n is not open
-                    print("UNEXPECTED: fd {} not open".format(fd))
+                    self.err_msg(_(
+                        "UNEXPECTED: fd {} not open".format(fd)))
                     n = os.open(os.devnull)
                     if n != fd:
                         os.dup2(n, fd)
