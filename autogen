@@ -8,19 +8,32 @@
 
 PROG=${0##*/}
 
-# auto* tools might demand version be specified in environment
-# if multiple versions are installed
-# autoconf and automake --version will succeed, or fail; in the
-# latter case try forcing versions (and if they are wrong, then
-# let the user figure it out)
-autoconf --version >/dev/null 2>&1 || {
-    : ${AUTOCONF_VERSION:=2.69}
-    export AUTOCONF_VERSION
-}
+UNM=$(uname)
 
-automake --version >/dev/null 2>&1 || {
-    : ${AUTOMAKE_VERSION:=1.11}
-    export AUTOMAKE_VERSION
+# On OpenBSD auto{conf,make} are small scripts that check
+# for $AUTO{CONF,MAKE}_VERSION in env and complain if not
+# set, so that a version must be selected
+test XOpenBSD = X"$UNM" && {
+	obsd_acam_setver () {
+		_prg="$1"
+		_var="$2"
+		_ver="$3"
+
+		for _F in "$_prg"-*; do
+			_V=${_F##*-}
+			test X'*' = X"$_V" && { unset _V; break; }
+			test X"$_ver" = X"$_V" && break
+		done
+
+		test X = X"$_V" && return 1
+
+		eval "$_var=\"$_V\"; export $_var"
+
+		return 0
+	}
+
+	obsd_acam_setver $(which autoconf) AUTOCONF_VERSION 2.69
+	obsd_acam_setver $(which automake) AUTOMAKE_VERSION 1.15
 }
 
 : ${ALLDIRS:="."}
