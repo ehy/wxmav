@@ -6307,6 +6307,9 @@ class TopWnd(wx.Frame):
         # set by MPRIS2 Seek and SetPosition handlers --
         # must be scrupulously reset to -1
         self.mpris_seek = -1
+        # this is set to an object on mpris setup; set back
+        # to None on error, and is tested in various places
+        self.mpris = None
 
         # get config values here, in case a setting applies
         # to interface objects created below
@@ -6866,6 +6869,9 @@ class TopWnd(wx.Frame):
             return False
 
         def mpris_sendsignal_check(self, force = False):
+            if not self.mpris:
+                return
+
             doemit = force
             sset = []
 
@@ -6941,6 +6947,9 @@ class TopWnd(wx.Frame):
                     self._x_core_mpris2_signal_emit()
 
         def metadata_check(self):
+            if not self.mpris:
+                return
+
             g, i = self.get_res_group_with_index()
             curtuple = None
             try:
@@ -10077,6 +10086,8 @@ class TopWnd(wx.Frame):
 
     def mpris2_signal_emit(self, signal):
         if _in_xws and wx.GetApp().should_do_mpris():
+            if not self.mpris:
+                return False
             self._x_mpris2_signal_emit(signal)
             return True
         return False
@@ -10129,6 +10140,7 @@ class TopWnd(wx.Frame):
         if t == _T("M"):
             if not _in_xws:
                 return
+
             try:
                 n = self.mpriscallcnt
                 self.mpriscallcnt += 1
@@ -10136,8 +10148,37 @@ class TopWnd(wx.Frame):
                 self.mpriscallcnt = 1
                 n = 0
             self.err_msg(_T("MPRIS call #{}").format(n))
-            tmh = MPRIS2Handler(self, dat)
-            tmh.go()
+
+            if not self.mpris:
+                self.err_msg(_T("MPRIS call after mpris error"))
+                return
+
+            # the mpris2 handler does not handle exceptions:
+            # it's expected that there will only be IO errors
+            # on the pipes if helper proc fails (killed, etc.)
+            # - any others are internal errors needing debugging -
+            # an exception caught here should not be fatal, but
+            # MPRIS2 functionality will be kaput
+            emsg = None
+            try:
+                tmh = MPRIS2Handler(self, dat)
+                tmh.go()
+            except (IOError, OSError) as e:
+                emsg = _T(
+                    "MPRIS event handling (on_chmsg) error '{}'"
+                    ).format(e.strerror)
+            except:
+                emsg = _T(
+                    "MPRIS event handling (on_chmsg) internal error")
+
+            if emsg:
+                self.mpris = None
+                self.err_msg(emsg)
+                try:
+                    self.xhelper.mpris_off()
+                except:
+                    pass
+
             return
 
         if t != _T('1'):
