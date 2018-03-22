@@ -9706,10 +9706,9 @@ class TopWnd(wx.Frame):
             try:
                 # this count is not set in init; hence, the try block
                 cnt = self.autosave_count
-                itv = timer.GetInterval() or 1000
                 self.autosave_count += 1
+                itv = timer.GetInterval() or 1000
                 sec = 30000 / itv # 30 secs adjusted for interval
-                #sec = 5000 / itv # 5 secs adjusted for interval
                 m = cnt % sec
                 if m == 0:
                     self.save_config_and_state()
