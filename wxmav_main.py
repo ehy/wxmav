@@ -8723,10 +8723,14 @@ class TopWnd(wx.Frame):
         self.pause_ticks = -1
 
         # should status msg show notification message?
-        try:
-            nmsg = True if self.pending_notification is None else False
-        except:
-            nmsg = True
+        #try:
+        #    nmsg = True if self.pending_notification is None else False
+        #except:
+        #    nmsg = True
+        # No, with simplistic notification daemons (e.g. notify-osd,
+        # Ubuntu) we are putting up too many, with each displayed
+        # too long making a backlog -- so no notify for stop
+        nmsg = False
 
         # TODO: cannot use current index in a message here, because
         # if a next/previous op led us here it has been adjusted
