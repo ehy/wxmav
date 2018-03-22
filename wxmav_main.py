@@ -4263,6 +4263,8 @@ class TheAppClass(wx.App):
             self.frame.config_wr(flush = True)
             dset = self.get_data_dir_curset()
             wr_current_set(self.reslist, dset)
+        else:
+            pass
 
         #config = self.get_config()
         #if config:
@@ -9699,6 +9701,25 @@ class TopWnd(wx.Frame):
                 self.medi.Seek(v)
 
     def do_timep(self, timer):
+        # at some interval, do config save as needed
+        if timer:
+            try:
+                # this count is not set in init; hence, the try block
+                cnt = self.autosave_count
+                itv = timer.GetInterval() or 1000
+                self.autosave_count += 1
+                sec = 30000 / itv # 30 secs adjusted for interval
+                #sec = 5000 / itv # 5 secs adjusted for interval
+                m = cnt % sec
+                if m == 0:
+                    self.save_config_and_state()
+            except:
+                # add this member
+                self.autosave_count = 1
+        else:
+            #self.err_msg(_T("do_timep: NO event"))
+            pass
+
         # test a member that does not exist _unless_
         # the App object sets it, which means close up
         # shop (e.g. exit signal was caught)
@@ -9781,7 +9802,7 @@ class TopWnd(wx.Frame):
             self.tittime -= 1
 
         if _in_xws:
-            # timer checks for state chenges for mpris2
+            # timer checks for state changes for mpris2
             self.mpris_sendsignal_check()
 
 
@@ -9952,6 +9973,17 @@ class TopWnd(wx.Frame):
         if flush:
             config.Flush()
 
+    def save_config_and_state(self):
+        # use the app class save state method (which calls
+        # methods of this class) so that the app may handle
+        # its state too
+        # use callafter proc so that this may be used in
+        # event handlers
+        def _real_save_config_and_state(app):
+            app.save_self_state()
+
+        wx.CallAfter(_real_save_config_and_state, wx.GetApp())
+
     def on_quit(self, event):
         self.cmd_on_quit(from_user = True, event = event)
 
@@ -10025,10 +10057,10 @@ class TopWnd(wx.Frame):
         self.force_hack(use_hack = True)
 
     def on_wx_timer(self, event):
-        self.cmd_on_wx_timer(from_user = True, event = event)
+        self.cmd_on_wx_timer(from_user = False, event = event)
 
-    def cmd_on_wx_timer(self, from_user = False, event = None):
-        iv = event.GetTimer() if from_user else None
+    def cmd_on_wx_timer(self, from_user = True, event = None):
+        iv = event.GetTimer() if (event and not from_user) else None
         self.do_timep(iv)
         self.do_time_medi(iv)
 
