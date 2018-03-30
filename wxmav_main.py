@@ -4398,6 +4398,8 @@ class SliderPanel(wx.Panel):
 
         self.Bind(wx.EVT_KEY_DOWN, self.on_key)
         self.Bind(wx.EVT_KEY_UP,   self.on_key)
+        self.slider.Bind(wx.EVT_KEY_DOWN, self.on_key)
+        self.slider.Bind(wx.EVT_KEY_UP,   self.on_key)
 
         # for wxPython 4.0.0a1
         self.Bind(wx.EVT_SIZE, self.on_size)
@@ -4416,7 +4418,16 @@ class SliderPanel(wx.Panel):
         wx.CallAfter(self.Layout)
 
     def on_key(self, event):
-        event.Skip()
+        t = event.GetEventType()
+        p = self.GetParent()
+
+        if t == wx.wxEVT_KEY_DOWN:
+            p.handle_key_down(self.slider, event)
+        elif t == wx.wxEVT_KEY_UP:
+            p.handle_key_up(self.slider, event)
+        else:
+            #event.Skip()
+            pass
 
 
 class ButtonData:
@@ -6388,7 +6399,8 @@ class TopWnd(wx.Frame):
 
         self.player_panel = MediaPanel(self, wx.ID_ANY, handlers = (
                                         (wx.EVT_KEY_DOWN, self.on_key),
-                                        (wx.EVT_KEY_UP,   self.on_key)
+                                        (wx.EVT_KEY_UP,   self.on_key),
+                                        (wx.EVT_CHAR,   self.on_char)
                                         ))
         self.medi = self.player_panel.medi
         self.medi.SetVolume(0.5)
@@ -6512,6 +6524,7 @@ class TopWnd(wx.Frame):
         # keys
         self.Bind(wx.EVT_KEY_DOWN, self.on_key)
         self.Bind(wx.EVT_KEY_UP, self.on_key)
+        self.Bind(wx.EVT_CHAR, self.on_char)
 
         # Custom destroy event from app
         self.Bind(APP_EVT_DESTROY_BINDME, self.on_destroy)
@@ -8153,6 +8166,9 @@ class TopWnd(wx.Frame):
             self.do_about_dialog()
 
 
+    def on_char(self, event):
+        self.handle_key_char(self, event)
+
     def on_key(self, event):
         t = event.GetEventType()
 
@@ -8196,6 +8212,18 @@ class TopWnd(wx.Frame):
 
         return r
 
+    def handle_key_char(self, recobj, event):
+        kc = event.GetKeyCode()
+
+        if kc == ord('<'):
+            self.do_command_button(self.id_prev)
+            return
+        elif kc == ord('>'):
+            self.do_command_button(self.id_next)
+            return
+
+        event.Skip()
+
     def handle_key_down(self, recobj, event):
         kc = event.GetKeyCode()
 
@@ -8207,6 +8235,12 @@ class TopWnd(wx.Frame):
                 self.dec_volume()
             else:
                 self.inc_volume()
+            return
+        elif kc == wx.WXK_LEFT:
+            self.do_seek_back()
+            return
+        elif kc == wx.WXK_RIGHT:
+            self.do_seek_forward()
             return
 
         # wx on Unix does not define these -- MSW only?
@@ -8238,15 +8272,13 @@ class TopWnd(wx.Frame):
             self.do_command_button(self.id_play)
             return
         elif kc == wx.WXK_LEFT:
-            self.do_command_button(self.id_prev)
-            return
-        elif kc == wx.WXK_PAGEUP: # == WXK_PRIOR don't use this
-            self.cmd_prev_grp()
             return
         elif kc == wx.WXK_RIGHT:
-            self.do_command_button(self.id_next)
             return
-        elif kc == wx.WXK_PAGEDOWN: # == WXK_NEXT don't use this
+        elif kc == wx.WXK_PAGEUP:
+            self.cmd_prev_grp()
+            return
+        elif kc == wx.WXK_PAGEDOWN:
             self.cmd_next_grp()
             return
         elif kc == wx.WXK_HOME:
@@ -9246,6 +9278,29 @@ class TopWnd(wx.Frame):
         self.reslist = []
         self.media_indice = 0
         self.set_tb_combos()
+
+    def do_seek_back(self):
+        self.do_seek_millisecs(-1000)
+
+    def do_seek_forward(self):
+        self.do_seek_millisecs(1000)
+
+    def do_seek_millisecs(self, ms, whence = wx.FromCurrent):
+        # 'whence' may be wx.FromStart, wx.FromCurrent, or wx.FromEnd
+        try:
+            if ms >= 0:
+                cur = self.pos_sld.GetValue()
+                off = long(float(self.pos_mul) * ms + 0.5)
+                self.pos_sld.SetValue(cur + off)
+                self.on_position(None)
+            self.medi.Seek(ms, whence)
+            #if ms < 0:
+            #    cur = self.pos_sld.GetValue()
+            #    off = long(float(self.pos_mul) * ms + 0.5)
+            #    self.pos_sld.SetValue(cur + off)
+            #    self.on_position(None)
+        except:
+            pass
 
     def do_volume(self, val = None):
         if val == None:
