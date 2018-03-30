@@ -5922,6 +5922,7 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
         self.cctrl = None
         self.w = None
         self.h = None
+        self.last_sel = 0
 
     # Initialize member variables
     def Init(self):
@@ -5940,6 +5941,9 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
 
         self.Bind(wx.EVT_MOTION, self.on_motion)
         self.Bind(wx.EVT_LEFT_DOWN, self.on_ldown)
+        self.Bind(wx.EVT_KEY_DOWN, self.on_kdown)
+        self.Bind(wx.EVT_KEY_UP, self.on_kup)
+        self.Bind(wx.EVT_CHAR, self.on_char)
 
         self.Clear()
 
@@ -5951,18 +5955,78 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
     def SetThemeEnabled(self, boolval):
         return self.lbox.SetThemeEnabled(boolval)
 
+    def on_kup(self, evt):
+        kc = evt.GetKeyCode()
+
+        if kc == wx.WXK_UP:
+            return
+        elif kc == wx.WXK_DOWN:
+            return
+        elif kc == wx.WXK_RETURN:
+            return
+        elif kc == wx.WXK_ESCAPE:
+            return
+
+        evt.Skip()
+
+    def on_kdown(self, evt):
+        kc = evt.GetKeyCode()
+
+        if kc == wx.WXK_UP:
+            n = self.lbox.GetSelection()
+            if n > 0:
+                print("UP {}".format(n-1))
+                self.lbox.SetSelection(n - 1)
+                try:
+                    c = self.cctrl
+                    if c:
+                        c.SetSelection(n - 1)
+                except:
+                    pass
+            return
+        elif kc == wx.WXK_DOWN:
+            n = self.lbox.GetSelection()
+            c = self.lbox.GetCount() - 1
+            if n >= 0 and n < c:
+                print("UP {}".format(n+1))
+                self.lbox.SetSelection(n + 1)
+                try:
+                    c = self.cctrl
+                    if c:
+                        c.SetSelection(n + 1)
+                except:
+                    pass
+            return
+        elif kc == wx.WXK_RETURN:
+            self.send_select_command(self.lbox.GetSelection())
+            return
+        elif kc == wx.WXK_ESCAPE:
+            self.lbox.Select(self.last_sel)
+            self.Dismiss()
+            return
+
+        evt.Skip()
+
+    def on_char(self, evt):
+        kc = evt.GetKeyCode()
+
+        evt.Skip()
+
     def on_motion(self, evt):
         item = self.lbox.HitTest(evt.GetPosition())
         if item >= 0:
             self.lbox.Select(item)
 
     def on_ldown(self, evt):
-        item = self.lbox.HitTest(evt.GetPosition())
+        self.send_select_command(self.lbox.HitTest(evt.GetPosition()))
 
+    def send_select_command(self, item):
         self.Dismiss()
 
-        if item < 0:
+        if item < 0 or item >= self.lbox.GetCount():
             return
+
+        self.last_sel = item
 
         # GetComboCtrl returns swig object under wxPython
         # so 'c = self.GetComboCtrl()' is no good --
@@ -6019,11 +6083,13 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
             return
 
         self.lbox.SetSelection(n)
-        return self.lbox.GetSelection()
+        self.last_sel = self.lbox.GetSelection()
+        return self.last_sel
 
     # Translate string into a list selection
-    def SetStringValue(self, s): # const wxString& s)
+    def SetStringValue(self, s):
         self.lbox.SetStringSelection(s)
+        self.last_sel = self.lbox.GetSelection()
 
     # Get list selection as a string
     def GetStringValue(self):
@@ -6038,6 +6104,7 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
 
     def Clear(self):
         self.lbox.Clear()
+        self.last_sel = 0
         # TODO: SetSize() is ineffective, find something else
         #self.lbox.SetSize((69, 33))
         #self.lbox.SetVirtualSize((69, 33))
@@ -6056,7 +6123,28 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
     # Receives key events from the parent ComboCtrl.  Events not
     # handled should be skipped, as usual.
     def OnComboKeyEvent(self, event):
-        wxcombo.ComboPopup.OnComboKeyEvent(self, event)
+        #wxcombo.ComboPopup.OnComboKeyEvent(self, event)
+        print("OnComboKeyEvent - {}".format(event.GetEventType()))
+        self.on_kdown(event)
+        #t = event.GetEventType()
+        #print("OnComboKeyEvent - {}".format(t))
+        #print("DOWN {}, UP {}, CHAR {}".format(
+        #    wx.EVT_KEY_DOWN, wx.EVT_KEY_UP, wx.EVT_CHAR))
+        #
+        #if t == wx.EVT_KEY_DOWN.GetID():
+        #    print("KEY DOWN")
+        #    self.on_kdown(event)
+        #    return
+        #if t == wx.EVT_KEY_UP:
+        #    print("KEY UP")
+        #    self.on_kup(event)
+        #    return
+        #if t == wx.EVT_CHAR:
+        #    print("CHAR")
+        #    self.on_char(event)
+        #    return
+        #
+        #event.Skip()
 
     # Implement if you need to support special action when user
     # double-clicks on the parent wxComboCtrl.
@@ -6093,7 +6181,7 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
 # resize for long strings (GTK-2 does, and is fine) -- hence
 # this additional program bloat:
 # NOTE: GTK-3 is as broken as MSW
-class ComboCtrlTailorMade(wxcombo.ComboCtrl):
+class TailorMadeComboCtrl(wxcombo.ComboCtrl):
     def __init__(self, *args, **kw):
         wxcombo.ComboCtrl.__init__(self, *args, **kw)
 
@@ -6109,6 +6197,13 @@ class ComboCtrlTailorMade(wxcombo.ComboCtrl):
         self.ctrl = ctrl
 
         self.Bind(wx.EVT_LISTBOX, self.on_dbox)
+        #self.Bind(wx.EVT_KEY_DOWN, self.on_key_event)
+        #self.Bind(wx.EVT_KEY_UP, self.on_key_event)
+        #self.Bind(wx.EVT_CHAR, self.on_key_event)
+
+    #def on_key_event(self, event):
+    #    print("on_key_event - {}".format(event.GetKeyCode()))
+    #    self.ctrl.OnComboKeyEvent(event)
 
     def on_dbox(self, event):
         if not event.IsSelection():
@@ -7644,7 +7739,7 @@ class TopWnd(wx.Frame):
             self.toolbar2 = tb
 
         # In GTK2 the wxChoice is far better than this app's
-        # 'ComboCtrlTailorMade' but MSW Choice and ComboBox
+        # 'TailorMadeComboCtrl' but MSW Choice and ComboBox
         # suck WRT dropdown size and GTK-3 wxChoice does not
         # truncate long strings and if too long, just destroys
         # the control, never to be seen again, soo . . .
@@ -7677,7 +7772,7 @@ class TopWnd(wx.Frame):
             sty = wx.CB_DROPDOWN | wx.CB_READONLY
 
             self.cbox_group_id = cur = wx.NewId()
-            self.cbox_group = ComboCtrlTailorMade(tb, cur, style = sty)
+            self.cbox_group = TailorMadeComboCtrl(tb, cur, style = sty)
             self.cbox_group.SetPopupControl(TailorMadeComboPop())
             self.cbox_group.SetSize((100, -1))
             self.cbox_group.SetMinSize((100, -1))
@@ -7687,7 +7782,7 @@ class TopWnd(wx.Frame):
             self.Bind(wx.EVT_COMBOBOX, self.on_cbox, id = cur)
 
             self.cbox_resrc_id = cur = wx.NewId()
-            self.cbox_resrc = ComboCtrlTailorMade(tb, cur, style = sty)
+            self.cbox_resrc = TailorMadeComboCtrl(tb, cur, style = sty)
             self.cbox_resrc.SetPopupControl(TailorMadeComboPop())
             self.cbox_resrc.SetSize((100, -1))
             self.cbox_resrc.SetMinSize((100, -1))
@@ -8180,13 +8275,14 @@ class TopWnd(wx.Frame):
             event.Skip()
 
     def focus_medi_opt(self, force = False):
-        if not self.medi:
-            return
-
-        if _in_msw and not force:
-            return
-
-        self.medi.SetFocus()
+        #if not self.medi:
+        #    return
+        #
+        #if _in_msw and not force:
+        #    return
+        #
+        #self.medi.SetFocus()
+        pass
 
     def show_wnd_id(self, ID, show = True):
         obj = self.get_obj_by_id(ID)
