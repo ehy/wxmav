@@ -8255,8 +8255,15 @@ class TopWnd(wx.Frame):
         if not self.medi:
             return
 
-        #if _in_msw and not force:
-        #    return
+        try:
+            f = self. FindFocus()
+            if f is self.cbox_group or f is self.cbox_resrc:
+                return
+        except AttributeError:
+            pass
+
+        if _in_msw and not force:
+            return
 
         self.medi.SetFocus()
         pass
