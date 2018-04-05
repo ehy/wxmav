@@ -3524,7 +3524,7 @@ elif _in_xws:
             if s_eq(prop, "CanQuit"):
                 pass
             elif s_eq(prop, "Fullscreen"):
-                t = "true" if self.w.IsFullScreen() else "false"
+                t = "true" if self.w.is_fullscreen() else "false"
                 m = _T("b:{}\n").format(_T(t))
             elif s_eq(prop, "CanSetFullscreen"):
                 pass
@@ -4399,6 +4399,7 @@ class SliderPanel(wx.Panel):
         self.Bind(wx.EVT_KEY_UP,   self.on_key)
         self.slider.Bind(wx.EVT_KEY_DOWN, self.on_key)
         self.slider.Bind(wx.EVT_KEY_UP,   self.on_key)
+        self.slider.Bind(wx.EVT_CHAR,   self.on_key)
 
         # for wxPython 4.0.0a1
         self.Bind(wx.EVT_SIZE, self.on_size)
@@ -4417,16 +4418,20 @@ class SliderPanel(wx.Panel):
         wx.CallAfter(self.Layout)
 
     def on_key(self, event):
-        t = event.GetEventType()
-        p = self.GetParent()
-
-        if t == wx.wxEVT_KEY_DOWN:
-            p.handle_key_down(self.slider, event)
-        elif t == wx.wxEVT_KEY_UP:
-            p.handle_key_up(self.slider, event)
+        if True:
+            event.Skip()
         else:
-            #event.Skip()
-            pass
+            t = event.GetEventType()
+            p = self.GetParent()
+
+            if t == wx.wxEVT_KEY_DOWN:
+                p.handle_key_down(self.slider, event)
+            elif t == wx.wxEVT_KEY_UP:
+                p.handle_key_up(self.slider, event)
+            elif t == wx.wxEVT_CHAR:
+                p.handle_key_up(self.slider, event)
+            else:
+                event.Skip()
 
 
 class ButtonData:
@@ -6273,7 +6278,7 @@ class TopWnd(wx.Frame):
 
     def __init__(self, parent, ID, title, size, pos = (0, 0),
                        cmdargs = None, argplay = False):
-        wx.Frame.__init__(self, parent, ID,
+        wx.Frame.__init__(self, parent, ID, style = wx.TAB_TRAVERSAL,
                           title = title, size = size, pos = pos)
 
         self.do_setwname_done = True
@@ -6411,6 +6416,13 @@ class TopWnd(wx.Frame):
         # handle color event, to refresh etc.
         self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.on_sys_color)
 
+        # use a backing panel for object, or just this frame window?
+        if False: #_in_msw:
+            back = self.backpanel = self
+        else:
+            back = self.backpanel = wx.Panel(self, wx.ID_ANY)
+            back.prdbg = self.prdbg
+
         szr = wx.BoxSizer(wx.VERTICAL)
 
         abdat = []
@@ -6454,24 +6466,24 @@ class TopWnd(wx.Frame):
                        handler = self.on_stop)
         abdat.append(bdat)
 
-        self.btn_panel = ButtonPanel(self, wx.ID_ANY,
+        self.btn_panel = ButtonPanel(back, wx.ID_ANY,
                                      button_data = abdat)
 
         self.ctl_data = self.btn_panel.get_id_map()
 
         self.id_pos_sld = wx.NewId()
-        self.pos_panel = SliderPanel(self, wx.ID_ANY,
+        self.pos_panel = SliderPanel(back, wx.ID_ANY,
                                      slider_id = self.id_pos_sld)
         self.pos_sld = self.pos_panel.get_slider()
         self.pos_mul = 0.001 # millisecs
 
         self.ctl_data.append((self.id_pos_sld, self.pos_sld))
 
-        self.player_panel = MediaPanel(self, wx.ID_ANY, handlers = (
-                                        (wx.EVT_KEY_DOWN, self.on_key),
-                                        (wx.EVT_KEY_UP,   self.on_key),
-                                        (wx.EVT_CHAR,   self.on_char)
-                                        ))
+        self.player_panel = MediaPanel(back, wx.ID_ANY, handlers = (
+                                       (wx.EVT_KEY_DOWN, self.on_key),
+                                       (wx.EVT_KEY_UP,   self.on_key),
+                                       (wx.EVT_CHAR,   self.on_char)
+                                       ))
         self.medi = self.player_panel.medi
         self.medi.SetVolume(0.5)
 
@@ -6495,7 +6507,7 @@ class TopWnd(wx.Frame):
         szr.Add(self.toolbar2, 0, wx.EXPAND | wx.ALL, 0)
 
         self.id_svol = wx.NewId()
-        self.vol_panel = SliderPanel(self, wx.ID_ANY,
+        self.vol_panel = SliderPanel(back, wx.ID_ANY,
                                      slider_id = self.id_svol)
         self.vol_sld = self.vol_panel.get_slider()
         self.vol_sld.Bind(wx.EVT_SCROLL, self.on_volume)
@@ -6599,7 +6611,11 @@ class TopWnd(wx.Frame):
         # Custom destroy event from app
         self.Bind(APP_EVT_DESTROY_BINDME, self.on_destroy)
 
-        self.SetSizer(szr)
+        back.SetSizer(szr)
+        if not back is self:
+            bkszr = wx.BoxSizer(wx.VERTICAL)
+            bkszr.Add(back, 1, wx.EXPAND, 0)
+            self.SetSizer(bkszr)
         self.Layout()
 
         # accept DND
@@ -7288,9 +7304,15 @@ class TopWnd(wx.Frame):
         if notify:
             self.do_notification_message(nam, ts)
 
+
+    def is_fullscreen(self):
+        #back = self.backpanel
+        return self.IsFullScreen()
+
+
     def do_notification_message(self, title, message, force = False):
         # notification popup (but not if in fullscreen)
-        if self.IsFullScreen():
+        if self.is_fullscreen():
             return
 
         if not (self.opt_notifymsg or force):
@@ -7702,6 +7724,8 @@ class TopWnd(wx.Frame):
 
 
     def make_std_tool_bar2(self, use_wxtoolbar = False, tb_ext = None):
+        back = self.backpanel
+
         if tb_ext != None:
             tb = tb_ext
         elif use_wxtoolbar:
@@ -7710,7 +7734,7 @@ class TopWnd(wx.Frame):
             tb = wx.ToolBar(self, wx.ID_ANY, style = sty2)
             tb.SetMargins((3, 1))
         else:
-            tb = wx.Panel(self, wx.ID_ANY)
+            tb = wx.Panel(back, wx.ID_ANY)
             self.toolbar2 = tb
 
         # In GTK2 the wxChoice is far better than this app's
@@ -7718,7 +7742,11 @@ class TopWnd(wx.Frame):
         # suck WRT dropdown size and GTK-3 wxChoice does not
         # truncate long strings and if too long, just destroys
         # the control, never to be seen again, soo . . .
-        use_choice = (_in_gtk and 'gtk2' in wx.PlatformInfo)
+        # UPDATE: wxChoice behavior on getting tab->focus is
+        # unexpected, don't use until that's figured out
+        # TODO: figure wxChoice focus behavior
+        #use_choice = (_in_gtk and 'gtk2' in wx.PlatformInfo)
+        use_choice = False
         if use_choice:
             sty = 0
 
@@ -8256,15 +8284,16 @@ class TopWnd(wx.Frame):
             return
 
         try:
-            f = self. FindFocus()
+            f = self.FindFocus()
             if f is self.cbox_group or f is self.cbox_resrc:
                 return
         except AttributeError:
             pass
 
-        if _in_msw and not force:
-            return
+        #if _in_msw and not force:
+        #    return
 
+        print("self.medi.SetFocus()")
         self.medi.SetFocus()
         pass
 
@@ -8281,7 +8310,7 @@ class TopWnd(wx.Frame):
         if obj not in self.hiders.values():
             return False
 
-        szr = self.GetSizer()
+        szr = self.backpanel.GetSizer()
         r = szr.Show(obj, show, True)
 
         if r:
@@ -8306,12 +8335,12 @@ class TopWnd(wx.Frame):
         elif kc == ord('v'):
             self.inc_volume()
         elif kc == ord('s'):
-            if self.IsFullScreen():
+            if self.is_fullscreen():
                 self.medi_tick = -1
                 self.show_wnd_obj(self.hiders["vszr"], True)
                 self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
         elif kc == ord('h'):
-            if self.IsFullScreen():
+            if self.is_fullscreen():
                 self.medi_tick = -1
                 self.show_wnd_obj(self.hiders["vszr"], False)
                 self.SetCursor(select_cursor(wx.CURSOR_BLANK))
@@ -8358,7 +8387,7 @@ class TopWnd(wx.Frame):
         if kc == wx.WXK_F11:
             self.do_fullscreen(False) # toggle
         elif kc == wx.WXK_ESCAPE:
-            if self.IsFullScreen():
+            if self.is_fullscreen():
                 self.do_fullscreen(True) # un-fullscreen
         elif kc == wx.WXK_SPACE:
             self.do_command_button(self.id_play)
@@ -9152,7 +9181,7 @@ class TopWnd(wx.Frame):
     def do_fullscreen(self, off = False):
         # if not off, then toggle, else set off
         if off == False:
-            b = self.IsFullScreen()
+            b = self.is_fullscreen()
             if not b:
                 # Did go fullscreen, so make sure we are at top of
                 # z-order -- we probably already are if we're here
@@ -9187,7 +9216,7 @@ class TopWnd(wx.Frame):
             wx.GetApp().do_screensave(b)
             self.mpris2_signal_emit(_T("Fullscreen"))
         elif off == True:
-            if self.IsFullScreen():
+            if self.is_fullscreen():
                 self.ShowFullScreen(False)
                 self.do_fullscreen_label(True)
                 self.show_wnd_obj(self.hiders["vszr"], True)
@@ -9799,13 +9828,15 @@ class TopWnd(wx.Frame):
 
         self.medi_tick -= 1
 
+        back = self.backpanel
+
         if t == self.medi_tick_span or not self.medi_has_mouse:
-            if self.IsFullScreen():
+            if self.is_fullscreen():
                 self.show_wnd_obj(self.hiders["vszr"], True)
 
             self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
         elif t == 0:
-            if self.IsFullScreen():
+            if self.is_fullscreen():
                 self.show_wnd_obj(self.hiders["vszr"], False)
 
             self.SetCursor(select_cursor(wx.CURSOR_BLANK))
