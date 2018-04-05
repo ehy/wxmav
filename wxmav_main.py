@@ -6278,7 +6278,7 @@ class TopWnd(wx.Frame):
 
     def __init__(self, parent, ID, title, size, pos = (0, 0),
                        cmdargs = None, argplay = False):
-        wx.Frame.__init__(self, parent, ID, style = wx.TAB_TRAVERSAL,
+        wx.Frame.__init__(self, parent, ID , #style = wx.TAB_TRAVERSAL,
                           title = title, size = size, pos = pos)
 
         self.do_setwname_done = True
@@ -8293,7 +8293,6 @@ class TopWnd(wx.Frame):
         #if _in_msw and not force:
         #    return
 
-        print("self.medi.SetFocus()")
         self.medi.SetFocus()
         pass
 
