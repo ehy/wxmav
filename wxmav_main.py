@@ -1261,7 +1261,6 @@ def av_dir_find(name, recurse = False, ext_list = None):
                 if x and x[1:].lower() in ext:
                     return True
         except Exception as e:
-            #print(e)
             raise Exception(e)
         return False
 
@@ -6087,14 +6086,11 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
             return
 
         self.lbox.SetSelection(n)
-        #self.last_sel = self.lbox.GetSelection()
-        #return self.last_sel
         return self.lbox.GetSelection()
 
     # Translate string into a list selection
     def SetStringValue(self, s):
         self.lbox.SetStringSelection(s)
-        #self.last_sel = self.lbox.GetSelection()
 
     # Get list selection as a string
     def GetStringValue(self):
@@ -8241,7 +8237,7 @@ class TopWnd(wx.Frame):
 
 
     def on_char(self, event):
-        self.handle_key_char(self, event)
+        self.on_key(event)
 
     def on_key(self, event):
         t = event.GetEventType()
@@ -8250,17 +8246,19 @@ class TopWnd(wx.Frame):
             self.handle_key_down(self, event)
         elif t == wx.wxEVT_KEY_UP:
             self.handle_key_up(self, event)
+        elif t == wx.wxEVT_CHAR:
+            self.handle_key_char(self, event)
         else:
             event.Skip()
 
     def focus_medi_opt(self, force = False):
-        #if not self.medi:
-        #    return
-        #
+        if not self.medi:
+            return
+
         #if _in_msw and not force:
         #    return
-        #
-        #self.medi.SetFocus()
+
+        self.medi.SetFocus()
         pass
 
     def show_wnd_id(self, ID, show = True):
@@ -8296,104 +8294,99 @@ class TopWnd(wx.Frame):
         elif kc == ord('>'):
             self.do_command_button(self.id_next)
             return
+        elif kc == ord('V'):
+            self.dec_volume()
+        elif kc == ord('v'):
+            self.inc_volume()
+        elif kc == ord('s'):
+            if self.IsFullScreen():
+                self.medi_tick = -1
+                self.show_wnd_obj(self.hiders["vszr"], True)
+                self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
+        elif kc == ord('h'):
+            if self.IsFullScreen():
+                self.medi_tick = -1
+                self.show_wnd_obj(self.hiders["vszr"], False)
+                self.SetCursor(select_cursor(wx.CURSOR_BLANK))
+        else:
+            event.Skip()
 
-        event.Skip()
 
     def handle_key_down(self, recobj, event):
         kc = event.GetKeyCode()
 
-        ov = ord('v')
-        oV = ord('V')
-
-        if (kc == ov or kc == oV):
-            if event.ShiftDown():
-                self.dec_volume()
-            else:
-                self.inc_volume()
-            return
-        elif kc == wx.WXK_LEFT:
+        if kc == wx.WXK_LEFT:
             self.do_seek_back()
-            return
         elif kc == wx.WXK_RIGHT:
             self.do_seek_forward()
-            return
-
-        # wx on Unix does not define these -- MSW only?
-        try:
-            if kc == wx.WXK_VOLUME_DOWN:
-                self.dec_volume()
-                return
-            elif kc == wx.WXK_VOLUME_UP:
-                self.inc_volume()
-                return
-            #elif kc == wx.WXK_VOLUME_MUTE:
-            #    return
-        except AttributeError:
+        elif kc == wx.WXK_HOME or kc == wx.WXK_END:
             pass
+        elif kc == wx.WXK_DOWN or kc == wx.WXK_UP:
+            pass
+        elif kc == wx.WXK_PAGEUP or kc == wx.WXK_PAGEDOWN:
+            pass
+        elif kc == wx.WXK_F11 or kc == wx.WXK_ESCAPE:
+            pass
+        elif kc == wx.WXK_SPACE:
+            pass
+        else:
+            # wx on Unix does not define these -- MSW only?
+            try:
+                if kc == wx.WXK_VOLUME_DOWN:
+                    self.dec_volume()
+                    return
+                elif kc == wx.WXK_VOLUME_UP:
+                    self.inc_volume()
+                    return
+                #elif kc == wx.WXK_VOLUME_MUTE:
+                #    return
+            except AttributeError:
+                pass
 
-        event.Skip()
+            event.Skip()
 
     def handle_key_up(self, recobj, event):
         kc = event.GetKeyCode()
 
         if kc == wx.WXK_F11:
             self.do_fullscreen(False) # toggle
-            return
         elif kc == wx.WXK_ESCAPE:
             if self.IsFullScreen():
                 self.do_fullscreen(True) # un-fullscreen
-                return
         elif kc == wx.WXK_SPACE:
             self.do_command_button(self.id_play)
-            return
-        elif kc == wx.WXK_LEFT:
-            return
-        elif kc == wx.WXK_RIGHT:
-            return
         elif kc == wx.WXK_PAGEUP:
             self.cmd_prev_grp()
-            return
         elif kc == wx.WXK_PAGEDOWN:
             self.cmd_next_grp()
-            return
         elif kc == wx.WXK_HOME:
             self.cmd_first_grp()
-            return
         elif kc == wx.WXK_END:
             self.cmd_last_grp()
-            return
-        elif kc == ord('s') or kc == ord('S'):
-            if self.IsFullScreen():
-                self.medi_tick = -1
-                self.show_wnd_obj(self.hiders["vszr"], True)
-                self.SetCursor(select_cursor(wx.CURSOR_DEFAULT))
-            return
-        elif kc == ord('h') or kc == ord('H'):
-            if self.IsFullScreen():
-                self.medi_tick = -1
-                self.show_wnd_obj(self.hiders["vszr"], False)
-                self.SetCursor(select_cursor(wx.CURSOR_BLANK))
-            return
-
-        # wx on Unix does not define these -- MSW only?
-        try:
-            if not _in_msw or not self.register_hotkey_done:
-                if kc == wx.WXK_MEDIA_NEXT_TRACK:
-                    self.do_command_button(self.id_next)
-                    return
-                elif kc == wx.WXK_MEDIA_PREV_TRACK:
-                    self.do_command_button(self.id_prev)
-                    return
-                elif kc == wx.WXK_MEDIA_STOP:
-                    self.do_command_button(self.id_stop)
-                    return
-                elif kc == wx.WXK_MEDIA_PLAY_PAUSE:
-                    self.do_command_button(self.id_play)
-                    return
-        except AttributeError:
+        elif kc == wx.WXK_LEFT or kc == wx.WXK_RIGHT:
             pass
+        elif kc == wx.WXK_DOWN or kc == wx.WXK_UP:
+            pass
+        else:
+            # wx on Unix does not define these -- MSW only?
+            try:
+                if not _in_msw or not self.register_hotkey_done:
+                    if kc == wx.WXK_MEDIA_NEXT_TRACK:
+                        self.do_command_button(self.id_next)
+                        return
+                    elif kc == wx.WXK_MEDIA_PREV_TRACK:
+                        self.do_command_button(self.id_prev)
+                        return
+                    elif kc == wx.WXK_MEDIA_STOP:
+                        self.do_command_button(self.id_stop)
+                        return
+                    elif kc == wx.WXK_MEDIA_PLAY_PAUSE:
+                        self.do_command_button(self.id_play)
+                        return
+            except AttributeError:
+                pass
 
-        event.Skip()
+            event.Skip()
 
     def err_msg(self, msg):
         wx.GetApp().err_msg(msg)
@@ -9728,9 +9721,6 @@ class TopWnd(wx.Frame):
         if not self.load_ok:
             return
 
-        # try to keep focus on media control
-        self.focus_medi_opt()
-
         if from_user:
             self.in_stop = True
             self.in_play = False
@@ -9739,6 +9729,9 @@ class TopWnd(wx.Frame):
         st = self.get_medi_state()
         if st != wx.media.MEDIASTATE_STOPPED:
             self.medi.Stop()
+
+        # try to keep focus on media control
+        self.focus_medi_opt()
 
     def do_setwname(self):
         if self.tittime > 0:
