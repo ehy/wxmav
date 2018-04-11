@@ -5927,6 +5927,8 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
         self.w = None
         self.h = None
         self.last_sel = 0
+        self.create_parent = None
+        self.font = None
 
     # Initialize member variables
     def Init(self):
@@ -5935,11 +5937,12 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
 
     # Create popup control
     def Create(self, parent):
-        st = wx.LB_HSCROLL | wx.LB_SINGLE | wx.LB_NEEDED_SB
+        self.create_parent = parent
+
         self.lbox.Create(
                 parent,
                 wx.ID_ANY,
-                style = st,
+                style = wx.LB_SINGLE | wx.LB_HSCROLL | wx.LB_NEEDED_SB,
                 pos = (0, 0),
                 size = (-1, 33))
 
@@ -5948,8 +5951,6 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
         self.Bind(wx.EVT_KEY_DOWN, self.on_kdown)
         self.Bind(wx.EVT_KEY_UP, self.on_kup)
         self.Bind(wx.EVT_CHAR, self.on_char)
-
-        self.Clear()
 
         return True
 
@@ -6072,19 +6073,41 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
     def Append(self, txt):
         txt = _WX(txt)
         r = self.lbox.Append(txt)
-        a = self.lbox.GetStrings()
-        mtx = '\r\n'.join(a)
-        dc = wx.ClientDC(self.lbox)
 
-        if phoenix:
-            self.w, self.h = dc.GetMultiLineTextExtent(mtx)
-        else:
-            self.w, self.h, lh = dc.GetMultiLineTextExtent(mtx)
-
-        self.w += 28 # FIXME want scrollbar width
-        self.h += 28
+        self.w, self.h = self.get_text_extent_all()
 
         return r
+
+    def get_text_extent(self, txt):
+        w, h, d, xl = self.lbox.GetFullTextExtent(txt, font=self.font)
+
+        return (w, h, d, xl)
+
+    def get_text_extent_all(self):
+        a = self.lbox.GetStrings()
+        ns = len(a)
+        if ns < 1:
+            return (-1, -1)
+
+        wt = ht = 0
+        for s in a:
+            w, h, d, xl = self.get_text_extent(s)
+            wt = max(wt, w)
+            # sigh
+            if _in_gtk and xl < 1:
+                xl = d * 2
+            ht += h + xl
+
+        return (wt, ht)
+
+        #w0, h0, d0, xl0 = self.get_text_extent(a[0])
+        #
+        #if ns == 1:
+        #    return (w0, h0 + d0 * 2 + xl0)
+        #
+        #txt = os.linesep.join(a)
+        #w, h, d, xl = self.get_text_extent(txt)
+        #return (w, (len(a) * (h0 + d0 * 2 + xl0)))
 
     def Select(self, n):
         if n < 0 or n >= self.lbox.GetCount():
@@ -6111,9 +6134,6 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
     def Clear(self):
         self.lbox.Clear()
         self.last_sel = 0
-        # TODO: SetSize() is ineffective, find something else
-        #self.lbox.SetSize((69, 33))
-        #self.lbox.SetVirtualSize((69, 33))
         self.w = None
         self.h = None
 
@@ -6145,21 +6165,40 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
     # maxHeight = max height for window, as limited by screen size
     #   and should only be rounded down, if necessary.
     def GetAdjustedSize(self, minWidth, prefHeight, maxHeight):
-        if self.w != None:
-            minWidth = max(minWidth, self.w)
+        if self.w == None or self.w == None:
+            self.w, self.h = self.get_text_extent_all()
 
         # These height adjustments *must not* increase the
         # values passed to this call, which causes the list to
         # appear in bad places like off the top of screen
-        if True or not _in_gtk:
-            mxy = wx.SystemSettings.GetMetric(wx.SYS_SCREEN_Y)-28
-            mxy = int(min(maxHeight, mxy))
-            if self.h != None:
-                maxHeight = int(min(self.h, mxy))
-                prefHeight = int(min(mxy, self.h))
+        mxy = wx.SystemSettings.GetMetric(wx.SYS_SCREEN_Y)
+        mxx = wx.SystemSettings.GetMetric(wx.SYS_SCREEN_X)
 
-        return wxcombo.ComboPopup.GetAdjustedSize(self,
-                        minWidth, prefHeight, maxHeight)
+        # padding hack: once lbox dimension is enlarged,
+        # then reduced, scrollbars will always show -- cannot
+        # find a sane way to dispose of them -- so padding is
+        # needed to ensure scrollbars do not obscure text;
+        # also, sigh, wxWindow::HasScrollbar(orient) is not
+        # working here: always false (sigh again)
+        #padx = 28 if self.lbox.HasScrollbar(wx.VERTICAL) else 0
+        #pady = 28 if self.lbox.HasScrollbar(wx.HORIZONTAL) else 0
+        padx = 28
+        pady = 28
+
+        mxx = min(mxx, self.w) + padx
+        mxx = max(minWidth, mxx)
+
+        mxy = min(self.h, mxy) + pady
+        mxy = min(maxHeight, mxy)
+
+        #if prefHeight < 1:
+        #    prefHeight = maxHeight
+
+        r = (mxx, mxy)
+
+        #print("GetAdjustedSize: {} [{}] {}".format(
+        #    r, (self.w, self.h), (padx, pady)))
+        return r
 
 
 
@@ -6187,6 +6226,7 @@ class TailorMadeComboCtrl(wxcombo.ComboCtrl):
 
     def on_dbox(self, event):
         if not event.IsSelection():
+            event.Skip()
             return
 
         def _s_v_c(self, idx):
@@ -8992,13 +9032,18 @@ class TopWnd(wx.Frame):
         if _in_msw:
             # MSW: if range has increased so that another decimal
             # digit is required, the number is clipped -- trying
-            # to find a workaround for MSWindowsishness here . . .
-            self.pos_sld.Layout()
-            w, h = self.pos_sld.GetSize()
-            self.pos_sld.SetSize((w - 1, h - 1))
-            self.pos_sld.Refresh()
-            self.pos_sld.SetSize((w, h))
-            self.pos_sld.Refresh(True)
+            # to find a workaround here . . .
+            if False:
+                self.pos_sld.Layout()
+                w, h = self.pos_sld.GetSize()
+                self.pos_sld.SetSize((w - 1, h - 1))
+                self.pos_sld.Refresh()
+                self.pos_sld.SetSize((w, h))
+                self.pos_sld.Refresh(True)
+            else:
+                self.pos_sld.SendSizeEvent()
+                self.pos_sld.Layout()
+                self.pos_sld.Refresh(True)
 
         if ln > 0:
             self.set_statusbar(self.get_time_str(tm = ln), 1)
