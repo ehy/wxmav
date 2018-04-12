@@ -5926,6 +5926,7 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
         self.cctrl = None
         self.w = None
         self.h = None
+        self.lineheight = 0
         self.last_sel = 0
         self.create_parent = None
         self.font = None
@@ -5960,26 +5961,63 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
     def SetThemeEnabled(self, boolval):
         return self.lbox.SetThemeEnabled(boolval)
 
+    def _handle_page_updown(self, ispagedown, iskeydown):
+        if self.lineheight < 1:
+            return
+
+        if not iskeydown:
+            return
+
+        cnt = self.lbox.GetCount()
+        if cnt == 0:
+            return
+
+        csz = self.lbox.GetClientSize()
+        x, y = csz.Get()
+
+        if ispagedown:
+            x /= 2
+            y -= self.lineheight / 2
+            n = self.lbox.HitTest((x, y))
+            if n == wx.NOT_FOUND:
+                n = cnt - 1
+            self.lbox.SetSelection(n)
+            self.cctrl.SetSelection(n)
+        else:
+            x /= 2
+            y = self.lineheight / 2
+            n = self.lbox.HitTest((x, y))
+            if n == wx.NOT_FOUND:
+                n = 0
+            self.lbox.SetSelection(n)
+            self.cctrl.SetSelection(n)
+
     def on_kup(self, evt):
         kc  = evt.GetKeyCode()
         kr  = evt.GetRawKeyCode()
         mod = evt.GetModifiers()
 
         if kc == wx.WXK_UP:
-            return
+            pass
         elif kc == wx.WXK_DOWN:
-            return
+            pass
+        elif kc == wx.WXK_PAGEUP:
+            self._handle_page_updown(ispagedown=False,iskeydown=False)
+            evt.Skip()
+        elif kc == wx.WXK_PAGEDOWN:
+            self._handle_page_updown(ispagedown=True,iskeydown=False)
+            evt.Skip()
         elif kc == wx.WXK_RETURN or kc == wx.WXK_SPACE:
-            return
+            pass
         elif (kc == wx.WXK_ESCAPE or kc == wx.WXK_BACK or
                 kc == wx.WXK_DELETE or
                 kc == wx.WXK_SUBTRACT or kc == wx.WXK_NUMPAD_SUBTRACT):
-            return
+            pass
         elif (kc == wx.WXK_ADD or kc == wx.WXK_NUMPAD_ADD or
                 kr == 43 or (kc == 61 and mod == wx.MOD_SHIFT)):
-            return
-
-        evt.Skip()
+            pass
+        else:
+            evt.Skip()
 
     def on_kdown(self, evt):
         kc  = evt.GetKeyCode()
@@ -5991,31 +6029,32 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
             if n > 0:
                 self.lbox.SetSelection(n - 1)
                 self.cctrl.SetSelection(n - 1)
-            return
         elif kc == wx.WXK_DOWN:
             n = self.lbox.GetSelection()
             c = self.lbox.GetCount() - 1
             if n >= 0 and n < c:
                 self.lbox.SetSelection(n + 1)
                 self.cctrl.SetSelection(n + 1)
-            return
+        elif kc == wx.WXK_PAGEUP:
+            self._handle_page_updown(ispagedown=False,iskeydown=True)
+            evt.Skip()
+        elif kc == wx.WXK_PAGEDOWN:
+            self._handle_page_updown(ispagedown=True,iskeydown=True)
+            evt.Skip()
         elif kc == wx.WXK_RETURN or kc == wx.WXK_SPACE:
             self.send_select_command(self.lbox.GetSelection())
-            return
         elif (kc == wx.WXK_ESCAPE or kc == wx.WXK_BACK or
                 kc == wx.WXK_DELETE or
                 kc == wx.WXK_SUBTRACT or kc == wx.WXK_NUMPAD_SUBTRACT):
             self.lbox.Select(self.last_sel)
             self.Dismiss()
             self.cctrl.SetSelection(self.last_sel)
-            return
         elif (kc == wx.WXK_ADD or kc == wx.WXK_NUMPAD_ADD or
                 kr == 43 or (kc == 61 and mod == wx.MOD_SHIFT)):
             if not self.cctrl.IsPopupShown():
                 self.cctrl.ShowPopup()
-            return
-
-        evt.Skip()
+        else:
+            evt.Skip()
 
     def on_char(self, evt):
         evt.Skip()
@@ -6074,7 +6113,11 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
         txt = _WX(txt)
         r = self.lbox.Append(txt)
 
+        oldh = self.h
         self.w, self.h = self.get_text_extent_all()
+
+        if oldh and oldh != self.h:
+            self.lineheight = self.h - oldh
 
         return r
 
