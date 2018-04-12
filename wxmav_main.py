@@ -5962,10 +5962,16 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
         return self.lbox.SetThemeEnabled(boolval)
 
     def _handle_page_updown(self, ispagedown, iskeydown):
-        if self.lineheight < 1:
+        if not _in_gtk:
+            # Bummer: MSW does dismiss the popup on
+            # page up/down key, and I don't know if that
+            # can be changed; and that's it for this
+            # handler.
+            # Anything other than MSW or GTK is unknown
+            # presently
             return
 
-        if not iskeydown:
+        if self.lineheight < 1 or not iskeydown:
             return
 
         cnt = self.lbox.GetCount()
@@ -6183,6 +6189,7 @@ class TailorMadeComboPop(wxcombo.ComboPopup):
     # Called immediately after the popup is shown
     def OnPopup(self):
         wxcombo.ComboPopup.OnPopup(self)
+        self.last_sel = self.GetSelection()
         self.lbox.SetFocus()
 
     # Called when popup is dismissed
