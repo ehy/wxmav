@@ -192,6 +192,15 @@ else:
     def put_thd_event(*args):
         return wx.PostEvent(*args)
 
+# As of wxPython 4.0.2 (Pheonix) wx.NewId() is deprecated --
+# there was a discussion of the on the mailing list, June 2018
+def new_wx_id():
+    try:
+        # this is a new replacement function for deprecated NewId();
+        # note that return is not int, but object w/ __int__ method
+        return wx.NewIdRef()
+    except AttributeError:
+        return wx.NewId()
 
 """
 main proc to get the show on the road
@@ -2992,7 +3001,7 @@ elif _in_xws:
                 return self.status[3]
 
 
-            self.thd = AChildThread(self.app, wx.NewId(),
+            self.thd = AChildThread(self.app, new_wx_id(),
                                     self.run_ch_proc,
                                     (self.ch_proc, pip[1], rfd, efd))
 
@@ -4017,7 +4026,7 @@ class TheAppClass(wx.App):
         else:
             # get events from filter log
             self.Bind(EVT_GREPLOG_MESSAGE, self.on_filterlog)
-            self.filterlog_id = wx.NewId()
+            self.filterlog_id = new_wx_id()
 
         rx = _(r'^>>>\s.*$')
         log = wx.LogStderr() if (self.debug or
@@ -6519,7 +6528,7 @@ class TopWnd(wx.Frame):
 
         self.label_fullscreen_on  = _("Fu&llscreen")
         self.label_fullscreen_off = _("Leave Fu&llscreen")
-        self.id_fullscreen = wx.NewId()
+        self.id_fullscreen = new_wx_id()
         bdat = ButtonData(
                        ID = self.id_fullscreen,
                        label = self.label_fullscreen_on,
@@ -6528,28 +6537,28 @@ class TopWnd(wx.Frame):
 
         self.label_play_on  = _("&Play")
         self.label_play_off = _("&Pause")
-        self.id_play = wx.NewId()
+        self.id_play = new_wx_id()
         bdat = ButtonData(
                        ID = self.id_play,
                        label = self.label_play_on,
                        handler = self.on_play)
         abdat.append(bdat)
 
-        self.id_prev = wx.NewId()
+        self.id_prev = new_wx_id()
         bdat = ButtonData(
                        ID = self.id_prev,
                        label = _("P&revious"),
                        handler = self.on_prev)
         abdat.append(bdat)
 
-        self.id_next = wx.NewId()
+        self.id_next = new_wx_id()
         bdat = ButtonData(
                        ID = self.id_next,
                        label = _("&Next"),
                        handler = self.on_next)
         abdat.append(bdat)
 
-        self.id_stop = wx.NewId()
+        self.id_stop = new_wx_id()
         bdat = ButtonData(
                        ID = self.id_stop,
                        label = _("S&top"),
@@ -6561,7 +6570,7 @@ class TopWnd(wx.Frame):
 
         self.ctl_data = self.btn_panel.get_id_map()
 
-        self.id_pos_sld = wx.NewId()
+        self.id_pos_sld = new_wx_id()
         self.pos_panel = SliderPanel(back, wx.ID_ANY,
                                      slider_id = self.id_pos_sld)
         self.pos_sld = self.pos_panel.get_slider()
@@ -6596,7 +6605,7 @@ class TopWnd(wx.Frame):
         self.SetToolBar(self.toolbar)
         szr.Add(self.toolbar2, 0, wx.EXPAND | wx.ALL, 0)
 
-        self.id_svol = wx.NewId()
+        self.id_svol = new_wx_id()
         self.vol_panel = SliderPanel(back, wx.ID_ANY,
                                      slider_id = self.id_svol)
         self.vol_sld = self.vol_panel.get_slider()
@@ -7637,7 +7646,7 @@ class TopWnd(wx.Frame):
         #
         self.mhelp = mhelp = wx.Menu()
         # view python and wx version in message box
-        self.mhelp_ckver = cur = wx.NewId()
+        self.mhelp_ckver = cur = new_wx_id()
         mhelp.Append(cur, _("See Versions"),
                         _("See version iformation."))
         # separator
@@ -7840,7 +7849,7 @@ class TopWnd(wx.Frame):
         if use_choice:
             sty = 0
 
-            self.cbox_group_id = cur = wx.NewId()
+            self.cbox_group_id = cur = new_wx_id()
             self.cbox_group = wx.Choice(tb, cur, style = sty)
             if use_wxtoolbar:
                 self.cbox_group.SetSize((100, -1))
@@ -7850,7 +7859,7 @@ class TopWnd(wx.Frame):
             self.cbox_group.SetToolTip(stip)
             self.Bind(wx.EVT_CHOICE, self.on_cbox, id = cur)
 
-            self.cbox_resrc_id = cur = wx.NewId()
+            self.cbox_resrc_id = cur = new_wx_id()
             self.cbox_resrc = wx.Choice(tb, cur, style = sty)
             if use_wxtoolbar:
                 self.cbox_resrc.SetSize((100, -1))
@@ -7864,7 +7873,7 @@ class TopWnd(wx.Frame):
         else:
             sty = wx.CB_DROPDOWN | wx.CB_READONLY
 
-            self.cbox_group_id = cur = wx.NewId()
+            self.cbox_group_id = cur = new_wx_id()
             self.cbox_group = TailorMadeComboCtrl(tb, cur, style = sty)
             self.cbox_group.SetPopupControl(TailorMadeComboPop())
             self.cbox_group.SetSize((100, -1))
@@ -7874,7 +7883,7 @@ class TopWnd(wx.Frame):
             self.cbox_group.SetToolTip(stip)
             self.Bind(wx.EVT_COMBOBOX, self.on_cbox, id = cur)
 
-            self.cbox_resrc_id = cur = wx.NewId()
+            self.cbox_resrc_id = cur = new_wx_id()
             self.cbox_resrc = TailorMadeComboCtrl(tb, cur, style = sty)
             self.cbox_resrc.SetPopupControl(TailorMadeComboPop())
             self.cbox_resrc.SetSize((100, -1))
