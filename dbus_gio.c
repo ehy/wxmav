@@ -167,6 +167,7 @@ typedef struct _mpris_data_struct {
     GDBusConnection   *connection;
     const char        *bus_name;
     guint             reg_ids[4]; /* {,.Player,.TrackList,.PlayLists} */
+    guint             ufd_source; /* returned by from g_unix_fd_add() */
     /* IO with client */
     char              *buf;
     size_t            bufsz;
@@ -839,6 +840,7 @@ _mpris2_app_setup(const char *prg, mpris_data_struct *dat)
         MPRIS2_ok = 1;
         /* dbus signals dialogs are initiated by client,
          * so poll that descriptor */
+        dat->ufd_source =
         g_unix_fd_add(mpris_fd_sig_read,
                       G_IO_IN|G_IO_PRI|G_IO_ERR|G_IO_HUP|G_IO_NVAL,
                       on_mpris_sig_read,
@@ -862,6 +864,7 @@ _mpris2_app_setdown(const char *prg, mpris_data_struct *dat)
 
     /* ensure MPRIS2 support is stopped (should've been called) */
     stop_mpris_service(dat);
+    g_source_remove(dat->ufd_source);
 
     if ( mpris_sig_rfp != NULL && mpris_sig_rfp != mpris_rfp ) {
         fclose(mpris_sig_rfp);
