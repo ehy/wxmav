@@ -9953,10 +9953,11 @@ class TopWnd(wx.Frame):
         if ln < 1:
             return
 
-        v = long(val) / 1000 # value from MPRIS2 is in usecs
+        v = long(val)
+        v /= 1000 # value from MPRIS2 is in usecs
         if is_seek:
             # this was MPRIS2.Playlist Seek method, not SetPosition
-            v += ln
+            v += self.medi.Tell()
         v = min(ln, max(0, v))
         do_seek = (self.mpris_seek < 0)
         self.mpris_seek = v
