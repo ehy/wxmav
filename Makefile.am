@@ -54,14 +54,18 @@ pyprog_sub = sed \
 			-e 's,[@]VERSION[@],$(VERSION),g' \
 			-e 's,[@]XHELPERPATH[@],$(libexecdir)/$(XHELPERNAME),g'
 
-python_PYTHON = wxmav_main.py
-bin_SCRIPTS = wxmav
+python_PYTHON = wxmav_main.py wxmav_mpris2ctl.py
+bin_SCRIPTS = wxmav wxmav_control
 CLEANFILES = $(bin_SCRIPTS)
-EXTRA_DIST = wxmav.in wxmav.pyw xdg/* cdata/* msw_pkg/* msw_pynsist/* examples/*
+EXTRA_DIST = wxmav.in wxmav.pyw wxmav_control.in xdg/* cdata/* msw_pkg/* msw_pynsist/* examples/*
 
 wxmav: wxmav.in Makefile
 	$(pyprog_sub) < $(srcdir)/wxmav.in > wxmav
 	chmod +x wxmav
+
+wxmav_control: wxmav_control.in Makefile
+	$(pyprog_sub) < $(srcdir)/wxmav_control.in > wxmav_control
+	chmod +x wxmav_control
 
 
 if WITH_FRONTEND_XDG

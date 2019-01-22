@@ -281,7 +281,7 @@ if test X"$tst_pkgconf_ok" = Xyes ; then
     # else if gio/dbus is OK
     else
       AC_MSG_WARN([
-      Cannot use dbus for media keys etc. (if needed: gnome, mate ...)])
+      Cannot use dbus for media keys, MPRIS2, screensaver control etc.])
     # end if gio/dbus is OK
     fi
 # end if X"$tst_pkgconf_ok" = Xyes
