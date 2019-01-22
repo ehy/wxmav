@@ -14,26 +14,27 @@ UNM=$(uname)
 # for $AUTO{CONF,MAKE}_VERSION in env and complain if not
 # set, so that a version must be selected
 test XOpenBSD = X"$UNM" && {
-	obsd_acam_setver () {
-		_prg="$1"
-		_var="$2"
-		_ver="$3"
+    obsd_acam_setver () {
+        _prg="$1"
+        _var="$2"
+        _ver="$3"
 
-		for _F in "$_prg"-*; do
-			_V=${_F##*-}
-			test X'*' = X"$_V" && { unset _V; break; }
-			test X"$_ver" = X"$_V" && break
-		done
+        for _F in "$_prg"-*; do
+            _V=${_F##*-}
+            test X'*' = X"$_V" && { unset _V; break; }
+            CHK=$(echo "if ( $_V < $_ver ) print \"NG\"" | bc)
+            test X"$CHK" = X"NG" && unset _V;
+        done
 
-		test X = X"$_V" && return 1
+        test X = X"$_V" && return 1
 
-		eval "$_var=\"$_V\"; export $_var"
+        eval "$_var=\"$_V\"; export $_var"
 
-		return 0
-	}
+        return 0
+    }
 
-	obsd_acam_setver $(which autoconf) AUTOCONF_VERSION 2.69
-	obsd_acam_setver $(which automake) AUTOMAKE_VERSION 1.15
+    obsd_acam_setver $(which autoconf) AUTOCONF_VERSION 2.61
+    obsd_acam_setver $(which automake) AUTOMAKE_VERSION 1.11
 }
 
 : ${ALLDIRS:="."}
