@@ -241,8 +241,8 @@ def invoke_easy_method(ao):
         except:
             errmsg("-C F: arg must be a valid filesystem path string")
             _eo(ao.cmd_easy)
-        if not os.path.isfile(p):
-            m = "-C F: arg {} ({}) is not a regular file ({})"
+        if not (os.path.isfile(p) or os.path.isdir(p)):
+            m = "-C F: arg {} ({}) is not a regular file or dir ({})"
             errmsg(m.format(arg, p, 'trying anyway'))
         return invoke_method('openuri', 'file://{}'.format(p))
     else:
