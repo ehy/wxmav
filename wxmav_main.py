@@ -255,6 +255,49 @@ string handling
 
 filesys_encoding = sys.getfilesystemencoding() or 'utf_8'
 
+_encoding_tuple_small = (
+"ascii",
+"utf_8",
+"latin_1",
+"cp1252",
+)
+
+def mkascii(v, repl=0x5F):
+    try:
+        b = bytearray(os.fsencode(v))
+    except:
+        try:
+            b = bytearray(bytes(v))
+        except:
+            b = bytearray(v.encode('latin1', 'strict'))
+
+    for i in range(len(b)):
+        if b[i] > 0x7F:
+            b[i] = repl
+    return b.decode('ascii', 'strict')
+
+
+def _Tencode(s, encoding_tuple=_encoding_tuple_small):
+    meths = ( 'strict', 'replace', 'backslashreplace', )
+
+    try:
+        ss = os.fsencode(s)
+    except AttributeError:
+        ss = s
+
+    for meth in meths:
+        for c in encoding_tuple:
+            try:
+                ds = ss.decode(c, meth)
+                es = ds.encode(c, meth)
+                return ds
+            except:
+                pass
+
+    return mkascii(s)
+
+
+
 _encoding_tuple_1 = (
 "ascii",
 "utf_7", "utf_8", "utf_8_sig",
@@ -443,7 +486,9 @@ if not py_v_is_3:
 
     # for strings pass to wx that cause trouble after _T()
     # like set_statusbar
-    def _WX(s):
+    def _WX(s, usetencode = True):
+        if usetencode:
+            return _Tencode(s)
         if not _in_msw:
             s = resourcename_with_displayname(s).get_disp_str()
         if False and _in_msw:
@@ -478,7 +523,9 @@ else:
     def _F(s):
         return s
 
-    def _WX(s):
+    def _WX(s, usetencode = True):
+        if usetencode:
+            return _Tencode(s)
         return s
 
     def fd_write(fd, s):
@@ -832,20 +879,20 @@ if have_mutagen:
                     ii = mg.iteritems()
                 for k, v in ii:
                     if isinstance(v, list):
-                        v = _T('; ').join(v)
+                        v = _T('; ').join([_Tencode(i) for i in v])
                     if k == 'album':
-                        self.album = v
+                        self.album = _Tencode(v)
                     elif k == 'tracknumber':
                         # Note: not using possible joined list:
                         self.tracknumber = mg[k]
                     elif k == 'title':
-                        self.title = v
+                        self.title = _Tencode(v)
                     elif k == 'artist':
-                        self.artist = v
+                        self.artist = _Tencode(v)
                     elif k == 'genre':
-                        self.genre = v
+                        self.genre = _Tencode(v)
                     elif k == 'date':
-                        self.date = v
+                        self.date = _Tencode(v)
             except:
                 return False
 
@@ -9205,7 +9252,6 @@ class TopWnd(wx.Frame):
                 try:
                     try:
                         t = bool(self.medi.LoadURI(do_uri_file(v)))
-                        print("LoadURI")
                     except:
                         t = bool(self.medi.Load(v))
                     if t:
