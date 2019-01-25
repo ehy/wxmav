@@ -31,13 +31,57 @@ from time import sleep
 # 1st, some Utilities Lite (R)
 #
 
-_PROG = os.path.split(sys.argv[0])[1]
+_PROGPATH = os.path.split(sys.argv[0])[1]
+
+_encoding_tuple_small = (
+"ascii",
+"utf_8",
+"latin_1",
+"cp1252",
+)
+
+def mkascii(v, repl=0x5F):
+    try:
+        b = bytearray(os.fsencode(v))
+    except:
+        try:
+            b = bytearray(bytes(v))
+        except:
+            b = bytearray(v.encode('latin1', 'strict'))
+
+    for i in range(len(b)):
+        if b[i] > 0x7F:
+            b[i] = repl
+    return b.decode('ascii', 'strict')
+
+
+def _T(s, encoding_tuple=_encoding_tuple_small):
+    meths = ( 'strict', 'replace', 'backslashreplace', )
+
+    try:
+        ss = os.fsencode(s)
+    except AttributeError:
+        ss = s
+
+    for meth in meths:
+        for c in encoding_tuple:
+            try:
+                ds = ss.decode(c, meth)
+                es = ds.encode(c, meth)
+                return ds
+            except:
+                pass
+
+    return mkascii(s)
+
+
+_PROG = _T(_PROGPATH)
 
 def prerr(msg):
     print(msg, file=sys.stderr)
 
 def errmsg(msg):
-    prerr("{}: {}".format(_PROG, msg))
+    prerr(_T("{}: {}").format(_PROG, _T(msg)))
 
 def errout(msg, code=1):
     errmsg(msg)
@@ -273,26 +317,26 @@ def print_properties(prop):
         print("MediaPlayer2: {} == {}".format(
             "HasTrackList", mplayer2.HasTrackList))
     elif prop == "Identity":
-        print("MediaPlayer2: {} == {}".format(
-            "Identity", mplayer2.Identity))
+        print(_T("MediaPlayer2: {} == {}").format(
+            "Identity", _T(mplayer2.Identity)))
     elif prop == "DesktopEntry":
-        print("MediaPlayer2: {} == {}".format(
-            "DesktopEntry", mplayer2.DesktopEntry))
+        print(_T("MediaPlayer2: {} == {}").format(
+            "DesktopEntry", _T(mplayer2.DesktopEntry)))
     elif prop == "SupportedUriSchemes":
         l = list(mplayer2.SupportedUriSchemes)
-        print("MediaPlayer2: {} == {}".format(
-            "SupportedUriSchemes", ", ".join(l)))
+        print(_T("MediaPlayer2: {} == {}").format(
+            "SupportedUriSchemes", ", ".join([_T(i) for i in l])))
     elif prop == "SupportedMimeTypes":
         l = list(mplayer2.SupportedMimeTypes)
-        print("MediaPlayer2: {} == {}".format(
-            "SupportedMimeTypes", ", ".join(l)))
+        print(_T("MediaPlayer2: {} == {}").format(
+            "SupportedMimeTypes", ", ".join([_T(i) for i in l])))
     # Player:
     elif prop == "PlaybackStatus":
-        print("Player: {} == {}".format(
-            "PlaybackStatus", player.PlaybackStatus))
+        print(_T("Player: {} == {}").format(
+            "PlaybackStatus", _T(player.PlaybackStatus)))
     elif prop == "LoopStatus":
-        print("Player: {} == {}".format(
-            "LoopStatus", player.LoopStatus))
+        print(_T("Player: {} == {}").format(
+            "LoopStatus", _T(player.LoopStatus)))
     elif prop == "Rate":
         print("Player: {} == {}".format(
             "Rate", player.Rate))
@@ -300,10 +344,26 @@ def print_properties(prop):
         print("Player: {} == {}".format(
             "Shuffle", player.Shuffle))
     elif prop == "Metadata":
+        #m = dict(player.Metadata)
+        #print("Player: Metadata:")
+        #for k in m.keys():
+        #    print("  {} == {}".format(k, m[k]))
         m = dict(player.Metadata)
         print("Player: Metadata:")
+        def _mdval(v):
+            try:
+                return _T(str(v))
+            except:
+                try:
+                    return _T(bytes(v))
+                except:
+                    return v
         for k in m.keys():
-            print("  {} == {}".format(k, m[k]))
+            if isinstance(m[k], list):
+                s = _T(', ').join([_mdval(i) for i in m[k]])
+                print(_T("  {} == {}").format(_T(k), s))
+            else:
+                print(_T("  {} == {}").format(_T(k), _mdval(m[k])))
     elif prop == "Volume":
         print("Player: {} == {}".format(
             "Volume", player.Volume))

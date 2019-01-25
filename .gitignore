@@ -1,4 +1,5 @@
 !*.h *.c *.cpp *.cc *.cxx .gitignore *.sh *.nsi *.pot Makefile README*
+dbg
 autom4*
 uninstall/*
 *.pot
