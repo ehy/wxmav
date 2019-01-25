@@ -86,15 +86,6 @@ try:
     import urllib.parse
     import urllib.request
     uriopen = urllib.request.urlopen
-    uri_unquote = urllib.parse.unquote
-    uri_unquote_plus = urllib.parse.unquote_plus
-    uri_parse = urllib.parse.urlparse
-    v_urllib = 3
-try:
-    import urllib.error
-    import urllib.parse
-    import urllib.request
-    uriopen = urllib.request.urlopen
     uri_quote = urllib.parse.quote
     uri_quote_plus = urllib.parse.quote_plus
     uri_quote_bytes = urllib.parse.quote_from_bytes
