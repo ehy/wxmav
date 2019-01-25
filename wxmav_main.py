@@ -7299,29 +7299,29 @@ class TopWnd(wx.Frame):
                 # then just show the name w/o path
                 ids = os.path.split(i.resname)[1] or nam
 
-            ids = _T(ids)
-            gds = _T(g.get_desc())
+            ids = _Tencode(ids)
+            gds = _Tencode(g.get_desc())
 
             xm = get_xesam_map(nam)
-            r.append((_T("xesam:title"),
-                      _T('s:{}').format(xm['title'] or ids)))
-            r.append((_T("xesam:album"),
-                      _T('s:{}').format(xm['album'] or gds)))
+            td = _Tencode(xm['title']) if xm['title'] else ids
+            r.append((_T("xesam:title"), _T('s:{}').format(td)))
+            td = _Tencode(xm['album']) if xm['album'] else gds
+            r.append((_T("xesam:album"), _T('s:{}').format(td)))
 
             # artist, genre: to send type 'as' join w/ '\n'
             if xm['artist'] != None:
                 if isinstance(xm['artist'], list):
-                    v = '\n'.join(xm['artist'])
+                    v = ';'.join([_Tencode(a) for a in xm['artist']])
                 else:
-                    v = xm['artist']
+                    v = _Tencode(xm['artist'])
                 r.append((_T("xesam:artist"),
                           _T('as:{}').format(v)))
 
             if xm['genre'] != None:
                 if isinstance(xm['genre'], list):
-                    v = '\n'.join(xm['genre'])
+                    v = ';'.join([_Tencode(a) for a in xm['genre']])
                 else:
-                    v = xm['genre']
+                    v = _Tencode(xm['genre'])
                 r.append((_T("xesam:genre"),
                           _T('as:{}').format(v)))
 
@@ -7331,7 +7331,7 @@ class TopWnd(wx.Frame):
 
             if xm['url'] != None:
                 r.append((_T("xesam:url"),
-                          _T('s:{}').format(xm['url'])))
+                          _T('s:{}').format(_Tencode(xm['url']))))
 
             return r
 
