@@ -90,17 +90,34 @@ try:
     uri_unquote_plus = urllib.parse.unquote_plus
     uri_parse = urllib.parse.urlparse
     v_urllib = 3
+try:
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    uriopen = urllib.request.urlopen
+    uri_quote = urllib.parse.quote
+    uri_quote_plus = urllib.parse.quote_plus
+    uri_quote_bytes = urllib.parse.quote_from_bytes
+    uri_unquote = urllib.parse.unquote
+    uri_unquote_plus = urllib.parse.unquote_plus
+    uri_unquote_bytes = urllib.parse.unquote_to_bytes
+    uri_parse = urllib.parse.urlparse
+    v_urllib = 3
 except ImportError:
     try:
         import urlparse
         uri_parse = urlparse.urlparse
         # arg! urllib2 is not a complete substitute for urllib
         import urllib
-        #uri_unquote = urllib.unquote
+        uri_quote = urllib.quote
+        uri_quote_plus = urllib.quote_plus
+        uri_quote_bytes = uri_quote
+        uri_unquote = urllib.unquote
         uri_unquote_plus = urllib.unquote_plus
+        uri_unquote_bytes = uri_unquote
         # zappa's boots say urlopen from urllib2 is preferred
         import urllib2
-        uri_unquote = urllib2.unquote
+        #uri_unquote = urllib2.unquote
         uriopen = urllib2.urlopen
         v_urllib = 2
     except ImportError:
@@ -109,8 +126,12 @@ except ImportError:
         import urllib
         uriopen = urllib.urlopen
         v_urllib = 1
+        uri_quote = urllib.quote
+        uri_quote_plus = urllib.quote_plus
+        uri_quote_bytes = uri_quote
         uri_unquote = urllib.unquote
         uri_unquote_plus = urllib.unquote_plus
+        uri_unquote_bytes = uri_unquote
 
 import wx
 import wx.media
