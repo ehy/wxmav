@@ -1795,6 +1795,19 @@ class AVGroupListURIFile(AVGroupList):
                           do_close, put_desc)
 
 
+# make file:// URI from path, optionally quoting
+def do_uri_file(fpath, quote=True):
+    p = os.path.realpath(fpath)
+
+    try:
+        p = uri_quote_bytes(os.fsencode(p))
+    except:
+        p = uri_quote_bytes(p)
+
+    return 'file://' + p
+
+
+
 # make a file:// URI just be a file
 def un_uri_file(furi):
     if furi[:7] != _T("file://"):
@@ -1829,7 +1842,7 @@ def un_uri_file(furi):
             f = p.path
 
     # Argh grumble sheesh, etc..
-    f = uri_unquote(f)
+    f = uri_unquote_bytes(f)
 
     # This is backup (see comment above); needs more testing, and
     # might never execute, but if it does, good luck . . .
@@ -9190,7 +9203,11 @@ class TopWnd(wx.Frame):
             nl = [s]
             for i, v in enumerate(nl):
                 try:
-                    t = bool(self.medi.Load(v))
+                    try:
+                        t = bool(self.medi.LoadURI(do_uri_file(v)))
+                        print("LoadURI")
+                    except:
+                        t = bool(self.medi.Load(v))
                     if t:
                         failed = False
                         break
