@@ -1794,34 +1794,16 @@ def un_uri_file(furi):
         if not (p.netloc == 'localhost' or p.netloc == '127.0.0.1'):
             return furi
 
-    # Incredibly, with Python 2.7 urllib{,2}.unquote() (uri_unquote
-    # below) if the argument it receives is unicode, then it
-    # decodes to **latin1** characters and returns unicode; but,
-    # if the argument it receives is str, then it decodes to
-    # **utf-8** and returns str!! I mean, WTF!
-    # Bonus question: Is this documented at Python site?
-    # Correct answer: No.
-    # At least, things seem to work as expected w/ Python 3 versions.
-    f = p.path
-    if not py_v_is_3:
-        # of course, this deserves testing with a large set of
-        # varied input; unfortunately, the quantity of available
-        # time has fallen below infinity.
-        try:
-            f = (p.path).encode('utf_8')
-        except:
-            f = p.path
-
     # Argh grumble sheesh, etc..
-    f = uri_unquote_bytes(f)
+    f = uri_unquote_bytes(p.path)
 
-    # This is backup (see comment above); needs more testing, and
-    # might never execute, but if it does, good luck . . .
-    if not py_v_is_3 and isinstance(f, unicode):
-        try:
-            f = f.encode('latin1').decode('utf_8')
-        except:
-            pass
+    ## This is backup (see comment above); needs more testing, and
+    ## might never execute, but if it does, good luck . . .
+    #if not py_v_is_3 and isinstance(f, unicode):
+    #    try:
+    #        f = f.encode('latin1').decode('utf_8')
+    #    except:
+    #        pass
 
     if _in_msw:
         lf = len(f)
@@ -1875,7 +1857,6 @@ def mk_from_args(*args, **kwargs):
             ufpat = upat + playlist_pattern_permissive
 
     def _mpfn(f):
-        #fs  = _T(f).strip()
         fs  = f.strip()
 
         if file_uri_filter:
@@ -1886,11 +1867,11 @@ def mk_from_args(*args, **kwargs):
 
         if isd:
             return AVGroupListDir(name = fs, recurse = dir_recurse)
-        elif not isf and re.match(ufpat, fs, re.I):
+        elif not isf and re.match(ufpat, _T(fs), re.I):
             return AVGroupListURIFile(name = fs)
-        elif not isf and re.match(upat, fs, re.I):
+        elif not isf and re.match(upat, _T(fs), re.I):
             return AVGroupList(data = [fs])
-        elif isf and re.match(fpat, fs, re.I):
+        elif isf and re.match(fpat, _T(fs), re.I):
             return AVGroupListFile(name = fs)
         elif isf:
             return AVGroupList(data = [fs])
