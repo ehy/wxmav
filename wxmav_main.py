@@ -257,6 +257,7 @@ filesys_encoding = sys.getfilesystemencoding() or 'utf_8'
 
 _encoding_tuple_small = (
 "ascii",
+filesys_encoding,
 "utf_8",
 "latin_1",
 "cp1252",
@@ -269,7 +270,7 @@ def mkascii(v, repl=0x5F):
         try:
             b = bytearray(bytes(v))
         except:
-            b = bytearray(v.encode('latin1', 'strict'))
+            b = bytearray(v.encode(filesys_encoding, 'strict'))
 
     for i in range(len(b)):
         if b[i] > 0x7F:
@@ -277,105 +278,39 @@ def mkascii(v, repl=0x5F):
     return b.decode('ascii', 'strict')
 
 
-def _Tencode(s, encoding_tuple=_encoding_tuple_small):
+def _Tencode(s, encoding_tuple=_encoding_tuple_small, return_enc=False):
     meths = ( 'strict', 'replace', 'backslashreplace', )
 
     try:
         ss = os.fsencode(s)
     except AttributeError:
-        ss = s
+        # python < 3
+        try:
+            ss = s.encode(filesys_encoding, 'strict')
+        except:
+            ss = s
 
     for meth in meths:
         for c in encoding_tuple:
             try:
                 ds = ss.decode(c, meth)
                 es = ds.encode(c, meth)
-                return ds
+                return (ss, c, meth) if return_enc else ds
             except:
                 pass
 
-    return mkascii(s)
+    s = mkascii(s)
+    return (s, 'bogus_ascii', 'underscorereplace') if return_enc else s
 
-
-
-_encoding_tuple_1 = (
-"ascii",
-"utf_7", "utf_8", "utf_8_sig",
-"iso8859_15", "iso8859_16", "iso8859_14", "iso8859_13",
-"iso8859_11", "iso8859_10", "iso8859_9", "iso8859_8",
-"iso8859_7", "iso8859_6", "iso8859_5", "iso8859_4",
-"iso8859_3", "iso8859_2", "latin_1",
-"cp1252", "cp1258", "cp1257", "cp1256", "cp1255", "cp1254", "cp1253",
-"cp1251", "cp1250", "cp1140", "cp1026", "cp1006", "cp950", "cp949",
-"cp932", "cp875", "cp874", "cp869", "cp866", "cp865", "cp864", "cp863",
-"cp862", "cp861", "cp860", "cp858", "cp857", "cp856", "cp855", "cp852",
-"cp850", "cp775", "cp737", "cp720", "cp500", "cp437", "cp424", "cp037",
-"utf_16", "utf_16_be", "utf_16_le",
-"utf_32", "utf_32_be", "utf_32_le"
-)
-_encoding_tuple_2 = (
-"mac_cyrillic", "mac_greek", "mac_iceland",
-"mac_latin2", "mac_roman", "mac_turkish",
-"big5hkscs", "big5",
-"euc_jp", "euc_jis_2004", "euc_jisx0213", "euc_kr",
-"gb2312", "gbk", "gb18030", "hz",
-"iso2022_jp", "iso2022_jp_1", "iso2022_jp_2", "iso2022_jp_2004",
-"iso2022_jp_3", "iso2022_jp_ext", "iso2022_kr",
-"johab", "koi8_r", "koi8_u",
-"ptcp154", "shift_jis", "shift_jis_2004", "shift_jisx0213"
-)
-_encoding_tuple_all = _encoding_tuple_1 + _encoding_tuple_2
-python_encoding_tuple = _encoding_tuple_all
 
 def find_display_encoding(s, ign_cmp = False, pref_enc = None):
-    # if arg is python 'unicode' object then try to encode
-    # it to utf-8; if that raises an exception then return
-    # it unchanged with the bogus encoding 'unicode'
-    # python 3 needs more testing
-    if not py_v_is_3 and isinstance(s, unicode):
-        try:
-            #enc = filesys_encoding
-            enc = 'utf_8'
-            t = s.encode(enc)
-            return (t, s, enc, 'strict')
-        except:
-            return (s, s, 'unicode', 'strict')
-    elif py_v_is_3:
-        # Will this encoding work w/ MSW?
-        enc = filesys_encoding # 'utf_8'
-        s = s.encode(enc, "surrogateescape")
+    t, enc, meth = _Tencode(s, return_enc=True)
+    return (t, s, enc, meth)
 
-    if pref_enc == None:
-        pref_enc = filesys_encoding
-
-    try:
-        d = s.decode(pref_enc, 'strict')
-        if ign_cmp or _bytes_cmp(s, d.encode(pref_enc)):
-            return (d, s, pref_enc, 'strict')
-    except:
-        pass
-
-    return _encoding_find_gspot(s, 'strict', ign_cmp)
 
 def _bytes_cmp(a1, a2):
     return (bytes(a1) == bytes(a2))
 
-def _encoding_find_gspot(s, dec_arg = 'strict', ign_cmp = False):
-    for enc in python_encoding_tuple:
-        try:
-            d = s.decode(enc, dec_arg)
-            if ign_cmp or _bytes_cmp(s, d.encode(enc)):
-                return (d, s, enc, dec_arg)
-        except:
-            pass
-
-    # not found
-    if dec_arg == 'strict':
-        return _encoding_find_gspot(s, 'replace', ign_cmp)
-    elif dec_arg == 'replace':
-        return _encoding_find_gspot(s, 'ignore', ign_cmp)
-
-    return (None, s, None, dec_arg)
 
 # class attempts to find a displayable version of
 # a resource (e.g., filesystem or URI) name -- this
@@ -398,14 +333,16 @@ def _encoding_find_gspot(s, dec_arg = 'strict', ign_cmp = False):
 class resourcename_with_displayname:
     fail_string = "[string has no display form]"
     def __init__(self, fsname):
-        self.orig = fsname
         disp, orig, cod, meth = find_display_encoding(fsname)
+
         if disp == None:
-            disp, orig, cod, meth = find_display_encoding(fsname, True)
+            disp = _Tencode(fsname)
             self.pass_cmp = False
         else:
             self.pass_cmp = True
-        self.disp = disp
+            disp = _Tencode(disp)
+
+        self.disp = _T(disp)
         self.orig = orig
         self.codec = cod
         self.meth = meth
@@ -459,10 +396,10 @@ if not py_v_is_3:
         except:
             pass
 
-        try:
-            return _U(s).decode(_ucode_type, 'replace')
-        except:
-            pass
+        #try:
+        #    return _U(s).decode(_ucode_type, 'replace')
+        #except:
+        #    pass
 
         try:
             return unicode(s, _ucode_type)
@@ -1320,16 +1257,18 @@ def av_dir_find(name, recurse = False, ext_list = None):
     err = None
     res = None
 
-    curdir = _T(name)
+    curdir = os.fsencode(name) if py_v_is_3 else name
 
     def __xck(fname):
         try:
-            f = os.path.join(curdir, _T(fname))
-            if os.path.isfile(f):
+            if py_v_is_3:
+                fname = os.fsencode(fname)
+            f = os.path.join(curdir, fname)
+            if os.path.isfile(f): # or os.path.isfile(_T(f)):
                 if ext == '*': # allow 'accept all' option
                     return True
                 n, x = os.path.splitext(f)
-                if x and x[1:].lower() in ext:
+                if x and _T(x[1:]).lower() in ext:
                     return True
         except Exception as e:
             raise Exception(e)
@@ -1337,11 +1276,13 @@ def av_dir_find(name, recurse = False, ext_list = None):
 
     if not recurse:
         try:
-            dl = cdr_ls_dir(name)
+            #dl = cdr_ls_dir(name)
+            dl = os.listdir(name)
             if not dl:
                 return (res, _("directory empty"))
-            res = [os.path.join(curdir, _T(f))
-                    for f in p_filt(__xck, dl)]
+            res = [os.path.join(curdir,
+                    os.fsencode(f) if py_v_is_3 else f)
+                        for f in p_filt(__xck, dl)]
             res.sort()
         except (OSError, IOError) as e:
             return (None, _("error with '{nm}': {ex}").format(
@@ -1951,7 +1892,8 @@ def mk_from_args(*args, **kwargs):
             ufpat = upat + playlist_pattern_permissive
 
     def _mpfn(f):
-        fs  = _T(f).strip()
+        #fs  = _T(f).strip()
+        fs  = f.strip()
 
         if file_uri_filter:
             fs = un_uri_file(fs)
@@ -1995,7 +1937,8 @@ def get_lst_from_args(*args, **kwargs):
                 if rnm == None:
                     err.append((aviitem.desc, aviitem.err))
                     rm.append(i)
-                elif re.match(playlist_pattern_permissive, rnm, re.I):
+                elif re.match(playlist_pattern_permissive,
+                              _T(rnm), re.I):
                     # nested playlist file/url?
                     tl, te = get_lst_from_args(*[rnm], **kwargs)
                     if tl:
@@ -7095,7 +7038,7 @@ class TopWnd(wx.Frame):
         return (
             it.get_res_disp_str() if it else None,
             it.resname if it else None,
-            _T(it.desc) if it else None,
+            it.get_desc_disp_str() if it else None,
             _T(it.comment) if it else None,
             _T(it.err) if it else None,
             it.length if it else None)
