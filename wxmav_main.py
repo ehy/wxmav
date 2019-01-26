@@ -312,24 +312,7 @@ def _bytes_cmp(a1, a2):
     return (bytes(a1) == bytes(a2))
 
 
-# class attempts to find a displayable version of
-# a resource (e.g., filesystem or URI) name -- this
-# can be needed if e.g. a Unix system set up for UTF-8
-# still has filesystem entries with iso-8859-* strings,
-# or a MSW system encounters UTF-8 from a playlist with
-# URLs. etc.
-# The original unmolested string is stored, a display
-# version is stored if decoding succeeds, and details
-# of conversion are stored: codec that succeeded (self.codec),
-# the codecs module error method (strict or replace or ignore),
-# and boolean self.pass_cmp indicating whether the display form
-# compared equal to orginal when re-encoded
-#
-# There is, of course, a large possibility that decoding success
-# happened with the wrong codec and the display string is garbage.
-# It should, at least, be displayable garbage (good enough for PR:
-# 'If you can't baffle them with brilliance, befuddle them
-# with bullshit.').
+# find a displayable version of
 class resourcename_with_displayname:
     fail_string = "[string has no display form]"
     def __init__(self, fsname):
