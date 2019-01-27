@@ -1770,6 +1770,9 @@ class AVGroupListURIFile(AVGroupList):
 def do_uri_file(fpath, quote=True):
     p = os.path.realpath(fpath)
 
+    if _in_msw:
+        p = p.replace(_T("\\"), _T("/"))
+
     try:
         p = uri_quote_bytes(os.fsencode(p))
     except:
@@ -9158,7 +9161,11 @@ class TopWnd(wx.Frame):
             for i, v in enumerate(nl):
                 try:
                     try:
-                        t = bool(self.medi.LoadURI(do_uri_file(v)))
+                        if _in_msw:
+                            # LoadURI is failing in MSW
+                            t = bool(self.medi.Load(v))
+                        else:
+                            t = bool(self.medi.LoadURI(do_uri_file(v)))
                     except:
                         t = bool(self.medi.Load(v))
                     if t:
