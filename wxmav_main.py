@@ -1768,17 +1768,27 @@ class AVGroupListURIFile(AVGroupList):
 
 # make file:// URI from path, optionally quoting
 def do_uri_file(fpath, quote=True):
-    p = os.path.realpath(fpath)
-
     if _in_msw:
-        p = p.replace(_T("\\"), _T("/"))
+        if s_eq(fpath[0], '\\') and s_eq(fpath[1], '\\'):
+            # MSW 'UNC' thingy
+            p = fpath
+            scheme = 'file:'
+        else:
+            p = os.path.realpath(fpath)
+            scheme = 'file:///'
+
+        p = p.replace('\\', '/')
+    else:
+        p = os.path.realpath(fpath)
+        scheme = 'file://'
+
 
     try:
         p = uri_quote_bytes(os.fsencode(p))
     except:
         p = uri_quote_bytes(p)
 
-    return 'file://' + p
+    return scheme + p
 
 
 
@@ -9155,6 +9165,8 @@ class TopWnd(wx.Frame):
             # is iso8859-* -- try conversion, but that will almost
             # certainly fail to find fs resource, even if exception
             # is quashed
+            # UPDATE: FS encoding issues can be avoided using file://
+            # URI with quoting and LoadURI() -- but fails on MSW
             failed = True
             #nl = [s, _T(s)]
             nl = [s]
@@ -9162,7 +9174,10 @@ class TopWnd(wx.Frame):
                 try:
                     try:
                         if _in_msw:
-                            # LoadURI is failing in MSW
+                            # LoadURI fails in MSW (W. Media Player):
+                            # tested w/ MSW7; WMP 12.0.7601.23517 --
+                            # no exception; either failure return
+                            # or hang!
                             t = bool(self.medi.Load(v))
                         else:
                             t = bool(self.medi.LoadURI(do_uri_file(v)))
