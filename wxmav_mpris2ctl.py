@@ -1,8 +1,5 @@
-#! /usr/bin/env python
-# coding=utf-8
-# Helper program for mpris2 media player (wxmav by default) control
 #
-# Copyright (C) 2019 Ed Hynan
+#  Copyright 2019 Ed Hynan <edhynan@gmail.com>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -18,6 +15,14 @@
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
+#
+
+"""
+Implementation of wxmav_control.
+
+File:
+    wxmav_mpris2ctl.py -  Imported by wrapper wxmav_control.
+"""
 
 #
 # initial imports
@@ -31,16 +36,32 @@ from time import sleep
 # 1st, some Utilities Lite (R)
 #
 
-_PROGPATH = os.path.split(sys.argv[0])[1]
 
-_encoding_tuple_small = (
-"ascii",
-"utf_8",
-"latin_1",
-"cp1252",
+##
+# The name of the invoked program, without path.
+progname = os.path.split(sys.argv[0])[1]
+
+##
+# Small set of encodings to try in handling non-UTF-8 text.
+encoding_tuple_small = (
+    "ascii", "utf_8", "latin_1", "cp1252"
 )
 
+
 def mkascii(v, repl=0x5F):
+    """
+    Make a bytes object of only ASCII codes, replacing as needed.
+
+    A last effort to make a displayable string of chars.  This should
+    really not be called, and is a matter of form and paranoia.
+
+    Args:
+        v:  A textual object (str, unicode, bytes) to process.
+        repl: An integer code to replace butes > 127.
+
+    Returns:
+        A bytes object containing the result.
+    """
     try:
         b = bytearray(os.fsencode(v))
     except:
@@ -55,7 +76,23 @@ def mkascii(v, repl=0x5F):
     return b.decode('ascii', 'strict')
 
 
-def _T(s, encoding_tuple=_encoding_tuple_small):
+def mT(s, codeset=encoding_tuple_small):
+    """
+    Make a text bytes object that may be displayed without exception.
+
+    An effort to make a displayable string of chars.  This might
+    use codec conversion to any provided codec, using any of the
+    error strategies 'strict', 'replace', or 'backslashreplace';
+    or in the common case no value conversion, only conversion
+    to bytes object.
+
+    Args:
+        s:  A textual object (str, unicode, bytes) to process.
+        codeset: Iterable obj. with codec names.
+
+    Returns:
+        A bytes object containing the result.
+    """
     meths = ( 'strict', 'replace', 'backslashreplace', )
 
     try:
@@ -64,7 +101,7 @@ def _T(s, encoding_tuple=_encoding_tuple_small):
         ss = s
 
     for meth in meths:
-        for c in encoding_tuple:
+        for c in codeset:
             try:
                 ds = ss.decode(c, meth)
                 es = ds.encode(c, meth)
@@ -75,15 +112,44 @@ def _T(s, encoding_tuple=_encoding_tuple_small):
     return mkascii(s)
 
 
-_PROG = _T(_PROGPATH)
+_PROG = mT(progname)
+_EFMT = mT("{}: {}")
 
 def prerr(msg):
+    """
+    Print to the standard error stream.
+
+    Args:
+        msg: A string to print.
+
+    Returns:
+        None.
+    """
     print(msg, file=sys.stderr)
 
 def errmsg(msg):
-    prerr(_T("{}: {}").format(_PROG, _T(msg)))
+    """
+    Print message prepended by program name to the standard error.
+
+    Args:
+        msg: A string to print.
+
+    Returns:
+        None.
+    """
+    prerr(_EFMT.format(_PROG, mT(msg)))
 
 def errout(msg, code=1):
+    """
+    Print error message and exit.
+
+    Args:
+        msg: A string to print.
+        code: Status code passed to exit().
+
+    Returns:
+        None.
+    """
     errmsg(msg)
     sys.exit(code)
 
@@ -92,37 +158,94 @@ def errout(msg, code=1):
 #
 
 try:
-    #import mpris2
     from mpris2 import get_players_uri, Player, MediaPlayer2
-except ImportError:
-    print("Failed to import mpris2; try 'pip install --user mpris2'")
-    sys.exit(1)
-
-py_v_is_3 = (sys.version_info.major >= 3)
+except ImportError as e:
+    errout("""
+        Failed to import mpris2; try 'pip install --user mpris2;'
+        it might be necessary to install the dbus package as well.
+        The exception said \"{}\".""".format(e))
 
 
 #
 # global data
 #
 
+##
+# A boolean to test for release specific differences.
+py_v_is_3 = sys.version_info.major >= 3
+
+##
+# Object containing parsed arguments, from ArgumentParser.parse_args().
 args_obj = None
+##
+# List of available MPRIS2 players, e.g. "org.mpris.MediaPlayer2.wxmav".
 player_uri_all = []
+##
+# A player 'URI' (actually a bus name); one of player_uri_all.
 player_uri = None
+##
+# The mpris2.player object (org.mpris.MediaPlayer2.Player)
 player = None
+##
+# The mpris2.mediaplayer2 object (org.mpris.MediaPlayer2)
 mplayer2 = None
+
+##
+# A tuple of MPRIS2 readable properties.
+props_readable = (
+    "CanQuit",
+    "Fullscreen",
+    "CanSetFullscreen",
+    "CanRaise",
+    "HasTrackList",
+    "Identity",
+    "DesktopEntry",
+    "SupportedUriSchemes",
+    "SupportedMimeTypes",
+    "PlaybackStatus",
+    "LoopStatus",
+    "Rate",
+    "Shuffle",
+    "Metadata",
+    "Volume",
+    "Position",
+    "MinimumRate",
+    "MaximumRate",
+    "CanGoNext",
+    "CanGoPrevious",
+    "CanPlay",
+    "CanPause",
+    "CanSeek",
+    "CanControl",
+)
+
+##
+# A tuple of MPRIS2 writable properties.
+props_writable = (
+    "Fullscreen",
+    "LoopStatus",
+    "Rate",
+    "Shuffle",
+    "Volume",
+)
 
 #
 # global functions
 #
 
-#
-#  name: init_mpris2
-#  prog: player name to work with -- default wxmav
-#  return True if player is found
-#
-# setup proc for MPRIS2 objects -- results are globals
-#
 def init_mpris2(prog='wxmav'):
+    """
+    Setup MPRIS2 package objects; make results global.
+
+    Global results are placed in global variables
+    'player_uri_all', 'player_uri', 'player', and 'mplayer2'.
+
+    Args:
+        prog: A string naming player to select.
+
+    Returns:
+        True if player is found else False.
+    """
     global player_uri_all
     global player_uri
     global player
@@ -139,15 +262,16 @@ def init_mpris2(prog='wxmav'):
     return False
 
 
-#
-#  name: list_players
-#  no parameters
-#  return int: number of players found
-#
-# list the mpris2 players as found; print short name suitable
-# for use as player argument, and full uri in parenthesis
-#
 def list_players():
+    """
+    Print the mpris2 players as found.
+
+    Print short name suitable for use as player argument,
+    and full uri in parenthesis.
+
+    Returns:
+        Integer number of players found.
+    """
     c = 0
     pos = len("org.mpris.MediaPlayer2.")
     player_uris = get_players_uri()
@@ -157,13 +281,20 @@ def list_players():
 
     return c
 
-#
-#  name: invoke_method
-#  meth: string - play, pause, etc.
-#  *args: optional arguments for pertinent methods
-#  **kwargs: optional keyword arguments for pertinent methods
-#  return: True if meth in known (not necessarily successful call)
 def invoke_method(meth, *args, **kwargs):
+    """
+    Call one MPRIS2 method.
+
+    Args:
+        meth: A string to select method to be called.
+        args: Optional non-keyword arguments the method requires.
+
+    Kwargs:
+        kwargs: Optional keyword arguments the method may accept.
+
+    Returns:
+        True if the selector 'meth' is known; else False.
+    """
     m = meth.lower()
 
     if m == 'play':
@@ -193,17 +324,27 @@ def invoke_method(meth, *args, **kwargs):
 
     return True
 
-
-#
-#  name: invoke_easy_method
-#  ao: parsed parameter object
-#  return: True if meth in known (not necessarily successful call),
-#          or if the argument is not set in the parameter object
 def invoke_easy_method(ao):
+    """
+    Call one MPRIS2 method, from options presented to user as 'easy'.
+
+    A small set if MPRIS2 methods take arguments, and these might be
+    difficult for user to specify as a positional argument; therefore
+    an option '-C' presents an easier way for the user to specify
+    the call.  The argument to that option is translated here, and
+    invoke_method() is called.
+
+    Args:
+        ao: The parsed parameter object.
+
+    Returns:
+        Return from invoke_method(), or False for an error herein.
+    """
     if not ao.cmd_easy:
         return True
 
     def _eo(v):
+        """Print message 'v' with prefix and exit failure."""
         errout("malformed 'easy' (-C) argument: {}".format(v))
 
 
@@ -252,11 +393,20 @@ def invoke_easy_method(ao):
     return True
 
 
-#
-#  name: invoke_method_list
-#  methlist: list containing method strings
-#  return int: -1 if all methods are known, else index of bad method
 def invoke_method_list(methlist):
+    """
+    Call list of MPRIS2 methods, calling invoke_method() for each.
+
+    If a list of methods should be invoked, such as those received from
+    user as postional arguments, then call invoke_method() for each;
+    parse arguments to the argument (method) where needed.
+
+    Args:
+        methlist: List containing the methods to call.
+
+    Returns:
+        Integer -1 if all methods are known, else index of bad method.
+    """
     l = len(methlist)
     for i in range(l):
         meth = methlist[i]
@@ -295,11 +445,16 @@ def invoke_method_list(methlist):
     return -1
 
 
-#
-#  name: print_properties
-#  prop: property name for printing
-#  return: void
-def print_properties(prop):
+def print_property(prop):
+    """
+    Print the current value of a MPRIS2 property.
+
+    Args:
+        prop: String name of the property to print.
+
+    Returns:
+        None.
+    """
     # MediaPlayer2:
     if prop == "CanQuit":
         print("MediaPlayer2: {} == {}".format(
@@ -317,26 +472,26 @@ def print_properties(prop):
         print("MediaPlayer2: {} == {}".format(
             "HasTrackList", mplayer2.HasTrackList))
     elif prop == "Identity":
-        print(_T("MediaPlayer2: {} == {}").format(
-            "Identity", _T(mplayer2.Identity)))
+        print(mT("MediaPlayer2: {} == {}").format(
+            "Identity", mT(mplayer2.Identity)))
     elif prop == "DesktopEntry":
-        print(_T("MediaPlayer2: {} == {}").format(
-            "DesktopEntry", _T(mplayer2.DesktopEntry)))
+        print(mT("MediaPlayer2: {} == {}").format(
+            "DesktopEntry", mT(mplayer2.DesktopEntry)))
     elif prop == "SupportedUriSchemes":
         l = list(mplayer2.SupportedUriSchemes)
-        print(_T("MediaPlayer2: {} == {}").format(
-            "SupportedUriSchemes", ", ".join([_T(i) for i in l])))
+        print(mT("MediaPlayer2: {} == {}").format(
+            "SupportedUriSchemes", ", ".join([mT(i) for i in l])))
     elif prop == "SupportedMimeTypes":
         l = list(mplayer2.SupportedMimeTypes)
-        print(_T("MediaPlayer2: {} == {}").format(
-            "SupportedMimeTypes", ", ".join([_T(i) for i in l])))
+        print(mT("MediaPlayer2: {} == {}").format(
+            "SupportedMimeTypes", ", ".join([mT(i) for i in l])))
     # Player:
     elif prop == "PlaybackStatus":
-        print(_T("Player: {} == {}").format(
-            "PlaybackStatus", _T(player.PlaybackStatus)))
+        print(mT("Player: {} == {}").format(
+            "PlaybackStatus", mT(player.PlaybackStatus)))
     elif prop == "LoopStatus":
-        print(_T("Player: {} == {}").format(
-            "LoopStatus", _T(player.LoopStatus)))
+        print(mT("Player: {} == {}").format(
+            "LoopStatus", mT(player.LoopStatus)))
     elif prop == "Rate":
         print("Player: {} == {}".format(
             "Rate", player.Rate))
@@ -344,26 +499,23 @@ def print_properties(prop):
         print("Player: {} == {}".format(
             "Shuffle", player.Shuffle))
     elif prop == "Metadata":
-        #m = dict(player.Metadata)
-        #print("Player: Metadata:")
-        #for k in m.keys():
-        #    print("  {} == {}".format(k, m[k]))
         m = dict(player.Metadata)
         print("Player: Metadata:")
         def _mdval(v):
+            """Make arg 'v' displayable without exception."""
             try:
-                return _T(str(v))
+                return mT(str(v))
             except:
                 try:
-                    return _T(bytes(v))
+                    return mT(bytes(v))
                 except:
                     return v
         for k in m.keys():
             if isinstance(m[k], list):
-                s = _T(', ').join([_mdval(i) for i in m[k]])
-                print(_T("  {} == {}").format(_T(k), s))
+                s = mT(', ').join([_mdval(i) for i in m[k]])
+                print(mT("  {} == {}").format(mT(k), s))
             else:
-                print(_T("  {} == {}").format(_T(k), _mdval(m[k])))
+                print(mT("  {} == {}").format(mT(k), _mdval(m[k])))
     elif prop == "Volume":
         print("Player: {} == {}".format(
             "Volume", player.Volume))
@@ -397,77 +549,54 @@ def print_properties(prop):
 
 
 
-#
-#  name: print_properties_many
-#  props: property names, in list or tuple, for printing
-#  return: void
 def print_properties_many(props):
+    """
+    Print each of an iterable set of properties.
+
+    Invoke print_property() for each in the given set.
+
+    Args:
+        props: Iterable object with the property names for printing.
+
+    Returns:
+        None.
+    """
     for p in props:
-        print_properties(p)
+        print_property(p)
 
 
-props_readable = (
-    "CanQuit",
-    "Fullscreen",
-    "CanSetFullscreen",
-    "CanRaise",
-    "HasTrackList",
-    "Identity",
-    "DesktopEntry",
-    "SupportedUriSchemes",
-    "SupportedMimeTypes",
-    "PlaybackStatus",
-    "LoopStatus",
-    "Rate",
-    "Shuffle",
-    "Metadata",
-    "Volume",
-    "Position",
-    "MinimumRate",
-    "MaximumRate",
-    "CanGoNext",
-    "CanGoPrevious",
-    "CanPlay",
-    "CanPause",
-    "CanSeek",
-    "CanControl",
-)
-
-props_writeable = (
-    "Fullscreen",
-    "LoopStatus",
-    "Rate",
-    "Shuffle",
-    "Volume",
-)
-
-#
-#  name: print_properties_all
-#  no params
-#  return: void
-#
-# print all readable properties
 def print_properties_all():
+    """
+    Print all MPRIS2 (readable) properties.
+
+    Returns:
+        None.
+    """
     print_properties_many(props_readable)
 
-#
-#  name: print_properties_wr
-#  no params
-#  return: void
-#
-# print all writeable properties
 def print_properties_wr():
-    print_properties_many(props_writeable)
+    """
+    Print MPRIS2 writable properties.
+
+    Returns:
+        None.
+    """
+    print_properties_many(props_writable)
 
 
-#
-#  name: do_property_wr_args
-#  ao: parsed parameter object
-#  return: void
-#
-# proceedure for args that involve changing writable properties
-#
 def do_property_wr_args(ao):
+    """
+    Set writable MPRIS properties.
+
+    Using the parsed parameter object, prepared by get_options(),
+    set those writable properties for which an argument was given.
+
+    Args:
+        ao: The parsed parameter object.
+
+    Returns:
+        None.
+    """
     if ao.toggle_fullscr:
         print("Fullscreen original: {}".format(mplayer2.Fullscreen))
         mplayer2.Fullscreen = not mplayer2.Fullscreen
@@ -510,13 +639,17 @@ def do_property_wr_args(ao):
         print("Volume now: {}".format(player.Volume))
 
 
-#
-#  name: get_options
-#  no parameters
-#  return: the argparse.ArgumentParser object
-#
-# accept command line arguments -- *exits* if -h, --help
 def get_options():
+    """
+    Get user options and arguments with argparse.ArgumentParser.
+
+    Prepares a argparse.ArgumentParser object and assigned
+    the result of parser.parse_args(sys.argv[1:]) in the
+    global "args_obj".
+
+    Returns:
+        The argparse.ArgumentParser object.
+    """
     global args_obj
 
     parser = argparse.ArgumentParser(
@@ -548,7 +681,7 @@ def get_options():
         help='query all properties and print')
     parser.add_argument('-w', '--wrprop-query', action='store_const',
         const=True, dest='do_wrquery', default=False,
-        help='query writeable properties and print')
+        help='query writable properties and print')
     parser.add_argument('-F', '--fullscreen', action='store_const',
         const=True, dest='toggle_fullscr', default=False,
         help='toggle fullscreen mode')
@@ -582,11 +715,14 @@ def get_options():
 
     return parser
 
-#
-#  name: mainproc
-#  no parameters
-#  return int: 0 on success, else non-zero
+
 def mainproc():
+    """
+    Execute setup and main logic of the program.
+
+    Returns:
+        Small integer exit status code (0 on success).
+    """
     parser = get_options()
 
     if args_obj.do_listplayers:
