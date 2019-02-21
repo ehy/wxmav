@@ -12,5 +12,6 @@ Type=Application
 Categories=AudioVideo;Player;Sound;Audio;Music;Video;Multimedia;X-MandrivaLinux-Multimedia-Video;
 MimeType=audio/x-ac3;audio/x-adpcm;audio/x-cinepak;audio/x-dv;audio/x-flac;audio/x-gsm;audio/x-alaw;audio/x-mulaw;audio/x-mace;audio/mpeg;audio/x-qdm2;audio/x-pn-realaudio;audio/x-speex;audio/x-vorbis;audio/x-wma;audio/x-paris;audio/x-svx;audio/x-nist;audio/x-voc;audio/x-ircam;audio/x-w64;video/x-raw;video/x-3ivx;video/x-divx;video/x-dv;video/x-ffv;video/x-h263;video/x-h264;video/x-huffyuv;video/x-indeo;video/x-intel-h263;video/x-jpeg;video/mpeg;video/x-msmpeg;video/x-msvideocodec;video/x-pn-realvideo;video/x-rle;video/x-svq;video/x-tarkin;video/x-theora;video/x-vp3;video/x-wmv;video/x-xvid;video/x-ms-asf;video/x-msvideo;video/x-dv;video/x-matroska;video/mpeg;application/ogg;video/quicktime;application/vnd.rn-realmedia;audio/x-wav;video/x-flv;
 X-KDE-Protocols=file;rtp;rtsp;http;https;
+X-PulseAudio-Properties=media.role=music
 Keywords=Player;Audio;Video;
 StartupNotify=true
