@@ -1,8 +1,8 @@
 # (WX) M A/V (Player)
 
-## AKA wxmav
+## __wxmav__
 
-This, wxmav, is an Audio/Visual media file and stream player.
+This, __wxmav__, is an Audio/Visual media file and stream player.
 
 There are many player applications for audio, video, or both,
 and wxmav is not an attempt to be better than the others in
@@ -11,12 +11,12 @@ very much a 'scratch your own itch' program.  It is a qualified
 success at satisfying the author.
 
 This is a front end to the media widget in the __wxWidgets__
-library, which is used via wxPython as the bulk of the program
-is written in the Python language. For Unix systems there is
-a small helper program in C, and a MPRIS2 control program for
-the command line (in python); these do not apply to MSWindows
+library, which is used via __wxPython__ as the bulk of the program
+is written in the __Python__ language. For Unix systems there is
+a small helper program in __C__, and a __MPRIS2__ control program for
+the command line (in python); these do not apply to MS__Windows__
 (and there has been no development on Apple systems, which
-would no doubt require more work on the code as it stands).
+would without doubt require more work on the code as it stands).
 
 Features:
 
@@ -31,20 +31,20 @@ might reduce distraction.
 
 * Runtime (user's) data is saved in PLS 'playlist' files -- and
 sets of playlists (or "groups" as referred to in wxmav) are
-save in directories.  (It is important to the author that data
+saved in directories.  (It is important to the author that data
 be saved in a simple text format so that they may be easily
 processed with command line tools, or edited by hand.)  One
 non-standard feature is added to the PLS format: descriptions
 in the typical form of a comment, starting with '#'.  Other
 programs might or might not ignore these lines and parse the
-files; at least, the vlc player does.
+files; at least, the __vlc__ player does.
 
 * Adding files or playlists is accomplished through traditional
 menus invoking file/directory selection dialogs; or, through
 drag-and-drop from file managers, web browser URLs, and possibly
 selected text from editors and such (depending, of course, on
 that program).  On Unix, media may be played from the command line
-with the MPRIS2 control program (named "wxmav_control").
+with the MPRIS2 control program (named "__wxmav_control__").
 
 * Selection from loaded data is through drop down lists: a list
 at the top left presents the groups (playlists), and at the
@@ -53,7 +53,7 @@ and their items may be reordered and edited with a "Media Set
 Editor" window, which is invoked from the Edit menu.  (This
 editor is a weak point presently, and may be improved.)
 
-* Current loaded data (playlists) are save when the program
+* Current loaded data (playlists) are saved when the program
 is cleanly terminated; also, the data is automatically saved at
 intervals to guard against unexpected/unhandled termination.
 At start-up, the last saved data set is automatically loaded.
@@ -73,10 +73,13 @@ tags that might be available in remote streams.  The media
 backend might provide access to such at a lower level, but the
 wxWidgets media control does not.
 
+* DVD video discs, or CD audio discs, or similar cannot be played.
+The backend might play these, but the media control does not
+provide for that.
+
 * Presently, there is no documentation (other than some 'tool-tips'),
 but hopefully the program is easy learn through discovery.
 
 
 Author: Ed Hynan, ehynan@gmail.com
 
-####

@@ -1,6 +1,7 @@
 Package specific instructions:
 
 Unix:
+
 For Unix there is a standard GNU configure script with just one
 unusual option: "--disable-xdg-setup-items".  Unless this is
 specified, 'make install' will attempt to use xdg-* utilities
@@ -54,6 +55,7 @@ Without the installers, you might try running the script directly
 from a terminal: "pythonw wxmav.pyw" if you have wxPython installed.
 
 Apple:
+
 Not yet, sorry.
 
 
