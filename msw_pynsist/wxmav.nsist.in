@@ -54,7 +54,8 @@ icon=appiconsingle
 console=false
 
 [Python]
-version=3.6.3
+version=3.7.5
+;version=3.6.3
 ;version=3.6.1
 bitness=32
 ;format=installer
@@ -66,7 +67,8 @@ include_msvcrt=true
 packages=appnamemain
     mutagen
     six
-pypi_wheels=wxPython==4.0.0b2
+pypi_wheels=wxPython==4.0.6
+;pypi_wheels=wxPython==4.0.0b2
 ;pypi_wheels=wxPython==4.0.0b1
 ;pypi_wheels=wxPython==4.0.0a3
 ;pypi_wheels=wxPython==4.0.0a2

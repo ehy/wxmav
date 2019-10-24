@@ -528,7 +528,7 @@ version = (
     version_mjr<<24|version_mjrrev<<16|version_mnr<<8|version_mnrrev)
 maintainer_name = _T("Ed Hynan")
 maintainer_addr = _T("<edhynan@gmail.com>")
-copyright_years = _T("2017")
+copyright_years = _T("2019")
 program_site    = _T("https://github.com/ehy/wxmav")
 program_desc    = _T("(WX) M Audio/Visual Media Player.")
 program_devs    = [maintainer_name]

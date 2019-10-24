@@ -46,7 +46,12 @@ for which see https://pynsist.readthedocs.io/en/latest/.
 
 The problem for MSWindows users is that the build of the installer
 packages is written to work on Unix (presently, GNU/Linux).  Using
-Cygwin might work, but that is not tested.
+Cygwin might work, but that is not tested.  In any case, the
+Makefile in msw_pkg or msw_pynsist is your main documentation
+for now.
+
+Without the installers, you might try running the script directly
+from a terminal: "pythonw wxmav.pyw" if you have wxPython installed.
 
 Apple:
 Not yet, sorry.
