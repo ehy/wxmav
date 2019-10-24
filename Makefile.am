@@ -2,6 +2,9 @@
 if WITH_X_HELPER
 #bin_PROGRAMS=
 
+# to be included in dist:
+dist_pkgdata_DATA = LICENSE.gpl,v2 LICENSE.gpl,v3
+
 wxmav_x_helper_LDADD   =
 wxmav_x_helper_CFLAGS  =
 wxmav_x_helper_LDFLAGS =
