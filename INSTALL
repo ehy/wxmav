@@ -9,6 +9,15 @@ specified, 'make install' will attempt to use xdg-* utilities
 to setup menus, mime, and icons.  The make install target should not
 fail if these utilities fail.
 
+Along with the standard options, the configure script accepts
+parameter assignments on the command line, like CC=cc CXX=c++
+and so on.  You need to assign the PYTHON parameter if, for example,
+you have several python versions, and the default is not wanted.
+Python 3 is preferable as python 2 will lose support soon.  You
+might select python according to which has a suitable wxPython
+module installed.  PYTHON must be assigned a full path, as in
+PYTHON=/usr/local/bin/python3.  Of course, you may try the default.
+
 You will need wxPython built with wxWidgets versions 3.x (2.x will
 not work).  Python 2.7 or 3.x should be OK.  Python package 'mutagen'
 should be installed if you want media tags, like id3 (this is optional).
@@ -16,7 +25,7 @@ For the MPRIS2 command line program 'wxmav_control' you will need
 a python package called 'mpris2' (and the packages it depends on, of
 course, which if installing by hand you will discover). The
 wxmav_control program is not necessary for the main application.
-The 'pip' (pip2 or pip3) program should install the python mmodules
+The 'pip' (pip2 or pip3) program should install the python modules
 if they are not in your local package system. Also, see
 https://pypy.org/ for more info.
 
