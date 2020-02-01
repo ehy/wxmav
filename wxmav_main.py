@@ -441,7 +441,9 @@ else:
 
     # F: file path/name
     def _F(s):
-        return s
+        if isinstance(s, str):
+            return s
+        return os.fsdecode(s)
 
     def _WX(s, usetencode = True):
         if usetencode:
@@ -1240,11 +1242,12 @@ def av_dir_find(name, recurse = False, ext_list = None):
     err = None
     res = None
 
-    curdir = os.fsencode(name) if py_v_is_3 else name
+    togp3 = True
+    curdir = os.fsencode(name) if (togp3 and py_v_is_3) else name
 
     def __xck(fname):
         try:
-            if py_v_is_3:
+            if togp3 and py_v_is_3:
                 fname = os.fsencode(fname)
             f = os.path.join(curdir, fname)
             if os.path.isfile(f): # or os.path.isfile(_T(f)):
@@ -1264,7 +1267,7 @@ def av_dir_find(name, recurse = False, ext_list = None):
             if not dl:
                 return (res, _("directory empty"))
             res = [os.path.join(curdir,
-                    os.fsencode(f) if py_v_is_3 else f)
+                    os.fsencode(f) if (togp3 and py_v_is_3) else f)
                         for f in p_filt(__xck, dl)]
             res.sort()
         except (OSError, IOError) as e:
@@ -1283,7 +1286,8 @@ def av_dir_find(name, recurse = False, ext_list = None):
         curdir = dp
         dd.sort()
         df.sort()
-        res += [os.path.join(curdir, _T(f)) for f in p_filt(__xck, df)]
+        #res += [os.path.join(curdir, _T(f)) for f in p_filt(__xck, df)]
+        res += [os.path.join(curdir, f) for f in p_filt(__xck, df)]
 
     if not res:
         res = None
@@ -1991,7 +1995,7 @@ def wr_xpls_file(out, group, do_close = True, put_desc = True):
     for nz, it in enumerate(dat):
         n = nz + 1 - err_sub
         try:
-            fd.write(_U("File{:d}={}\n").format(n, _U(it.resname)))
+            fd.write(_U("File{:d}={}\n").format(n, _F(it.resname)))
         except:
             errf("Python cannot write file name of unexpected type")
             err_sub += 1
