@@ -110,6 +110,11 @@ GDBusProxy *keys_proxy_all[A_SIZE(keys_path_data)];
 
 /* data for the dbus objects that we hope will provide
  * screensaver control (Inhibit, UnInhibit)
+ * BUG UPDATE: refrain from adding entries for individual
+ * dt's and rely on "freedesktop" else certain installations
+ * might cause the screensaver to be invoked when it was
+ * not running, as under a simple wm -- this is the case
+ * with the new XFCE 4.14 (under OpenBSD 6.6)
  */
 dbus_object_ids ssav_path_data[] = {
     _PUT_DBUS_IDS_3("org", "freedesktop", "ScreenSaver")
@@ -117,16 +122,16 @@ dbus_object_ids ssav_path_data[] = {
      * its own screensaver with this DBus interface --
      * org.xfce.ScreenSaver, /org/xfce/ScreenSaver --
      * see https://docs.xfce.org/apps/screensaver/dbus
-     */
      ,
     _PUT_DBUS_IDS_3("org", "xfce", "ScreenSaver")
+     */
     /* as of 2017, the xdg-screensaver script still works for
      * mate and cinnamon -- also must check if these have the
      * Inhibit/UnInhibit methods with expected args and results
      * UPDATE: mate takes '(ss)' - try it
-     */
      ,
     _PUT_DBUS_IDS_3("org", "mate", "ScreenSaver")
+     */
     /*
      ,
     _PUT_DBUS_IDS_3("org", "cinnamon", "ScreenSaver"),
