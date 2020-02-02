@@ -789,7 +789,7 @@ _get_ssaver_proxies(const char *prg)
          * it is very undesirable to start screensaver
          * daemon w/o user consent!
          */
-        GDBusProxyFlags flags  = G_DBUS_CALL_FLAGS_NO_AUTO_START;
+        GDBusProxyFlags flags  = G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START;
 
         ssav_proxy_all[i] =
             _get_object_proxy(&ssav_path_data[i], flags, prg);
