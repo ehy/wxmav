@@ -122,16 +122,16 @@ dbus_object_ids ssav_path_data[] = {
      * its own screensaver with this DBus interface --
      * org.xfce.ScreenSaver, /org/xfce/ScreenSaver --
      * see https://docs.xfce.org/apps/screensaver/dbus
+     */
      ,
     _PUT_DBUS_IDS_3("org", "xfce", "ScreenSaver")
-     */
     /* as of 2017, the xdg-screensaver script still works for
      * mate and cinnamon -- also must check if these have the
      * Inhibit/UnInhibit methods with expected args and results
      * UPDATE: mate takes '(ss)' - try it
+     */
      ,
     _PUT_DBUS_IDS_3("org", "mate", "ScreenSaver")
-     */
     /*
      ,
     _PUT_DBUS_IDS_3("org", "cinnamon", "ScreenSaver"),
@@ -785,7 +785,11 @@ _get_ssaver_proxies(const char *prg)
     size_t i;
 
     for ( i = 0; i < A_SIZE(ssav_path_data); i++ ) {
-        GDBusProxyFlags flags  = 0;
+        /* do *not* forget the no auto start flag:
+         * it is very undesirable to start screensaver
+         * daemon w/o user consent!
+         */
+        GDBusProxyFlags flags  = G_DBUS_CALL_FLAGS_NO_AUTO_START;
 
         ssav_proxy_all[i] =
             _get_object_proxy(&ssav_path_data[i], flags, prg);
