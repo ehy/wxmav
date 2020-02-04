@@ -520,12 +520,12 @@ def cv_open_w(name):
 """
 
 # version globals: r/o
-version_string = _T("1.0.0")
+version_string = _T("1.0.0.1")
 version_name   = _("Parallel Coils")
 version_mjr    = 1
 version_mjrrev = 0
 version_mnr    = 0
-version_mnrrev = 0
+version_mnrrev = 1
 version = (
     version_mjr<<24|version_mjrrev<<16|version_mnr<<8|version_mnrrev)
 maintainer_name = _T("Ed Hynan")

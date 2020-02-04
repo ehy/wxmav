@@ -1,1 +1,8 @@
 May 2017: version 1.0.0
+
+Feb 2020: version 1.0.0.1 bugfix release: fix bad bug
+    in save pls files where a file path might have been
+	written as b'/the/path' due to Python 3;  add flag
+	*do not start* to glib call to allocate proxy to
+	screensaver daemons so the will not be started
+	when absent.
