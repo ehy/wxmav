@@ -110,6 +110,11 @@ GDBusProxy *keys_proxy_all[A_SIZE(keys_path_data)];
 
 /* data for the dbus objects that we hope will provide
  * screensaver control (Inhibit, UnInhibit)
+ * BUG UPDATE: refrain from adding entries for individual
+ * dt's and rely on "freedesktop" else certain installations
+ * might cause the screensaver to be invoked when it was
+ * not running, as under a simple wm -- this is the case
+ * with the new XFCE 4.14 (under OpenBSD 6.6)
  */
 dbus_object_ids ssav_path_data[] = {
     _PUT_DBUS_IDS_3("org", "freedesktop", "ScreenSaver")
@@ -780,7 +785,11 @@ _get_ssaver_proxies(const char *prg)
     size_t i;
 
     for ( i = 0; i < A_SIZE(ssav_path_data); i++ ) {
-        GDBusProxyFlags flags  = 0;
+        /* do *not* forget the no auto start flag:
+         * it is very undesirable to start screensaver
+         * daemon w/o user consent!
+         */
+        GDBusProxyFlags flags  = G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START;
 
         ssav_proxy_all[i] =
             _get_object_proxy(&ssav_path_data[i], flags, prg);
