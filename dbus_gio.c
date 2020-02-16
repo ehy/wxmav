@@ -732,7 +732,7 @@ _get_media_keys_proxies(const dbus_proc_in *in, const char *prg, int fd)
     size_t i;
 
     for ( i = 0; i < A_SIZE(keys_path_data); i++ ) {
-        GDBusProxyFlags flags  = 0;
+        GDBusProxyFlags flags  = G_DBUS_PROXY_FLAGS_DO_NOT_AUTO_START;
 
         keys_proxy_all[i] =
             _get_object_proxy(&keys_path_data[i], flags, prg);
