@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 dnl Every other copy of the package version number gets its value from here
-AC_INIT([wxmav], [1.0.0.1])
+AC_INIT([wxmav], [1.0.0.2])
 
 dnl Name for the X helper program (reason for most of this script)
 AC_SUBST([XHELPERNAME], [wxmav-x-helper])

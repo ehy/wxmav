@@ -1,4 +1,6 @@
-May 2017: version 1.0.0
+Feb 2020: version 1.0.0.2 bugfix release:
+	Another flag *do not start* to glib call to
+	allocate proxy: this time Cfor possible media keys.
 
 Feb 2020: version 1.0.0.1 bugfix release: fix bad bug
     in save pls files where a file path might have been
@@ -6,3 +8,5 @@ Feb 2020: version 1.0.0.1 bugfix release: fix bad bug
 	*do not start* to glib call to allocate proxy to
 	screensaver daemons so the will not be started
 	when absent.
+
+May 2017: version 1.0.0

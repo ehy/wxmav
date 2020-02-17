@@ -15,7 +15,7 @@
 .POSIX:
 
 # catalog name: $(NAME).{pot,po,mo}
-NAME = $(OUTDIR)/WXMav-1.0.0.1-install-all.exe
+NAME = $(OUTDIR)/WXMav-1.0.0.2-install-all.exe
 NAME64 = $(OUTDIR)/mswinstallerembedname64
 APPNAME = wxmav
 SRC = wxmav.nsist
@@ -86,7 +86,7 @@ i18n-sect.in:
 			| $$TR >> $@; \
 		printf \
 		'\n  WriteRegStr $${_HK_} "Software\\%s\\%s\\%s\\i18n" \\\n' \
-			"GPLFreeSoftwareApplications" "wxmav" "1.0.0.1" \
+			"GPLFreeSoftwareApplications" "wxmav" "1.0.0.2" \
 			| $$TR >> $@; \
 		printf \
 		'    "installed %s message catalog" "$$INSTDIR\\%s\\%s"\n' \
