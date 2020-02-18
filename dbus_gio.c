@@ -1063,18 +1063,20 @@ read_line(char **buf, size_t *bs, FILE *fptr)
         alloc_read_buffer(fileno(fptr), buf, bs);
     }
 
+    errno = 0;
     while ( (ret = getdelim(buf, bs, '\n', fptr)) < 1 ) {
         int e = errno;
         if ( got_common_signal ) {
             return -1;
         } else if ( ferror(fptr) && (e == EAGAIN || e == EINTR) ) {
             clearerr(fptr);
-        } else if ( ferror(fptr) ) {
+        } else if ( ferror(fptr) || e ) {
             return -1;
         } else if ( feof(fptr) ) {
             return 0;
         }
         sleep(1);
+        errno = 0;
     }
 
     return ret;
