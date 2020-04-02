@@ -1237,18 +1237,22 @@ av_ext_default = [
 
 av_ext_ok = av_ext_default
 
+
+# BUG FIX, v 1.0.0.3 -- big oops, was using os.fsencode where
+# os.fsdecode() was wanted, result was TypeError thrown from
+# os.path.join()
 def av_dir_find(name, recurse = False, ext_list = None):
     ext = ext_list if ext_list else av_ext_ok
     err = None
     res = None
 
     togp3 = True
-    curdir = os.fsencode(name) if (togp3 and py_v_is_3) else name
+    curdir = os.fsdecode(name) if (togp3 and py_v_is_3) else name
 
     def __xck(fname):
         try:
             if togp3 and py_v_is_3:
-                fname = os.fsencode(fname)
+                fname = os.fsdecode(fname)
             f = os.path.join(curdir, fname)
             if os.path.isfile(f): # or os.path.isfile(_T(f)):
                 if ext == '*': # allow 'accept all' option
@@ -1256,6 +1260,8 @@ def av_dir_find(name, recurse = False, ext_list = None):
                 n, x = os.path.splitext(f)
                 if x and _T(x[1:]).lower() in ext:
                     return True
+        except TypeError as e:
+            raise Exception("Type Error in av_dir_find() nested __xck")
         except Exception as e:
             raise Exception(e)
         return False
@@ -1267,7 +1273,7 @@ def av_dir_find(name, recurse = False, ext_list = None):
             if not dl:
                 return (res, _("directory empty"))
             res = [os.path.join(curdir,
-                    os.fsencode(f) if (togp3 and py_v_is_3) else f)
+                    os.fsdecode(f) if (togp3 and py_v_is_3) else f)
                         for f in p_filt(__xck, dl)]
             res.sort()
         except (OSError, IOError) as e:
