@@ -80,6 +80,16 @@ provide for that.
 * Presently, there is no documentation (other than some 'tool-tips'),
 but hopefully the program is easy learn through discovery.
 
+Wayland (GNU/Linux systems):
+
+If your system uses Wayland (e.g. Fedora) then videos might open a
+new undecorated window rather than displaying in the main window,
+as expected.  This is probably due to wxWidgets (e.g. using GTK)
+not yet implementing The New Way of Things™ (wx 3.0).
+
+Your system might provide way to use Good Ol' X, if you're inclined.
+For example in Fedora set WaylandEnable=false in /etc/gdm/custom.conf
+and reboot.
 
 Author: Ed Hynan, ehynan@gmail.com
 

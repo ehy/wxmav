@@ -520,17 +520,17 @@ def cv_open_w(name):
 """
 
 # version globals: r/o
-version_string = _T("1.0.0.2")
+version_string = _T("1.0.0.3")
 version_name   = _("Parallel Coils")
 version_mjr    = 1
 version_mjrrev = 0
 version_mnr    = 0
-version_mnrrev = 1
+version_mnrrev = 3
 version = (
     version_mjr<<24|version_mjrrev<<16|version_mnr<<8|version_mnrrev)
 maintainer_name = _T("Ed Hynan")
 maintainer_addr = _T("<edhynan@gmail.com>")
-copyright_years = _T("2019")
+copyright_years = _T("2019-2020")
 program_site    = _T("https://github.com/ehy/wxmav")
 program_desc    = _T("(WX) M Audio/Visual Media Player.")
 program_devs    = [maintainer_name]
@@ -1246,13 +1246,12 @@ def av_dir_find(name, recurse = False, ext_list = None):
     err = None
     res = None
 
-    togp3 = True
-    curdir = os.fsdecode(name) if (togp3 and py_v_is_3) else name
+    togdec = py_v_is_3
+    curdir = os.fsdecode(name) if togdec else _T(name)
 
     def __xck(fname):
         try:
-            if togp3 and py_v_is_3:
-                fname = os.fsdecode(fname)
+            fname = os.fsdecode(fname) if togdec else _T(fname)
             f = os.path.join(curdir, fname)
             if os.path.isfile(f): # or os.path.isfile(_T(f)):
                 if ext == '*': # allow 'accept all' option
@@ -1273,7 +1272,7 @@ def av_dir_find(name, recurse = False, ext_list = None):
             if not dl:
                 return (res, _("directory empty"))
             res = [os.path.join(curdir,
-                    os.fsdecode(f) if (togp3 and py_v_is_3) else f)
+                    os.fsdecode(f) if togdec else _T(f))
                         for f in p_filt(__xck, dl)]
             res.sort()
         except (OSError, IOError) as e:
@@ -1292,7 +1291,6 @@ def av_dir_find(name, recurse = False, ext_list = None):
         curdir = dp
         dd.sort()
         df.sort()
-        #res += [os.path.join(curdir, _T(f)) for f in p_filt(__xck, df)]
         res += [os.path.join(curdir, f) for f in p_filt(__xck, df)]
 
     if not res:

@@ -81,7 +81,7 @@ dnl app version piece by piece
 define(appVMajor, `1')dnl
 define(appVMinor, `0')dnl
 define(appRMajor, `0')dnl
-define(appRMinor, `2')dnl
+define(appRMinor, `3')dnl
 dnl comment appPatchLvl macro for version string w/o "pN" appended
 dnl define(appPatchLvl, `1')dnl
 define(appversionI,
