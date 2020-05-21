@@ -4397,8 +4397,7 @@ class SliderPanel(wx.Panel):
                        slider_id = wx.ID_ANY,
                        slider_style = wx.SL_HORIZONTAL | wx.SL_LABELS,
                        item_margin = 4,
-                       sizer_flags = wx.EXPAND | wx.LEFT | wx.RIGHT
-                                   | wx.ALIGN_CENTRE_VERTICAL):
+                       sizer_flags = wx.EXPAND | wx.LEFT | wx.RIGHT):
         wx.Panel.__init__(self, parent, ID)
 
         szr = wx.BoxSizer(wx.VERTICAL)
@@ -4481,8 +4480,7 @@ class ButtonPanel(wx.ScrolledWindow):
                        button_data,
                        item_margin = 4,
                        spacer_width = 2,
-                       sizer_flags = wx.EXPAND | wx.LEFT | wx.RIGHT
-                                   | wx.ALIGN_CENTRE_VERTICAL):
+                       sizer_flags = wx.EXPAND | wx.LEFT | wx.RIGHT):
         wx.ScrolledWindow.__init__(self, parent, ID)
 
         self.panel = wx.Panel(self, wx.ID_ANY)
@@ -7456,7 +7454,7 @@ class TopWnd(wx.Frame):
             self.pos_panel.GetBackgroundColour())
 
     def make_menu_bar(self):
-        I = wx.NewId
+        I = new_wx_id # wx.NewId
         mb = wx.MenuBar()
 
         # conventional File menu
@@ -7745,7 +7743,7 @@ class TopWnd(wx.Frame):
 
         def _mi_tup(mnu, mid):
             mi = mnu.FindItemById(mid)
-            lbl = mi.GetLabel()
+            lbl = mi.GetItemLabelText() # mi.GetLabel()
             hlp = mi.GetHelp()
             return (lbl, hlp)
 
