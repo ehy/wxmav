@@ -801,20 +801,23 @@ if have_mutagen:
                     ii = mg.iteritems()
                 for k, v in ii:
                     if isinstance(v, list):
-                        v = _T('; ').join([_Tencode(i) for i in v])
+                        v = _T('; ').join(
+                                     [_Tencode(i).strip() for i in v])
+                    else:
+                        v = _Tencode(v).strip()
                     if k == 'album':
-                        self.album = _Tencode(v)
+                        self.album = v
                     elif k == 'tracknumber':
                         # Note: not using possible joined list:
-                        self.tracknumber = mg[k]
+                        self.tracknumber = mg[k].strip()
                     elif k == 'title':
-                        self.title = _Tencode(v)
+                        self.title = v
                     elif k == 'artist':
-                        self.artist = _Tencode(v)
+                        self.artist = v
                     elif k == 'genre':
-                        self.genre = _Tencode(v)
+                        self.genre = v
                     elif k == 'date':
-                        self.date = _Tencode(v)
+                        self.date = v
             except:
                 return False
 
