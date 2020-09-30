@@ -792,6 +792,7 @@ if have_mutagen:
             try:
                 mg = mutagen.File(fname, easy = True)
             except:
+                wx.GetApp().prdbg(_T("DBG: except in mutagen.File()"))
                 return False
 
             try:
@@ -804,12 +805,16 @@ if have_mutagen:
                         v = _T('; ').join(
                                      [_Tencode(i).strip() for i in v])
                     else:
-                        v = _Tencode(v).strip()
+                        try:
+                            t = _Tencode(v).strip()
+                            v = t
+                        except:
+                            pass
                     if k == 'album':
                         self.album = v
                     elif k == 'tracknumber':
                         # Note: not using possible joined list:
-                        self.tracknumber = mg[k].strip()
+                        self.tracknumber = mg[k]
                     elif k == 'title':
                         self.title = v
                     elif k == 'artist':
@@ -819,6 +824,7 @@ if have_mutagen:
                     elif k == 'date':
                         self.date = v
             except:
+                wx.GetApp().prdbg(_T("DBG: TAG except in from_file()"))
                 return False
 
             self.is_ok = (self.title != None and self.title)
